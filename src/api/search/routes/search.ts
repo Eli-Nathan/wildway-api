@@ -1,14 +1,14 @@
-interface Route {
+interface RouteConfig {
   method: string;
   path: string;
   handler: string;
 }
 
-interface SearchRoutes {
-  routes: Route[];
+interface RoutesConfig {
+  routes: RouteConfig[];
 }
 
-const searchRoutes: SearchRoutes = {
+const config: RoutesConfig = {
   routes: [
     {
       method: "GET",
@@ -20,7 +20,17 @@ const searchRoutes: SearchRoutes = {
       path: "/v2/search",
       handler: "search.globalSearchWithOSM",
     },
+    {
+      method: "POST",
+      path: "/search/check-similar",
+      handler: "search.checkSimilarSites",
+    },
+    {
+      method: "GET",
+      path: "/search/fuzzy",
+      handler: "search.fuzzySearch",
+    },
   ],
 };
 
-export default searchRoutes;
+export default config;
