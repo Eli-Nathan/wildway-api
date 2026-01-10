@@ -151,10 +151,13 @@ const searchService = {
             // Get sites for similarity check
             let sites = await strapi.entityService.findMany("api::site.site", {
                 limit: 1000,
-                fields: ["title", "description", "lat", "lng", "slug"],
+                fields: ["title", "description", "lat", "lng", "slug", "image"],
                 populate: {
                     type: {
-                        fields: ["name", "slug"],
+                        fields: ["name", "slug", "icon"],
+                    },
+                    images: {
+                        fields: ["url", "formats"],
                     },
                 },
             });
@@ -181,22 +184,12 @@ const searchService = {
             // Find similar places using fuzzy matching
             const similarSites = (0, fuzzySearch_1.findSimilarPlaces)(sites, placeName, {
                 threshold: 0.5,
-                maxResults: 20,
+                maxResults: 10,
                 keys: ["title", "description"],
             });
-            // Also search in external data
-            const osmPlaces = await searchService.searchUnlistedSites(placeName, true);
-            const transformedOSMPlaces = osmPlaces
-                .slice(0, 10)
-                .map(searchService.transformOSMToUnlistedSite)
-                .map((place) => ({
-                ...place,
-                reason: "External data source",
-                score: 0.5,
-            }));
-            // Combine and sort all results
-            const allSimilar = [...similarSites, ...transformedOSMPlaces].sort((a, b) => b.score - a.score);
-            return allSimilar;
+            // Don't include external OSM data for duplicate checking
+            // Just return our own sites that might be duplicates
+            return similarSites;
         }
         catch (err) {
             console.error("Error finding similar sites:", err);

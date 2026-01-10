@@ -26,7 +26,7 @@ const config: RoutesConfig = {
       handler: "search.globalSearchWithOSM",
     },
     {
-      method: "POST",
+      method: "GET",
       path: "/search/check-similar",
       handler: "search.checkSimilarSites",
       config: {

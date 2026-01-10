@@ -167,7 +167,7 @@ export default {
   // New endpoint for checking similar sites (for duplicate prevention)
   checkSimilarSites: async (ctx: SearchContext) => {
     try {
-      const { placeName, lat, lng, radius = 5 } = ctx.request.body || {};
+      const { placeName, lat, lng, radius = 5 } = ctx.request.query || {};
 
       if (!placeName) {
         return ctx.badRequest("Place name is required", {
