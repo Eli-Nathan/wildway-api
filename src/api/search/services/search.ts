@@ -40,7 +40,7 @@ const getNameWithSuffix = (name: string, address: OSMAddress): string => {
   return "";
 };
 
-export default {
+const searchService = {
   searchSites: async (
     query: string,
     start: number,
@@ -193,6 +193,8 @@ export default {
     radius: number = 5 // km
   ): Promise<unknown[]> => {
     try {
+      console.log('findSimilarSites called with:', { placeName, lat, lng, radius });
+      
       // Get sites for similarity check
       let sites = await strapi.entityService.findMany("api::site.site", {
         limit: 1000, // Get a reasonable number for checking
@@ -203,6 +205,8 @@ export default {
           },
         },
       });
+      
+      console.log('Found sites:', sites.length);
 
       // If coordinates are provided, filter by proximity first
       if (lat !== undefined && lng !== undefined) {
@@ -234,10 +238,10 @@ export default {
       });
 
       // Also search in external data
-      const osmPlaces = await this.searchUnlistedSites(placeName, true);
+      const osmPlaces = await searchService.searchUnlistedSites(placeName, true);
       const transformedOSMPlaces = osmPlaces
         .slice(0, 10)
-        .map(this.transformOSMToUnlistedSite)
+        .map(searchService.transformOSMToUnlistedSite)
         .map((place) => ({
           ...place,
           reason: "External data source",
@@ -366,3 +370,5 @@ export default {
     };
   },
 };
+
+export default searchService;

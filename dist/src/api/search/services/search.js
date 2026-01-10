@@ -21,7 +21,7 @@ const getNameWithSuffix = (name, address) => {
     }
     return "";
 };
-exports.default = {
+const searchService = {
     searchSites: async (query, start, limit, useFuzzy = true) => {
         try {
             // First try exact/contains search
@@ -147,6 +147,7 @@ exports.default = {
     findSimilarSites: async (placeName, lat, lng, radius = 5 // km
     ) => {
         try {
+            console.log('findSimilarSites called with:', { placeName, lat, lng, radius });
             // Get sites for similarity check
             let sites = await strapi.entityService.findMany("api::site.site", {
                 limit: 1000,
@@ -157,6 +158,7 @@ exports.default = {
                     },
                 },
             });
+            console.log('Found sites:', sites.length);
             // If coordinates are provided, filter by proximity first
             if (lat !== undefined && lng !== undefined) {
                 sites = sites.filter((site) => {
@@ -183,10 +185,10 @@ exports.default = {
                 keys: ["title", "description"],
             });
             // Also search in external data
-            const osmPlaces = await this.searchUnlistedSites(placeName, true);
+            const osmPlaces = await searchService.searchUnlistedSites(placeName, true);
             const transformedOSMPlaces = osmPlaces
                 .slice(0, 10)
-                .map(this.transformOSMToUnlistedSite)
+                .map(searchService.transformOSMToUnlistedSite)
                 .map((place) => ({
                 ...place,
                 reason: "External data source",
@@ -284,3 +286,4 @@ exports.default = {
         };
     },
 };
+exports.default = searchService;
