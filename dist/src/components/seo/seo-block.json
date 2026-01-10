@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_seo_seo_blocks",
+  "info": {
+    "displayName": "SEO block",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "metaDescription": {
+      "type": "text",
+      "required": true
+    },
+    "keywords": {
+      "type": "string"
+    }
+  }
+}

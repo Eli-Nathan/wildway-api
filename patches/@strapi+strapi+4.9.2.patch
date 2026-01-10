@@ -1,0 +1,62 @@
+diff --git a/node_modules/@strapi/strapi/lib/commands/builders/typescript.js b/node_modules/@strapi/strapi/lib/commands/builders/typescript.js
+index 6536b8c..cb2c755 100644
+--- a/node_modules/@strapi/strapi/lib/commands/builders/typescript.js
++++ b/node_modules/@strapi/strapi/lib/commands/builders/typescript.js
+@@ -3,6 +3,7 @@
+ const path = require('path');
+ const fs = require('fs-extra');
+ const tsUtils = require('@strapi/typescript-utils');
++const glob = require('fast-glob');
+ 
+ const cleanupDistDirectory = async (distDir) => {
+   if (!(await fs.pathExists(distDir))) {
+@@ -19,6 +20,39 @@ const cleanupDistDirectory = async (distDir) => {
+   }
+ };
+ 
++const copyNonTsFiles = async (srcDir, distDir) => {
++  const srcSrcDir = path.join(srcDir, 'src');
++  const distSrcDir = path.join(distDir, 'src');
++
++  // Copy all JSON files from src/api/**/content-types/**/
++  const schemaFiles = await glob('api/**/content-types/**/*.json', {
++    cwd: srcSrcDir,
++    absolute: false,
++  });
++
++  for (const file of schemaFiles) {
++    const srcPath = path.join(srcSrcDir, file);
++    const destPath = path.join(distSrcDir, file);
++    await fs.ensureDir(path.dirname(destPath));
++    await fs.copy(srcPath, destPath);
++  }
++
++  // Copy all JSON files from src/components/**/
++  const componentFiles = await glob('components/**/*.json', {
++    cwd: srcSrcDir,
++    absolute: false,
++  });
++
++  for (const file of componentFiles) {
++    const srcPath = path.join(srcSrcDir, file);
++    const destPath = path.join(distSrcDir, file);
++    await fs.ensureDir(path.dirname(destPath));
++    await fs.copy(srcPath, destPath);
++  }
++
++  console.log(`Copied ${schemaFiles.length + componentFiles.length} schema/component JSON files to dist`);
++};
++
+ module.exports = async ({ srcDir, distDir, watch = false }) => {
+   const isTSProject = await tsUtils.isUsingTypeScript(srcDir);
+ 
+@@ -28,5 +62,8 @@ module.exports = async ({ srcDir, distDir, watch = false }) => {
+ 
+   await cleanupDistDirectory(distDir);
+ 
+-  return tsUtils.compile(srcDir, { watch });
++  await tsUtils.compile(srcDir, { watch });
++
++  // Copy non-TS files (JSON schemas, etc.) to dist
++  await copyNonTsFiles(srcDir, distDir);
+ };

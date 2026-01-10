@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscriptions",
+  "info": {
+    "singularName": "subscription",
+    "pluralName": "subscriptions",
+    "displayName": "Subscriptions",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "start": {
+      "type": "datetime",
+      "required": true
+    },
+    "expiry": {
+      "type": "datetime",
+      "required": true
+    },
+    "users": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::auth-user.auth-user",
+      "mappedBy": "subscription"
+    },
+    "user_role": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::user-role.user-role"
+    },
+    "term": {
+      "type": "enumeration",
+      "enum": [
+        "monthly",
+        "yearly"
+      ],
+      "required": true
+    },
+    "auto_renew": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "payment_method": {
+      "type": "enumeration",
+      "enum": [
+        "card",
+        "bank"
+      ],
+      "default": "card",
+      "required": true
+    }
+  }
+}

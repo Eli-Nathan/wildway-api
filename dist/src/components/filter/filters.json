@@ -1,0 +1,15 @@
+{
+  "collectionName": "components_filter_filters",
+  "info": {
+    "displayName": "filters",
+    "icon": "list"
+  },
+  "options": {},
+  "attributes": {
+    "filter": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::filter.filter"
+    }
+  }
+}
