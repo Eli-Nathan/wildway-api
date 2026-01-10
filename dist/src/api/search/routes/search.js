@@ -12,6 +12,26 @@ const config = {
             path: "/v2/search",
             handler: "search.globalSearchWithOSM",
         },
+        {
+            method: "POST",
+            path: "/search/check-similar",
+            handler: "search.checkSimilarSites",
+            config: {
+                auth: false,
+                policies: [],
+                middlewares: [],
+            },
+        },
+        {
+            method: "GET",
+            path: "/search/fuzzy",
+            handler: "search.fuzzySearch",
+            config: {
+                auth: false,
+                policies: [],
+                middlewares: [],
+            },
+        },
     ],
 };
 exports.default = config;

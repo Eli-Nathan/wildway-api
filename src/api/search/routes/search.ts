@@ -2,6 +2,11 @@ interface RouteConfig {
   method: string;
   path: string;
   handler: string;
+  config?: {
+    auth?: boolean;
+    policies?: string[];
+    middlewares?: string[];
+  };
 }
 
 interface RoutesConfig {
@@ -24,11 +29,21 @@ const config: RoutesConfig = {
       method: "POST",
       path: "/search/check-similar",
       handler: "search.checkSimilarSites",
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
     },
     {
       method: "GET",
       path: "/search/fuzzy",
       handler: "search.fuzzySearch",
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
     },
   ],
 };

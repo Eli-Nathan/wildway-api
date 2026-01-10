@@ -3,7 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = {
     globalSearch: async (ctx) => {
         try {
-            const { query, sitesStart = 0, sitesLimit = 25, popularRoutesStart = 0, popularRoutesLimit = 25, communityRoutesStart = 0, communityRoutesLimit = 25, usersStart = 0, usersLimit = 25, } = ctx.request.query;
+            const { query, sitesStart = 0, sitesLimit = 25, popularRoutesStart = 0, popularRoutesLimit = 25, communityRoutesStart = 0, communityRoutesLimit = 25, usersStart = 0, usersLimit = 25, useFuzzy = true, } = ctx.request.query;
+            // Convert string "true"/"false" to boolean
+            const fuzzyEnabled = useFuzzy === true || useFuzzy === "true";
             let sites;
             let popularRoutes;
             let communityRoutes;
@@ -11,7 +13,7 @@ exports.default = {
             sites = await strapi
                 .service("api::search.search")
                 // @ts-expect-error - Service method
-                .searchSites(query, sitesStart, sitesLimit);
+                .searchSites(query, sitesStart, sitesLimit, fuzzyEnabled);
             popularRoutes = await strapi
                 .service("api::search.search")
                 // @ts-expect-error - Service method
@@ -39,7 +41,9 @@ exports.default = {
     },
     globalSearchWithOSM: async (ctx) => {
         try {
-            const { query, sitesStart = 0, sitesLimit = 25, popularRoutesStart = 0, popularRoutesLimit = 25, communityRoutesStart = 0, communityRoutesLimit = 25, usersStart = 0, usersLimit = 25, } = ctx.request.query;
+            const { query, sitesStart = 0, sitesLimit = 25, popularRoutesStart = 0, popularRoutesLimit = 25, communityRoutesStart = 0, communityRoutesLimit = 25, usersStart = 0, usersLimit = 25, useFuzzy = true, } = ctx.request.query;
+            // Convert string "true"/"false" to boolean
+            const fuzzyEnabled = useFuzzy === true || useFuzzy === "true";
             let sites;
             let unlistedSites;
             let popularRoutes;
@@ -48,11 +52,11 @@ exports.default = {
             sites = await strapi
                 .service("api::search.search")
                 // @ts-expect-error - Service method
-                .searchSites(query, sitesStart, sitesLimit);
+                .searchSites(query, sitesStart, sitesLimit, fuzzyEnabled);
             unlistedSites = await strapi
                 .service("api::search.search")
                 // @ts-expect-error - Service method
-                .searchUnlistedSites(query);
+                .searchUnlistedSites(query, fuzzyEnabled);
             popularRoutes = await strapi
                 .service("api::search.search")
                 // @ts-expect-error - Service method
@@ -81,6 +85,87 @@ exports.default = {
         }
         catch (err) {
             ctx.badRequest("Post report controller error", { moreDetails: err });
+        }
+    },
+    // New endpoint for checking similar sites (for duplicate prevention)
+    checkSimilarSites: async (ctx) => {
+        try {
+            const { placeName, lat, lng, radius = 5 } = ctx.request.body || {};
+            if (!placeName) {
+                return ctx.badRequest("Place name is required", {
+                    field: "placeName",
+                });
+            }
+            const similarSites = await strapi
+                .service("api::search.search")
+                // @ts-expect-error - Service method
+                .findSimilarSites(placeName, lat ? Number(lat) : undefined, lng ? Number(lng) : undefined, Number(radius));
+            ctx.body = {
+                similarSites,
+                hasPotentialDuplicates: similarSites.length > 0,
+                count: similarSites.length,
+            };
+        }
+        catch (err) {
+            ctx.badRequest("Error checking similar sites", { moreDetails: err });
+        }
+    },
+    // Endpoint for fuzzy search with external data
+    fuzzySearch: async (ctx) => {
+        try {
+            const { query, lat, lng, radius = 10, sitesLimit = 25, } = ctx.request.query;
+            if (!query) {
+                return ctx.badRequest("Search query is required", { field: "query" });
+            }
+            // Search internal sites with fuzzy matching
+            const sites = await strapi
+                .service("api::search.search")
+                // @ts-expect-error - Service method
+                .searchSites(query, 0, sitesLimit, true);
+            // Search external data with fuzzy matching
+            const unlistedSites = await strapi
+                .service("api::search.search")
+                // @ts-expect-error - Service method
+                .searchUnlistedSites(query, true);
+            // Transform OSM sites
+            const transformedUnlisted = unlistedSites.map(
+            // @ts-expect-error - Service method
+            strapi.service("api::search.search").transformOSMToUnlistedSite);
+            // If coordinates are provided, sort by distance
+            let allPlaces = [...sites, ...transformedUnlisted];
+            if (lat && lng) {
+                const latNum = Number(lat);
+                const lngNum = Number(lng);
+                const radiusNum = Number(radius);
+                allPlaces = allPlaces
+                    .map((place) => {
+                    if (!place.lat || !place.lng) {
+                        return { ...place, distance: Infinity };
+                    }
+                    // Calculate distance using Haversine formula
+                    const R = 6371; // Earth's radius in km
+                    const dLat = ((place.lat - latNum) * Math.PI) / 180;
+                    const dLng = ((place.lng - lngNum) * Math.PI) / 180;
+                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                        Math.cos((latNum * Math.PI) / 180) *
+                            Math.cos((place.lat * Math.PI) / 180) *
+                            Math.sin(dLng / 2) *
+                            Math.sin(dLng / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    const distance = R * c;
+                    return { ...place, distance };
+                })
+                    .filter((place) => place.distance <= radiusNum)
+                    .sort((a, b) => a.distance - b.distance);
+            }
+            ctx.body = {
+                places: allPlaces.slice(0, sitesLimit),
+                total: allPlaces.length,
+                fuzzySearchEnabled: true,
+            };
+        }
+        catch (err) {
+            ctx.badRequest("Fuzzy search error", { moreDetails: err });
         }
     },
 };
