@@ -4,7 +4,7 @@ const {
   getRejectedMailContent,
   getApprovedMailContent,
   sendEmail,
-} = require("../../../../nomad/emails");
+} = require("../../../../../dist/src/nomad/emails");
 const slugify = require("slugify");
 
 module.exports = ({ strapi }) => ({

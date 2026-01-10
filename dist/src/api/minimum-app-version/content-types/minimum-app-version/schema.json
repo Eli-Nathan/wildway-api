@@ -1,0 +1,20 @@
+{
+  "kind": "singleType",
+  "collectionName": "minimum_app_versions",
+  "info": {
+    "singularName": "minimum-app-version",
+    "pluralName": "minimum-app-versions",
+    "displayName": "Minimum app version"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "minVersion": {
+      "type": "string",
+      "required": true,
+      "default": "0.0.1"
+    }
+  }
+}

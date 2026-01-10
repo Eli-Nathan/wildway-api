@@ -1,0 +1,582 @@
+diff --git a/src/api/search/services/fuzzySearch.ts b/src/api/search/services/fuzzySearch.ts
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/src/api/search/services/fuzzySearch.ts
+@@ -0,0 +1,250 @@
++// Fuzzy search utility for place name matching
++interface FuzzySearchItem {
++  id: string | number;
++  title: string;
++  [key: string]: any;
++}
++
++interface FuzzySearchOptions {
++  threshold?: number; // 0.0 requires a perfect match, 1.0 matches anything
++  keys?: string[]; // Keys to search in
++}
++
++// Levenshtein distance algorithm for fuzzy matching
++function levenshteinDistance(str1: string, str2: string): number {
++  const m = str1.length;
++  const n = str2.length;
++  
++  if (m === 0) return n;
++  if (n === 0) return m;
++  
++  const dp: number[][] = Array(m + 1)
++    .fill(null)
++    .map(() => Array(n + 1).fill(0));
++  
++  for (let i = 0; i <= m; i++) {
++    dp[i][0] = i;
++  }
++  
++  for (let j = 0; j <= n; j++) {
++    dp[0][j] = j;
++  }
++  
++  for (let i = 1; i <= m; i++) {
++    for (let j = 1; j <= n; j++) {
++      if (str1[i - 1] === str2[j - 1]) {
++        dp[i][j] = dp[i - 1][j - 1];
++      } else {
++        dp[i][j] = Math.min(
++          dp[i - 1][j] + 1,    // deletion
++          dp[i][j - 1] + 1,    // insertion
++          dp[i - 1][j - 1] + 1 // substitution
++        );
++      }
++    }
++  }
++  
++  return dp[m][n];
++}
++
++// Calculate similarity score (0 to 1)
++function calculateSimilarity(str1: string, str2: string): number {
++  const distance = levenshteinDistance(
++    str1.toLowerCase(),
++    str2.toLowerCase()
++  );
++  const maxLength = Math.max(str1.length, str2.length);
++  
++  if (maxLength === 0) return 1;
++  
++  return 1 - distance / maxLength;
++}
++
++// Check if strings are phonetically similar (simple soundex-like approach)
++function arePhoneticallySimilar(str1: string, str2: string): boolean {
++  const soundexCode = (str: string): string => {
++    const cleaned = str.toUpperCase().replace(/[^A-Z]/g, '');
++    if (!cleaned) return '';
++    
++    const soundexMap: { [key: string]: string } = {
++      B: '1', F: '1', P: '1', V: '1',
++      C: '2', G: '2', J: '2', K: '2', Q: '2', S: '2', X: '2', Z: '2',
++      D: '3', T: '3',
++      L: '4',
++      M: '5', N: '5',
++      R: '6'
++    };
++    
++    let code = cleaned[0];
++    let prevCode = soundexMap[cleaned[0]] || '0';
++    
++    for (let i = 1; i < cleaned.length && code.length < 4; i++) {
++      const currentCode = soundexMap[cleaned[i]] || '0';
++      if (currentCode !== '0' && currentCode !== prevCode) {
++        code += currentCode;
++        prevCode = currentCode;
++      }
++    }
++    
++    return code.padEnd(4, '0');
++  };
++  
++  return soundexCode(str1) === soundexCode(str2);
++}
++
++// Fuzzy search function
++export function fuzzySearch<T extends FuzzySearchItem>(
++  items: T[],
++  query: string,
++  options: FuzzySearchOptions = {}
++): Array<T & { score: number }> {
++  const {
++    threshold = 0.4, // Default threshold for fuzzy matching
++    keys = ['title']
++  } = options;
++  
++  if (!query || query.trim() === '') {
++    return items.map(item => ({ ...item, score: 1 }));
++  }
++  
++  const queryLower = query.toLowerCase().trim();
++  const queryWords = queryLower.split(/\s+/);
++  
++  const scoredItems = items.map(item => {
++    let maxScore = 0;
++    
++    for (const key of keys) {
++      const value = item[key];
++      if (typeof value !== 'string') continue;
++      
++      const valueLower = value.toLowerCase();
++      
++      // Exact match
++      if (valueLower === queryLower) {
++        maxScore = Math.max(maxScore, 1);
++        continue;
++      }
++      
++      // Contains exact query
++      if (valueLower.includes(queryLower)) {
++        maxScore = Math.max(maxScore, 0.9);
++        continue;
++      }
++      
++      // Starts with query
++      if (valueLower.startsWith(queryLower)) {
++        maxScore = Math.max(maxScore, 0.85);
++        continue;
++      }
++      
++      // All query words are present
++      const allWordsPresent = queryWords.every(word => 
++        valueLower.includes(word)
++      );
++      if (allWordsPresent) {
++        maxScore = Math.max(maxScore, 0.8);
++        continue;
++      }
++      
++      // Some query words are present
++      const presentWords = queryWords.filter(word => 
++        valueLower.includes(word)
++      );
++      if (presentWords.length > 0) {
++        const wordScore = 0.7 * (presentWords.length / queryWords.length);
++        maxScore = Math.max(maxScore, wordScore);
++      }
++      
++      // Fuzzy matching using Levenshtein distance
++      const similarity = calculateSimilarity(valueLower, queryLower);
++      if (similarity >= threshold) {
++        maxScore = Math.max(maxScore, similarity * 0.6);
++      }
++      
++      // Check for phonetic similarity
++      if (arePhoneticallySimilar(value, query)) {
++        maxScore = Math.max(maxScore, 0.5);
++      }
++      
++      // Check individual words for fuzzy matches
++      const valueWords = valueLower.split(/\s+/);
++      for (const queryWord of queryWords) {
++        for (const valueWord of valueWords) {
++          const wordSimilarity = calculateSimilarity(valueWord, queryWord);
++          if (wordSimilarity >= 0.8) {
++            maxScore = Math.max(maxScore, wordSimilarity * 0.4);
++          }
++        }
++      }
++    }
++    
++    return {
++      ...item,
++      score: maxScore
++    };
++  });
++  
++  // Filter and sort by score
++  return scoredItems
++    .filter(item => item.score >= threshold)
++    .sort((a, b) => b.score - a.score);
++}
++
++// Find similar places for duplicate detection
++export function findSimilarPlaces<T extends FuzzySearchItem>(
++  existingPlaces: T[],
++  newPlaceName: string,
++  options: {
++    threshold?: number;
++    maxResults?: number;
++    keys?: string[];
++  } = {}
++): Array<T & { score: number; reason: string }> {
++  const {
++    threshold = 0.6, // Higher threshold for duplicate detection
++    maxResults = 10,
++    keys = ['title']
++  } = options;
++  
++  const results = fuzzySearch(existingPlaces, newPlaceName, {
++    threshold,
++    keys
++  });
++  
++  // Add reason for similarity
++  const enhancedResults = results.map(item => {
++    let reason = 'Similar name';
++    
++    for (const key of keys) {
++      const value = item[key];
++      if (typeof value !== 'string') continue;
++      
++      const valueLower = value.toLowerCase();
++      const queryLower = newPlaceName.toLowerCase();
++      
++      if (valueLower === queryLower) {
++        reason = 'Exact match';
++        break;
++      } else if (valueLower.includes(queryLower)) {
++        reason = 'Name contains your input';
++        break;
++      } else if (queryLower.includes(valueLower)) {
++        reason = 'Your input contains this place name';
++        break;
++      } else if (arePhoneticallySimilar(value, newPlaceName)) {
++        reason = 'Sounds similar';
++      } else if (item.score >= 0.8) {
++        reason = 'Very similar spelling';
++      } else if (item.score >= 0.7) {
++        reason = 'Similar spelling';
++      }
++    }
++    
++    return {
++      ...item,
++      reason
++    };
++  });
++  
++  return enhancedResults.slice(0, maxResults);
++}
+diff --git a/src/api/search/services/search.ts b/src/api/search/services/search.ts
+index 1234567..8901234 100644
+--- a/src/api/search/services/search.ts
++++ b/src/api/search/services/search.ts
+@@ -1,13 +1,15 @@
+ import { getPlacesFromQuery } from "../../../nomad/dataEnrichment/place";
++import { fuzzySearch, findSimilarPlaces } from "./fuzzySearch";
+ 
+ /**
+  * search service
+  */
+ 
+ interface SearchService {
+-  searchSites: (query: string, start?: number, limit?: number) => Promise<any>;
+-  searchUnlistedSites: (query: string) => Promise<any>;
++  searchSites: (query: string, start?: number, limit?: number, useFuzzy?: boolean) => Promise<any>;
++  searchUnlistedSites: (query: string, useFuzzy?: boolean) => Promise<any>;
++  findSimilarSites: (placeName: string, lat?: number, lng?: number, radiusKm?: number) => Promise<any>;
+ }
+ 
+ const searchService: SearchService = {
+-  searchSites: async (query: string, start = 0, limit = 10) => {
++  searchSites: async (query: string, start = 0, limit = 10, useFuzzy = false) => {
+     try {
+-      // fetching data
+-      const sites = await strapi.entityService.findMany("api::site.site", {
+-        start,
+-        limit,
+-        fields: [
+-          "title",
+-          "description",
+-          "category",
+-          "image",
+-          "lat",
+-          "lng",
+-          "slug",
+-        ],
+-        filters: {
+-          title: {
+-            $containsi: query,
++      if (useFuzzy) {
++        // Fetch all sites for fuzzy matching
++        const allSites = await strapi.entityService.findMany("api::site.site", {
++          fields: [
++            "title",
++            "description",
++            "category",
++            "image",
++            "lat",
++            "lng",
++            "slug",
++          ],
++          populate: {
++            type: {
++              populate: {
++                remote_icon: true,
++                remote_marker: true,
++              },
++            },
++            images: true,
++            facilities: true,
++            sub_types: true,
++            owners: true,
+           },
+-        },
+-        sort: { priority: "DESC" },
+-        populate: {
+-          type: {
+-            populate: {
+-              remote_icon: true,
+-              remote_marker: true,
++        });
++
++        // Apply fuzzy search
++        const fuzzyResults = fuzzySearch(allSites, query, {
++          threshold: 0.4,
++          keys: ['title', 'description']
++        });
++
++        // Return paginated results
++        return fuzzyResults.slice(start, start + limit);
++      } else {
++        // Original exact search
++        const sites = await strapi.entityService.findMany("api::site.site", {
++          start,
++          limit,
++          fields: [
++            "title",
++            "description",
++            "category",
++            "image",
++            "lat",
++            "lng",
++            "slug",
++          ],
++          filters: {
++            title: {
++              $containsi: query,
+             },
+           },
+-          images: true,
+-          facilities: true,
+-          sub_types: true,
+-          owners: true,
+-        },
+-      });
++          sort: { priority: "DESC" },
++          populate: {
++            type: {
++              populate: {
++                remote_icon: true,
++                remote_marker: true,
++              },
++            },
++            images: true,
++            facilities: true,
++            sub_types: true,
++            owners: true,
++          },
++        });
+ 
+-      // return the reduced data
+-      return sites;
++        return sites;
++      }
+     } catch (err) {
+       return err;
+     }
+   },
+ 
+-  searchUnlistedSites: async (query: string) => {
++  searchUnlistedSites: async (query: string, useFuzzy = false) => {
+     try {
+       const unlistedSites = await getPlacesFromQuery(query);
++      
++      if (useFuzzy && unlistedSites.length > 0) {
++        // Apply fuzzy search to OSM results
++        const fuzzyResults = fuzzySearch(unlistedSites, query, {
++          threshold: 0.4,
++          keys: ['title', 'display_name']
++        });
++        return fuzzyResults;
++      }
++      
+       return unlistedSites;
+     } catch (err) {
+       return err;
+     }
+   },
++
++  findSimilarSites: async (placeName: string, lat?: number, lng?: number, radiusKm = 5) => {
++    try {
++      // Build filters for geographical proximity if coordinates provided
++      const filters: any = {};
++      
++      if (lat !== undefined && lng !== undefined) {
++        // Simple bounding box calculation (approximate)
++        const latDelta = radiusKm / 111; // 1 degree latitude ≈ 111km
++        const lngDelta = radiusKm / (111 * Math.cos(lat * Math.PI / 180));
++        
++        filters.lat = {
++          $gte: lat - latDelta,
++          $lte: lat + latDelta,
++        };
++        filters.lng = {
++          $gte: lng - lngDelta,
++          $lte: lng + lngDelta,
++        };
++      }
++
++      // Fetch sites within the geographical area
++      const sites = await strapi.entityService.findMany("api::site.site", {
++        fields: ["title", "lat", "lng", "id"],
++        filters,
++        limit: 100, // Reasonable limit for duplicate checking
++      });
++
++      // Find similar places using fuzzy search
++      const similarSites = findSimilarPlaces(sites, placeName, {
++        threshold: 0.6,
++        maxResults: 5,
++        keys: ['title']
++      });
++
++      return {
++        similarSites,
++        totalChecked: sites.length
++      };
++    } catch (err) {
++      return err;
++    }
++  },
+ };
+ 
+ export default searchService;
+diff --git a/src/api/search/controllers/search.ts b/src/api/search/controllers/search.ts
+index 1234567..8901234 100644
+--- a/src/api/search/controllers/search.ts
++++ b/src/api/search/controllers/search.ts
+@@ -5,6 +5,8 @@
+ interface SearchController {
+   globalSearch: (ctx: any, next: any) => Promise<void>;
+   globalSearchWithOSM: (ctx: any, next: any) => Promise<void>;
++  checkSimilarSites: (ctx: any, next: any) => Promise<void>;
++  fuzzySearch: (ctx: any, next: any) => Promise<void>;
+ }
+ 
+ const searchController: SearchController = {
+@@ -19,6 +21,7 @@ const searchController: SearchController = {
+         communityRoutesLimit = 25,
+         usersStart = 0,
+         usersLimit = 25,
++        useFuzzy = false,
+       } = ctx.request.query;
+ 
+       let sites;
+@@ -29,7 +32,7 @@ const searchController: SearchController = {
+ 
+       sites = await strapi
+         .service("api::search.search")
+-        .searchSites(query, sitesStart, sitesLimit);
++        .searchSites(query, sitesStart, sitesLimit, useFuzzy === 'true');
+ 
+       popularRoutes = await strapi
+         .service("api::search.search")
+@@ -71,6 +74,7 @@ const searchController: SearchController = {
+         communityRoutesLimit = 25,
+         usersStart = 0,
+         usersLimit = 25,
++        useFuzzy = false,
+       } = ctx.request.query;
+ 
+       let sites;
+@@ -81,11 +85,11 @@ const searchController: SearchController = {
+ 
+       sites = await strapi
+         .service("api::search.search")
+-        .searchSites(query, sitesStart, sitesLimit);
++        .searchSites(query, sitesStart, sitesLimit, useFuzzy === 'true');
+ 
+       unlistedSites = await strapi
+         .service("api::search.search")
+-        .searchUnlistedSites(query);
++        .searchUnlistedSites(query, useFuzzy === 'true');
+ 
+       popularRoutes = await strapi
+         .service("api::search.search")
+@@ -118,6 +122,54 @@ const searchController: SearchController = {
+       ctx.badRequest("Post report controller error", { moreDetails: err });
+     }
+   },
++
++  checkSimilarSites: async (ctx, next) => {
++    try {
++      const { placeName, lat, lng, radius = 5 } = ctx.request.query;
++
++      if (!placeName) {
++        return ctx.badRequest("Place name is required");
++      }
++
++      const result = await strapi
++        .service("api::search.search")
++        .findSimilarSites(
++          placeName,
++          lat ? parseFloat(lat) : undefined,
++          lng ? parseFloat(lng) : undefined,
++          parseFloat(radius)
++        );
++
++      ctx.body = result;
++    } catch (err) {
++      ctx.badRequest("Check similar sites error", { moreDetails: err });
++    }
++  },
++
++  fuzzySearch: async (ctx, next) => {
++    try {
++      const {
++        query,
++        start = 0,
++        limit = 25,
++      } = ctx.request.query;
++
++      if (!query) {
++        return ctx.badRequest("Query is required");
++      }
++
++      const sites = await strapi
++        .service("api::search.search")
++        .searchSites(query, start, limit, true);
++
++      const unlistedSites = await strapi
++        .service("api::search.search")
++        .searchUnlistedSites(query, true);
++
++      ctx.body = {
++        sites,
++        unlistedSites,
++      };
++    } catch (err) {
++      ctx.badRequest("Fuzzy search error", { moreDetails: err });
++    }
++  },
+ };
+ 
+ export default searchController;
+diff --git a/src/api/search/routes/search.ts b/src/api/search/routes/search.ts
+index 1234567..8901234 100644
+--- a/src/api/search/routes/search.ts
++++ b/src/api/search/routes/search.ts
+@@ -19,6 +19,16 @@ const searchRoutes: SearchRoutes = {
+       path: "/v2/search",
+       handler: "search.globalSearchWithOSM",
+     },
++    {
++      method: "GET",
++      path: "/search/check-similar",
++      handler: "search.checkSimilarSites",
++    },
++    {
++      method: "GET",
++      path: "/search/fuzzy",
++      handler: "search.fuzzySearch",
++    },
+   ],
+ };
