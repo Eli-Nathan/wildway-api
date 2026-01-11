@@ -51,7 +51,7 @@
     },
     "polyline": {
       "type": "json",
-      "private": true
+      "private": false
     },
     "mode": {
       "type": "enumeration",
