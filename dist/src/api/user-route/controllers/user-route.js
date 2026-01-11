@@ -45,7 +45,6 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             },
             populate: {
                 image: true,
-                polyline: true,
                 sites: {
                     populate: {
                         site: {
@@ -132,7 +131,6 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             },
             populate: {
                 image: true,
-                polyline: true,
                 sites: {
                     populate: {
                         site: {

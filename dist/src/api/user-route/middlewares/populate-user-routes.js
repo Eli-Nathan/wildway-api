@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const populateList = ["tags", "sites", "sites.site", "sites.site.type", "polyline"];
+const populateList = ["tags", "sites", "sites.site", "sites.site.type"];
 const enrichCtx = (ctx) => {
     if (!ctx.query) {
         ctx.query = {};
