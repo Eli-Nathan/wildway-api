@@ -1,6 +1,6 @@
 import type { StrapiContext, MiddlewareFactory } from "../../../types/strapi";
 
-const populateList = ["tags", "sites", "sites.site", "sites.site.type"];
+const populateList = ["tags", "sites", "sites.site", "sites.site.type", "polyline"];
 
 const enrichCtx = (ctx: StrapiContext): StrapiContext => {
   if (!ctx.query) {

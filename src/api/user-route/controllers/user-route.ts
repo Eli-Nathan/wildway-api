@@ -94,6 +94,7 @@ export default factories.createCoreController(
           },
           populate: {
             image: true,
+            polyline: true,
             sites: {
               populate: {
                 site: {
@@ -188,6 +189,7 @@ export default factories.createCoreController(
           },
           populate: {
             image: true,
+            polyline: true,
             sites: {
               populate: {
                 site: {
