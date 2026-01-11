@@ -220,58 +220,122 @@ module.exports = ({ strapi }) => ({
   },
 
   async approveEdit(id) {
-    const edit = await strapi.db
-      .query(`api::edit-request.edit-request`)
-      .findOne({
-        where: { id },
-        populate: {
-          owner: true,
-          site: true,
-          type: true,
-          facilities: true,
-          sub_types: true,
-          images: true,
-        },
-      });
-    const approved = await strapi.db.query(`api::site.site`).update({
-      where: {
-        id: edit.site.id,
-      },
-      data: { images: edit.images, ...edit.data },
-    });
-    if (edit.owner) {
-      const currentUser = await strapi.db
-        .query(`api::auth-user.auth-user`)
+    try {
+      const edit = await strapi.db
+        .query(`api::edit-request.edit-request`)
         .findOne({
-          where: { id: edit.owner.id },
+          where: { id },
+          populate: {
+            owner: true,
+            site: true,
+            type: true,
+            facilities: true,
+            sub_types: true,
+            images: true,
+          },
         });
-      await strapi.db.query(`api::auth-user.auth-user`).update({
-        where: { id: currentUser.id },
+      
+      if (!edit) {
+        throw new Error(`Edit request with id ${id} not found`);
+      }
+      
+      if (!edit.site) {
+        throw new Error(`Site not found for edit request ${id}`);
+      }
+      
+      // Update the site with the edit data
+      // Filter out any relation fields or invalid fields from edit.data
+      const updateData = {};
+      
+      // Only include valid scalar fields from edit.data
+      if (edit.data) {
+        const allowedFields = [
+          'title', 'description', 'lat', 'lng', 'latlng',
+          'tel', 'pricerange', 'category', 'region', 
+          'url', 'maplink', 'email', 'priority', 'image'
+        ];
+        
+        for (const field of allowedFields) {
+          if (edit.data[field] !== undefined) {
+            updateData[field] = edit.data[field];
+          }
+        }
+      }
+      
+      // Add images if they exist
+      if (edit.images) {
+        updateData.images = edit.images;
+      }
+      
+      // Handle relation fields separately if they exist in edit.data
+      if (edit.data?.type) {
+        updateData.type = edit.data.type;
+      }
+      
+      if (edit.data?.facilities) {
+        updateData.facilities = edit.data.facilities;
+      }
+      
+      if (edit.data?.sub_types) {
+        updateData.sub_types = edit.data.sub_types;
+      }
+      
+      const approved = await strapi.db.query(`api::site.site`).update({
+        where: {
+          id: edit.site.id,
+        },
+        data: updateData,
+      });
+      
+      // Update the edit request status to complete first, before email/scoring
+      await strapi.db.query(`api::edit-request.edit-request`).update({
+        where: { id: edit.id },
         data: {
-          score: currentUser.score + 5,
+          status: "complete",
         },
       });
+      
+      // Handle owner scoring and email notifications
+      if (edit.owner) {
+        try {
+          const currentUser = await strapi.db
+            .query(`api::auth-user.auth-user`)
+            .findOne({
+              where: { id: edit.owner.id },
+            });
+            
+          if (currentUser) {
+            await strapi.db.query(`api::auth-user.auth-user`).update({
+              where: { id: currentUser.id },
+              data: {
+                score: currentUser.score + 5,
+              },
+            });
 
-      const { text, html, subject } = getApprovedMailContent(
-        "edit request",
-        approved.title,
-        approved.slug || slugify(approved.title),
-        5
-      );
-      await sendEmail({
-        strapi,
-        subject,
-        address: edit.owner.email,
-        text,
-        html,
-      });
+            const { text, html, subject } = getApprovedMailContent(
+              "edit request",
+              approved.title,
+              approved.slug || slugify(approved.title),
+              5
+            );
+            await sendEmail({
+              strapi,
+              subject,
+              address: edit.owner.email,
+              text,
+              html,
+            });
+          }
+        } catch (emailError) {
+          // Log email error but don't fail the whole operation
+          console.error('Error sending approval email:', emailError);
+        }
+      }
+      
+      return approved;
+    } catch (error) {
+      console.error('Error in approveEdit:', error);
+      throw error;
     }
-    await strapi.db.query(`api::edit-request.edit-request`).update({
-      where: { id: edit.id },
-      data: {
-        status: "complete",
-      },
-    });
-    return approved;
   },
 });
