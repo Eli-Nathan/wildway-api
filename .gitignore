@@ -114,3 +114,4 @@ build
 .strapi-updater.json
 .firebase-config.json
 google-credentials.json
+dist/
