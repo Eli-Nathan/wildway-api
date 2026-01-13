@@ -1,6 +1,6 @@
 import type { StrapiContext, MiddlewareFactory } from "../../../types/strapi";
 
-const populateList = ["images"];
+const populateList = ["images", "potential_duplicates"];
 
 const enrichCtx = (ctx: StrapiContext): StrapiContext => {
   if (!ctx.query) {
