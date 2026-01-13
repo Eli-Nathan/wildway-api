@@ -1,0 +1,29 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+// @ts-nocheck
+const strapi_1 = require("@strapi/strapi");
+const slack_1 = require("../../../nomad/slack");
+exports.default = strapi_1.factories.createCoreController("api::form-submission.form-submission", ({ strapi }) => ({
+    async create(ctx) {
+        const requestBody = JSON.parse(ctx.request.body);
+        if (ctx.params.id && requestBody.data) {
+            ctx.request.body = {
+                data: {
+                    data: requestBody.data,
+                    form: ctx.params.id,
+                },
+            };
+            // @ts-expect-error - Strapi core controller method
+            const submission = await super.create(ctx);
+            // @ts-expect-error - Strapi core controller method
+            const sanitized = await this.sanitizeOutput(submission, ctx);
+            await (0, slack_1.sendEntryToSlack)(sanitized, "form", ctx);
+            return sanitized;
+        }
+        ctx.status = 400;
+        return {
+            status: 400,
+            message: "No data received",
+        };
+    },
+}));

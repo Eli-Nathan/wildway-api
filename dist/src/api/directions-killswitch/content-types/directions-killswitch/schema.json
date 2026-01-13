@@ -1,0 +1,20 @@
+{
+  "kind": "singleType",
+  "collectionName": "directions_killswitches",
+  "info": {
+    "singularName": "directions-killswitch",
+    "pluralName": "directions-killswitches",
+    "displayName": "Directions killswitch"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    }
+  }
+}
