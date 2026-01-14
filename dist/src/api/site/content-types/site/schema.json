@@ -1,0 +1,159 @@
+{
+    "kind": "collectionType",
+    "collectionName": "sites",
+    "info": {
+        "singularName": "site",
+        "pluralName": "sites",
+        "displayName": "Sites",
+        "description": ""
+    },
+    "options": {
+        "increments": true,
+        "timestamps": true,
+        "draftAndPublish": false
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "title": {
+            "type": "string",
+            "required": true,
+            "pluginOptions": {}
+        },
+        "latlng": {
+            "type": "string",
+            "pluginOptions": {}
+        },
+        "description": {
+            "type": "text",
+            "pluginOptions": {}
+        },
+        "image": {
+            "type": "text",
+            "pluginOptions": {}
+        },
+        "tel": {
+            "type": "string",
+            "pluginOptions": {}
+        },
+        "pricerange": {
+            "type": "string",
+            "pluginOptions": {},
+            "default": "---"
+        },
+        "category": {
+            "type": "string",
+            "pluginOptions": {}
+        },
+        "lat": {
+            "type": "float",
+            "pluginOptions": {}
+        },
+        "lng": {
+            "type": "float",
+            "pluginOptions": {}
+        },
+        "region": {
+            "type": "string",
+            "pluginOptions": {}
+        },
+        "url": {
+            "type": "text",
+            "pluginOptions": {}
+        },
+        "maplink": {
+            "type": "text",
+            "pluginOptions": {}
+        },
+        "email": {
+            "type": "email",
+            "pluginOptions": {}
+        },
+        "priority": {
+            "type": "integer",
+            "default": 0,
+            "max": 5,
+            "min": 0,
+            "pluginOptions": {}
+        },
+        "images": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+                "images"
+            ],
+            "pluginOptions": {}
+        },
+        "edit_requests": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::edit-request.edit-request",
+            "mappedBy": "site"
+        },
+        "type": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::site-type.site-type"
+        },
+        "comments": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::comment.comment",
+            "mappedBy": "site"
+        },
+        "owners": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "sites"
+        },
+        "facilities": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::facility.facility"
+        },
+        "added_by": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "sites_added"
+        },
+        "contributors": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "sites_contributed"
+        },
+        "slug": {
+            "type": "uid",
+            "targetField": "title",
+            "required": true
+        },
+        "sub_types": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::site-type.site-type"
+        },
+        "tags": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::tag.tag",
+            "inversedBy": "sites"
+        },
+        "nomad_routes": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::nomad-route.nomad-route",
+            "mappedBy": "pois"
+        },
+        "likes": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::auth-user.auth-user",
+            "mappedBy": "favourites"
+        },
+        "imageCaption": {
+            "type": "string"
+        }
+    }
+}

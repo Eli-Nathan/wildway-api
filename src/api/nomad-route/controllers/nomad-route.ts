@@ -21,38 +21,35 @@ export default factories.createCoreController(
     },
 
     async findOne(ctx: StrapiContext) {
-      const route = await strapi.entityService.findOne(
-        `api::nomad-route.nomad-route`,
-        ctx.params.id as string,
-        {
-          populate: {
-            image: true,
-            tags: true,
-            pois: {
-              populate: {
-                type: {
-                  populate: {
-                    remote_icon: true,
-                    remote_marker: true,
-                  },
+      const route = await strapi.db.query("api::nomad-route.nomad-route").findOne({
+        where: { id: ctx.params.id },
+        populate: {
+          image: true,
+          tags: true,
+          pois: {
+            populate: {
+              type: {
+                populate: {
+                  remote_icon: true,
+                  remote_marker: true,
                 },
-                images: true,
               },
-            },
-            stay: {
-              populate: {
-                type: {
-                  populate: {
-                    remote_icon: true,
-                    remote_marker: true,
-                  },
-                },
-                images: true,
-              },
+              images: true,
             },
           },
-        }
-      );
+          stay: {
+            populate: {
+              type: {
+                populate: {
+                  remote_icon: true,
+                  remote_marker: true,
+                },
+              },
+              images: true,
+            },
+          },
+        },
+      });
 
       if (!route) {
         ctx.status = 404;

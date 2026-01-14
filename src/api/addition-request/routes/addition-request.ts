@@ -1,18 +1,9 @@
-interface RouteConfig {
-  method: string;
-  path: string;
-  handler: string;
-  config?: {
-    middlewares?: string[];
-    policies?: string[];
-  };
-}
+/**
+ * addition-request router
+ * Custom routes with middlewares and policies for Strapi 5
+ */
 
-interface RoutesConfig {
-  routes: RouteConfig[];
-}
-
-const config: RoutesConfig = {
+export default {
   routes: [
     {
       method: "GET",
@@ -43,5 +34,3 @@ const config: RoutesConfig = {
     },
   ],
 };
-
-export default config;

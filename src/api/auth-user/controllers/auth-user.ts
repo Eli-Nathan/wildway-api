@@ -84,11 +84,32 @@ export default factories.createCoreController(
   "api::auth-user.auth-user",
   ({ strapi }) => ({
     async findMe(ctx: StrapiContext) {
-      const enrichedCtx = enrichCtx(ctx);
-      // @ts-expect-error - Strapi core controller method
-      const user = await super.findOne(enrichedCtx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(user, ctx);
+      strapi.log.info("findMe: Looking up user with id:", ctx.params.id);
+
+      // Use db.query directly for Strapi 5 compatibility
+      const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: ctx.params.id },
+        populate: populateList.reduce((acc, field) => {
+          acc[field.split('.')[0]] = true;
+          return acc;
+        }, {} as Record<string, boolean>),
+      });
+
+      if (!user) {
+        strapi.log.warn("findMe: User not found");
+        return ctx.notFound("User not found");
+      }
+
+      strapi.log.info("findMe: Found user:", user.id);
+
+      // Return in Strapi 4 format for frontend compatibility
+      return {
+        data: {
+          id: user.id,
+          attributes: user,
+        },
+        meta: {},
+      };
     },
 
     async getSubscription(ctx: StrapiContext) {
@@ -108,24 +129,21 @@ export default factories.createCoreController(
     },
 
     async getProfile(ctx: StrapiContext) {
-      const user = await strapi.entityService.findOne(
-        `api::auth-user.auth-user`,
-        ctx.params.id as string,
-        {
-          populate: {
-            profile_pic: true,
-            sites: {
-              fields: "id",
-            },
-            sites_added: {
-              fields: "id",
-            },
-            user_routes: {
-              fields: ["id", "public"],
-            },
+      const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: ctx.params.id },
+        populate: {
+          profile_pic: true,
+          sites: {
+            select: ["id"],
           },
-        }
-      );
+          sites_added: {
+            select: ["id"],
+          },
+          user_routes: {
+            select: ["id", "public"],
+          },
+        },
+      });
       const {
         maxSites,
         createdAt,
@@ -169,28 +187,25 @@ export default factories.createCoreController(
     },
 
     async getHighProfileUsers(ctx: StrapiContext) {
-      const users = await strapi.entityService.findMany(
-        "api::auth-user.auth-user",
-        {
-          start: 0,
-          limit: 10,
-          filters: {
-            isVerified: true,
-            id: {
-              $not: ctx.state.user.id,
-            },
-            score: {
-              $gt: 0,
-            },
-            isTest: false,
+      const users = await strapi.db.query("api::auth-user.auth-user").findMany({
+        offset: 0,
+        limit: 10,
+        where: {
+          isVerified: true,
+          id: {
+            $not: ctx.state.user.id,
           },
-          sort: "score:desc",
-          populate: {
-            profile_pic: true,
+          score: {
+            $gt: 0,
           },
-          fields: ["name", "avatar", "businessName", "score"],
-        }
-      );
+          isTest: false,
+        },
+        orderBy: { score: "desc" },
+        populate: {
+          profile_pic: true,
+        },
+        select: ["id", "name", "avatar", "businessName", "score"],
+      });
       // @ts-expect-error - Strapi core controller method
       return await this.transformResponse(users);
     },
@@ -221,13 +236,24 @@ export default factories.createCoreController(
     },
 
     async verifyEmail(ctx: StrapiContext) {
-      const enrichedCtx = enrichCtx(ctx);
+      strapi.log.info("verifyEmail: Updating user:", ctx.params.id);
       const userDetails = ctx.state.user;
-      ctx.request.body = { data: { isVerified: userDetails.email_verified } };
-      // @ts-expect-error - Strapi core controller method
-      const user = await super.update(enrichedCtx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(user, ctx);
+
+      // Use db.query directly for Strapi 5 compatibility
+      const user = await strapi.db.query("api::auth-user.auth-user").update({
+        where: { id: ctx.params.id },
+        data: { isVerified: userDetails.email_verified },
+      });
+
+      strapi.log.info("verifyEmail: Updated user:", user?.id);
+
+      return {
+        data: {
+          id: user.id,
+          attributes: user,
+        },
+        meta: {},
+      };
     },
 
     async updateFavourites(ctx: StrapiContext) {
@@ -302,13 +328,15 @@ export default factories.createCoreController(
     },
 
     async create(ctx: StrapiContext) {
-      const enrichedCtx = enrichCtx(ctx);
+      strapi.log.info("auth-user create: Starting user creation");
       if (!ctx.request.body) {
         ctx.request.body = {};
       }
       if (!ctx.request.body.data) {
         ctx.request.body.data = {};
       }
+      const requestData = ctx.request.body.data as Record<string, unknown>;
+      strapi.log.info("auth-user create: Request body data:", JSON.stringify(requestData));
 
       const baseRole = await strapi.db
         .query(`api::user-role.user-role`)
@@ -317,15 +345,34 @@ export default factories.createCoreController(
             level: 0,
           },
         });
+      strapi.log.info("auth-user create: Base role found:", JSON.stringify(baseRole));
 
-      (ctx.request.body.data as Record<string, unknown>).role = baseRole.id;
-      // @ts-expect-error - Strapi core controller method
-      const user = await super.create(enrichedCtx);
+      if (!baseRole) {
+        strapi.log.error("auth-user create: No base role found with level 0");
+        ctx.throw(500, "Base user role not configured");
+      }
+
+      // Use db.query directly for Strapi 5 compatibility
+      let user;
+      try {
+        user = await strapi.db.query("api::auth-user.auth-user").create({
+          data: {
+            user_id: requestData.user_id,
+            email: requestData.email,
+            name: requestData.name,
+            avatar: requestData.avatar,
+            role: baseRole.id, // Direct ID works with db.query
+          },
+        });
+        strapi.log.info("auth-user create: User created:", JSON.stringify(user));
+      } catch (error) {
+        strapi.log.error("auth-user create: Error creating user:", error);
+        throw error;
+      }
+
       if (user) {
-        const { text, html, subject } = newUserAdded(
-          (user as { data: { attributes: { name?: string }; id: number } }).data.attributes.name || "Name unknown",
-          (user as { data: { id: number } }).data.id
-        );
+        strapi.log.info("auth-user create: Sending welcome email for user:", user.id);
+        const { text, html, subject } = newUserAdded(user.name || "Name unknown", user.id);
         await sendEmail({
           strapi,
           subject,
@@ -334,8 +381,15 @@ export default factories.createCoreController(
           html,
         });
       }
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(user, ctx);
+
+      // Return in Strapi 4 format for frontend compatibility
+      return {
+        data: {
+          id: user.id,
+          attributes: user,
+        },
+        meta: {},
+      };
     },
   })
 );

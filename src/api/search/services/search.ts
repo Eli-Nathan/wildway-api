@@ -1,4 +1,5 @@
 // @ts-nocheck
+// Type checking disabled due to complex fuzzy search generics
 import { getPlacesFromQuery } from "../../../nomad/dataEnrichment/place";
 import { fuzzySearch, findSimilarPlaces } from "./fuzzySearch";
 
@@ -19,6 +20,15 @@ interface OSMSite {
     name: string;
   };
   address: OSMAddress;
+}
+
+interface Site {
+  id: number;
+  title?: string;
+  description?: string;
+  lat?: number;
+  lng?: number;
+  slug?: string;
 }
 
 const getNameWithSuffix = (name: string, address: OSMAddress): string => {
@@ -48,11 +58,12 @@ const searchService = {
     useFuzzy: boolean = true
   ): Promise<unknown[]> => {
     try {
-      // First try exact/contains search
-      let sites = await strapi.entityService.findMany("api::site.site", {
-        start,
+      // First try exact/contains search using db.query (Strapi 5 compatible)
+      let sites = (await strapi.db.query("api::site.site").findMany({
+        offset: start,
         limit: limit * 2, // Get more results for fuzzy filtering
-        fields: [
+        select: [
+          "id",
           "title",
           "description",
           "category",
@@ -61,12 +72,12 @@ const searchService = {
           "lng",
           "slug",
         ],
-        filters: {
+        where: {
           title: {
             $containsi: query,
           },
         },
-        sort: { priority: "DESC" },
+        orderBy: { priority: "DESC" },
         populate: {
           type: {
             populate: {
@@ -79,15 +90,16 @@ const searchService = {
           sub_types: true,
           owners: true,
         },
-      });
+      })) as Site[];
 
       // If fuzzy search is enabled and we have few results, expand the search
       if (useFuzzy && sites.length < limit) {
         // Get all sites for fuzzy matching (with pagination for performance)
-        const allSites = await strapi.entityService.findMany("api::site.site", {
-          start: 0,
+        const allSites = (await strapi.db.query("api::site.site").findMany({
+          offset: 0,
           limit: 500, // Reasonable limit for fuzzy search
-          fields: [
+          select: [
+            "id",
             "title",
             "description",
             "category",
@@ -96,7 +108,7 @@ const searchService = {
             "lng",
             "slug",
           ],
-          sort: { priority: "DESC" },
+          orderBy: { priority: "DESC" },
           populate: {
             type: {
               populate: {
@@ -109,7 +121,7 @@ const searchService = {
             sub_types: true,
             owners: true,
           },
-        });
+        })) as Site[];
 
         // Apply fuzzy search
         const fuzzyResults = fuzzySearch(allSites, query, {
@@ -120,7 +132,7 @@ const searchService = {
         // Combine and deduplicate results
         const siteIds = new Set(sites.map((s) => s.id));
         const additionalSites = fuzzyResults
-          .filter((s) => !siteIds.has(s.id))
+          .filter((s: Site) => !siteIds.has(s.id))
           .slice(0, limit - sites.length);
 
         sites = [...sites, ...additionalSites];
@@ -129,7 +141,8 @@ const searchService = {
       // Limit results
       return sites.slice(start, start + limit) as unknown[];
     } catch (err) {
-      return err as unknown[];
+      strapi.log.error("Error searching sites:", err);
+      return [];
     }
   },
 
@@ -185,7 +198,7 @@ const searchService = {
     return uniquePlaces as OSMSite[];
   },
 
-  // New method for finding potential duplicates when contributing
+  // Method for finding potential duplicates when contributing
   findSimilarSites: async (
     placeName: string,
     lat?: number,
@@ -193,23 +206,28 @@ const searchService = {
     radius: number = 5 // km
   ): Promise<unknown[]> => {
     try {
-      console.log('findSimilarSites called with:', { placeName, lat, lng, radius });
-      
-      // Get sites for similarity check
-      let sites = await strapi.entityService.findMany("api::site.site", {
+      strapi.log.info("findSimilarSites called with:", {
+        placeName,
+        lat,
+        lng,
+        radius,
+      });
+
+      // Get sites for similarity check using db.query (Strapi 5 compatible)
+      let sites = (await strapi.db.query("api::site.site").findMany({
         limit: 1000, // Get a reasonable number for checking
-        fields: ["title", "description", "lat", "lng", "slug", "image"],
+        select: ["id", "title", "description", "lat", "lng", "slug", "image"],
         populate: {
           type: {
-            fields: ["name", "slug", "icon"],
+            select: ["name", "slug", "icon"],
           },
           images: {
-            fields: ["url", "formats"],
+            select: ["url", "formats"],
           },
         },
-      });
-      
-      console.log('Found sites:', sites.length);
+      })) as Site[];
+
+      strapi.log.info("Found sites:", sites.length);
 
       // If coordinates are provided, filter by proximity first
       if (lat !== undefined && lng !== undefined) {
@@ -244,38 +262,36 @@ const searchService = {
       // Just return our own sites that might be duplicates
       return similarSites as unknown[];
     } catch (err) {
-      console.error("Error finding similar sites:", err);
+      strapi.log.error("Error finding similar sites:", err);
       return [];
     }
   },
 
   searchCommunityRoutes: async (
     query: string,
-    start: number,
-    limit: number
+    _start: number,
+    _limit: number
   ): Promise<unknown[]> => {
     try {
-      const routes = await strapi.entityService.findMany(
-        "api::user-route.user-route",
-        {
-          fields: ["name"],
-          filters: {
-            public: true,
-            name: {
-              $containsi: `${query}`,
-            },
+      const routes = await strapi.db.query("api::user-route.user-route").findMany({
+        select: ["id", "name"],
+        where: {
+          public: true,
+          name: {
+            $containsi: query,
           },
-          populate: {
-            image: true,
-            tags: true,
-            sites: true,
-          },
-        }
-      );
+        },
+        populate: {
+          image: true,
+          tags: true,
+          sites: true,
+        },
+      });
 
       return routes as unknown[];
     } catch (err) {
-      return err as unknown[];
+      strapi.log.error("Error searching community routes:", err);
+      return [];
     }
   },
 
@@ -285,27 +301,25 @@ const searchService = {
     limit: number
   ): Promise<unknown[]> => {
     try {
-      const routes = await strapi.entityService.findMany(
-        "api::nomad-route.nomad-route",
-        {
-          start,
-          limit,
-          filters: {
-            name: {
-              $containsi: `${query}`,
-            },
+      const routes = await strapi.db.query("api::nomad-route.nomad-route").findMany({
+        offset: start,
+        limit,
+        where: {
+          name: {
+            $containsi: query,
           },
-          populate: {
-            image: true,
-            tags: true,
-          },
-          fields: ["name"],
-        }
-      );
+        },
+        populate: {
+          image: true,
+          tags: true,
+        },
+        select: ["id", "name"],
+      });
 
       return routes as unknown[];
     } catch (err) {
-      return err as unknown[];
+      strapi.log.error("Error searching popular routes:", err);
+      return [];
     }
   },
 
@@ -315,28 +329,26 @@ const searchService = {
     limit: number
   ): Promise<unknown[]> => {
     try {
-      const users = await strapi.entityService.findMany(
-        "api::auth-user.auth-user",
-        {
-          start,
-          limit,
-          filters: {
-            isVerified: true,
-            name: {
-              $containsi: `${query}`,
-            },
+      const users = await strapi.db.query("api::auth-user.auth-user").findMany({
+        offset: start,
+        limit,
+        where: {
+          isVerified: true,
+          name: {
+            $containsi: query,
           },
-          populate: {
-            profile_pic: true,
-            tags: true,
-          },
-          fields: ["name", "avatar", "businessName", "score"],
-        }
-      );
+        },
+        populate: {
+          profile_pic: true,
+          tags: true,
+        },
+        select: ["id", "name", "avatar", "businessName", "score"],
+      });
 
       return users as unknown[];
     } catch (err) {
-      return err as unknown[];
+      strapi.log.error("Error searching users:", err);
+      return [];
     }
   },
 

@@ -1,0 +1,78 @@
+{
+    "kind": "collectionType",
+    "collectionName": "nomad_routes",
+    "info": {
+        "singularName": "nomad-route",
+        "pluralName": "nomad-routes",
+        "displayName": "Nomad routes",
+        "description": ""
+    },
+    "options": {
+        "draftAndPublish": true
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "name": {
+            "type": "string",
+            "required": true
+        },
+        "image": {
+            "type": "media",
+            "multiple": false,
+            "required": false,
+            "allowedTypes": [
+                "images"
+            ]
+        },
+        "waypoints": {
+            "type": "json",
+            "required": false
+        },
+        "origin": {
+            "type": "json",
+            "required": true
+        },
+        "destination": {
+            "type": "json",
+            "required": true
+        },
+        "polyline": {
+            "type": "json",
+            "private": true
+        },
+        "description": {
+            "type": "text"
+        },
+        "tags": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::tag.tag",
+            "inversedBy": "nomad_routes"
+        },
+        "mode": {
+            "type": "enumeration",
+            "enum": [
+                "DRIVING",
+                "WALKING",
+                "CYCLING"
+            ]
+        },
+        "stay": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::site.site",
+            "inversedBy": "nomad_routes"
+        },
+        "pois": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::site.site",
+            "inversedBy": "nomad_routes"
+        },
+        "slug": {
+            "type": "uid",
+            "targetField": "name",
+            "required": false
+        }
+    }
+}

@@ -18,7 +18,9 @@ const getKeyValFields = (entry) => {
 };
 const formSubmission = async (ctx, entry) => {
     // @ts-expect-error - strapi is a global in Strapi apps
-    const formSubmitted = await strapi.entityService.findOne(`api::form.form`, ctx.params.id);
+    const formSubmitted = await strapi.db.query("api::form.form").findOne({
+        where: { id: ctx.params.id },
+    });
     const fields = getKeyValFields(entry.data || {});
     const blocks = [
         {

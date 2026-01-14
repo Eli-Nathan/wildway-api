@@ -1,0 +1,55 @@
+{
+    "kind": "collectionType",
+    "collectionName": "edit_requests",
+    "info": {
+        "singularName": "edit-request",
+        "pluralName": "edit-requests",
+        "displayName": "Edit requests",
+        "description": ""
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "site": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::site.site",
+            "inversedBy": "edit_requests"
+        },
+        "data": {
+            "type": "json"
+        },
+        "images": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+                "images"
+            ]
+        },
+        "status": {
+            "type": "enumeration",
+            "enum": [
+                "submitted",
+                "pending",
+                "moderating",
+                "complete",
+                "rejected"
+            ],
+            "default": "submitted"
+        },
+        "owner": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "edit_requests"
+        },
+        "facilities": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::facility.facility"
+        }
+    }
+}

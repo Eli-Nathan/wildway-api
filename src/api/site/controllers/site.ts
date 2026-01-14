@@ -112,8 +112,9 @@ export default factories.createCoreController(
     },
 
     async find(ctx: StrapiContext) {
-      const sites = await strapi.entityService.findMany("api::site.site", {
-        fields: [
+      const sites = await strapi.db.query("api::site.site").findMany({
+        select: [
+          "id",
           "title",
           "description",
           "category",
@@ -122,8 +123,8 @@ export default factories.createCoreController(
           "lng",
           "slug",
         ],
-        filters: qs.parse(ctx.query.filters as unknown as string),
-        sort: ctx.query.sort || { priority: "DESC" },
+        where: qs.parse(ctx.query.filters as unknown as string),
+        orderBy: ctx.query.sort || { priority: "DESC" },
         populate: {
           type: {
             populate: {
@@ -149,9 +150,9 @@ export default factories.createCoreController(
     },
 
     async findRecent(ctx: StrapiContext) {
-      const sites = await strapi.entityService.findMany("api::site.site", {
-        fields: ["title", "image", "lat", "lng", "slug"],
-        filters: {
+      const sites = await strapi.db.query("api::site.site").findMany({
+        select: ["id", "title", "image", "lat", "lng", "slug"],
+        where: {
           $or: [
             {
               owners: {
@@ -165,7 +166,7 @@ export default factories.createCoreController(
             },
           ],
         },
-        sort: ctx.query.sort || { priority: "DESC" },
+        orderBy: ctx.query.sort || { priority: "DESC" },
         populate: {
           type: true,
           images: true,

@@ -1,9 +1,11 @@
-// @ts-nocheck
-import { getAuth } from "firebase-admin/auth";
-import type { Strapi } from "@strapi/strapi";
-import type { Context } from "koa";
+/**
+ * Users-permissions plugin extension
+ *
+ * The isAuthed policy now simply checks if the user is authenticated.
+ * The actual Firebase authentication is handled by the global::firebase-auth middleware.
+ */
 
-interface PolicyContext extends Context {
+interface PolicyContext {
   state: {
     user?: {
       id: number;
@@ -12,79 +14,21 @@ interface PolicyContext extends Context {
       user_id?: string;
     };
   };
-  request: Context["request"] & {
-    header: {
-      authorization?: string;
-    };
-  };
-  unauthorized: (error: unknown) => void;
-}
-
-interface PolicyConfig {
-  [key: string]: unknown;
-}
-
-interface PolicyDeps {
-  strapi: Strapi;
 }
 
 interface Plugin {
   policies: {
-    [key: string]: (
-      ctx: PolicyContext,
-      config: PolicyConfig,
-      deps: PolicyDeps
-    ) => Promise<boolean | void>;
+    [key: string]: (ctx: PolicyContext) => boolean;
   };
 }
 
 export default (plugin: Plugin): Plugin => {
-  plugin.policies["isAuthed"] = async (
-    ctx: PolicyContext,
-    _config: PolicyConfig,
-    { strapi }: PolicyDeps
-  ): Promise<boolean | void> => {
-    if (ctx.state.user) {
-      // request is already authenticated in a different way
-      return true;
-    }
-
-    if (ctx.request && ctx.request.header && ctx.request.header.authorization) {
-      try {
-        const token = ctx.request.header.authorization.replace("Bearer ", "");
-        const userData = await getAuth().verifyIdToken(token);
-
-        const nomadUser = await strapi.db
-          .query(`api::auth-user.auth-user`)
-          .findOne({
-            where: {
-              user_id: userData.sub,
-            },
-            populate: {
-              role: true,
-            },
-          });
-
-        if (nomadUser) {
-          ctx.state.user = nomadUser as PolicyContext["state"]["user"];
-          if (ctx.state.user) {
-            ctx.state.user.sub = userData.sub;
-          }
-          return true;
-        }
-
-        if (userData) {
-          ctx.state.user = userData as unknown as PolicyContext["state"]["user"];
-          return true;
-        }
-        return false;
-      } catch (error) {
-        return ctx.unauthorized(error);
-      }
-    }
-
-    // Execute the action.
-    return false;
+  // The isAuthed policy checks if the user was authenticated by the firebase-auth middleware
+  plugin.policies["isAuthed"] = (ctx: PolicyContext): boolean => {
+    const isAuthed = !!ctx.state.user;
+    console.log("isAuthed policy: state.user exists =", isAuthed, "user =", JSON.stringify(ctx.state.user));
+    return isAuthed;
   };
+
   return plugin;
 };
