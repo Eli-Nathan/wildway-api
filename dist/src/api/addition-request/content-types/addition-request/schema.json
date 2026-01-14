@@ -80,6 +80,11 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::site-type.site-type"
+    },
+    "potential_duplicates": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::site.site"
     }
   }
 }
