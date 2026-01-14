@@ -1,6 +1,10 @@
 "use strict";
+/**
+ * addition-request router
+ * Custom routes with middlewares and policies for Strapi 5
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
-const config = {
+exports.default = {
     routes: [
         {
             method: "GET",
@@ -31,4 +35,3 @@ const config = {
         },
     ],
 };
-exports.default = config;

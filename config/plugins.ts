@@ -4,54 +4,7 @@ interface EnvFunction {
   bool(key: string, defaultValue?: boolean): boolean;
 }
 
-interface PluginsConfig {
-  upload: {
-    config: {
-      provider: string;
-      providerOptions: {
-        cloud_name: string;
-        api_key: string;
-        api_secret: string;
-      };
-      actionOptions: {
-        upload: string;
-      };
-    };
-  };
-  email: {
-    config: {
-      provider: string;
-      providerOptions: {
-        host: string;
-        port: number;
-        secure: boolean;
-        username: string;
-        password: string;
-        rejectUnauthorized: boolean;
-        requireTLS: boolean;
-        connectionTimeout: number;
-      };
-    };
-    settings: {
-      defaultFrom: string;
-      defaultReplyTo: string;
-    };
-  };
-  moderator: {
-    enabled: boolean;
-    resolve: string;
-  };
-  "verify-user-email": {
-    enabled: boolean;
-    resolve: string;
-  };
-  "content-export-import": {
-    enabled: boolean;
-    resolve: string;
-  };
-}
-
-export default ({ env }: { env: EnvFunction }): PluginsConfig => {
+export default ({ env }: { env: EnvFunction }) => {
   return {
     upload: {
       config: {
@@ -68,34 +21,36 @@ export default ({ env }: { env: EnvFunction }): PluginsConfig => {
     },
     email: {
       config: {
-        provider: "strapi-provider-email-smtp",
+        provider: "nodemailer",
         providerOptions: {
           host: "smtp.gmail.com",
           port: 465,
           secure: true,
-          username: "wildway.app@gmail.com",
-          password: env("WILDWAY_GMAIL_PASSWORD"),
-          rejectUnauthorized: true,
-          requireTLS: true,
-          connectionTimeout: 1,
+          auth: {
+            user: "wildway.app@gmail.com",
+            pass: env("WILDWAY_GMAIL_PASSWORD"),
+          },
+        },
+        settings: {
+          defaultFrom: "wildway.app@gmail.com",
+          defaultReplyTo: "wildway.app@gmail.com",
         },
       },
-      settings: {
-        defaultFrom: "wildway.app@gmail.com",
-        defaultReplyTo: "wildway.app@gmail.com",
-      },
     },
-    moderator: {
-      enabled: true,
-      resolve: "./src/plugins/moderator",
-    },
-    "verify-user-email": {
-      enabled: true,
-      resolve: "./src/plugins/verify-user-email",
-    },
-    "content-export-import": {
-      enabled: true,
-      resolve: "./src/plugins/content-export-import",
-    },
+    // Custom plugins temporarily disabled for Strapi 5 migration
+    // These need admin panel updates for Strapi 5 Design System
+    // TODO: Re-enable after fixing admin components
+    // moderator: {
+    //   enabled: true,
+    //   resolve: "./src/plugins/moderator",
+    // },
+    // "verify-user-email": {
+    //   enabled: true,
+    //   resolve: "./src/plugins/verify-user-email",
+    // },
+    // "content-export-import": {
+    //   enabled: true,
+    //   resolve: "./src/plugins/content-export-import",
+    // },
   };
 };

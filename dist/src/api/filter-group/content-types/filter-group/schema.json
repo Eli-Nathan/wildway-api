@@ -1,33 +1,33 @@
 {
-  "kind": "collectionType",
-  "collectionName": "filter_groups",
-  "info": {
-    "singularName": "filter-group",
-    "pluralName": "filter-groups",
-    "displayName": "Filter groups",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "name": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "filter_groups",
+    "info": {
+        "singularName": "filter-group",
+        "pluralName": "filter-groups",
+        "displayName": "Filter groups",
+        "description": ""
     },
-    "shouldShowTitle": {
-      "type": "boolean",
-      "default": true
+    "options": {
+        "draftAndPublish": false
     },
-    "priority": {
-      "type": "integer"
-    },
-    "filters": {
-      "displayName": "filters",
-      "type": "component",
-      "repeatable": true,
-      "component": "filter.filters"
+    "pluginOptions": {},
+    "attributes": {
+        "name": {
+            "type": "string",
+            "required": true
+        },
+        "shouldShowTitle": {
+            "type": "boolean",
+            "default": true
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "filters": {
+            "displayName": "filters",
+            "type": "component",
+            "repeatable": true,
+            "component": "filter.filters"
+        }
     }
-  }
 }

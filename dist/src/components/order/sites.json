@@ -1,19 +1,19 @@
 {
-  "collectionName": "components_order_sites",
-  "info": {
-    "displayName": "Sites",
-    "icon": "sort",
-    "description": ""
-  },
-  "options": {},
-  "attributes": {
-    "site": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::site.site"
+    "collectionName": "components_order_sites",
+    "info": {
+        "displayName": "Sites",
+        "icon": "sort",
+        "description": ""
     },
-    "custom": {
-      "type": "json"
+    "options": {},
+    "attributes": {
+        "site": {
+            "type": "relation",
+            "relation": "oneToOne",
+            "target": "api::site.site"
+        },
+        "custom": {
+            "type": "json"
+        }
     }
-  }
 }

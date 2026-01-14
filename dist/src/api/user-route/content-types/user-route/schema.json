@@ -1,73 +1,73 @@
 {
-  "kind": "collectionType",
-  "collectionName": "user_routes",
-  "info": {
-    "singularName": "user-route",
-    "pluralName": "user-routes",
-    "displayName": "User routes",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "name": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "user_routes",
+    "info": {
+        "singularName": "user-route",
+        "pluralName": "user-routes",
+        "displayName": "User routes",
+        "description": ""
     },
-    "image": {
-      "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": [
-        "images"
-      ]
+    "options": {
+        "draftAndPublish": false
     },
-    "distances": {
-      "type": "json"
-    },
-    "sites": {
-      "type": "component",
-      "repeatable": true,
-      "component": "order.sites"
-    },
-    "public": {
-      "type": "boolean",
-      "default": false,
-      "required": false
-    },
-    "owner": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::auth-user.auth-user",
-      "inversedBy": "user_routes"
-    },
-    "saved_by": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::auth-user.auth-user",
-      "inversedBy": "saved_public_routes"
-    },
-    "polyline": {
-      "type": "json",
-      "private": false
-    },
-    "mode": {
-      "type": "enumeration",
-      "enum": [
-        "DRIVING",
-        "WALKING",
-        "CYCLING"
-      ],
-      "default": "DRIVING",
-      "required": false
-    },
-    "tags": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::tag.tag",
-      "inversedBy": "user_routes"
+    "pluginOptions": {},
+    "attributes": {
+        "name": {
+            "type": "string",
+            "required": true
+        },
+        "image": {
+            "type": "media",
+            "multiple": false,
+            "required": false,
+            "allowedTypes": [
+                "images"
+            ]
+        },
+        "distances": {
+            "type": "json"
+        },
+        "sites": {
+            "type": "component",
+            "repeatable": true,
+            "component": "order.sites"
+        },
+        "public": {
+            "type": "boolean",
+            "default": false,
+            "required": false
+        },
+        "owner": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "user_routes"
+        },
+        "saved_by": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "saved_public_routes"
+        },
+        "polyline": {
+            "type": "json",
+            "private": false
+        },
+        "mode": {
+            "type": "enumeration",
+            "enum": [
+                "DRIVING",
+                "WALKING",
+                "CYCLING"
+            ],
+            "default": "DRIVING",
+            "required": false
+        },
+        "tags": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::tag.tag",
+            "inversedBy": "user_routes"
+        }
     }
-  }
 }

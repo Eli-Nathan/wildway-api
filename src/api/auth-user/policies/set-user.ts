@@ -1,4 +1,4 @@
-import type { Strapi } from "@strapi/strapi";
+import type { Core } from "@strapi/strapi";
 import logger from "../../../nomad/logger";
 
 interface PolicyContext {
@@ -28,8 +28,8 @@ interface PolicyContext {
 
 export default async (
   ctx: PolicyContext,
-  config: Record<string, unknown>,
-  { strapi }: { strapi: Strapi }
+  _config: Record<string, unknown>,
+  { strapi: _strapi }: { strapi: Core.Strapi }
 ): Promise<boolean> => {
   if (ctx.state.user) {
     if (!ctx.request.body) {
@@ -39,27 +39,33 @@ export default async (
       ctx.request.body.data = {};
     }
     const userDetails = ctx.state.user;
-    ctx.request.body.data.user_id = userDetails.sub;
-    ctx.request.body.data.email = userDetails.email;
-    ctx.request.body.data.avatar = userDetails.picture;
+    const requestData = ctx.request.body.data;
+
+    // Build name from various sources
     let name: string | undefined;
     if (userDetails.name) {
       name = userDetails.name;
-    } else if (
-      ctx.request.body.data.firstName &&
-      ctx.request.body.data.lastName
-    ) {
-      name = `${ctx.request.body.data.firstName} ${ctx.request.body.data.lastName}`;
+    } else if (requestData.firstName && requestData.lastName) {
+      name = `${requestData.firstName} ${requestData.lastName}`;
     } else if (userDetails.givenName && userDetails.familyName) {
       name = `${userDetails.givenName} ${userDetails.familyName}`;
     }
-    ctx.request.body.data.name = name;
-    logger.info("New user added to DB", {
-      user: userDetails,
+
+    // Strapi 5 is strict about keys - only set valid auth-user fields
+    ctx.request.body.data = {
+      user_id: userDetails.sub,
+      email: userDetails.email,
+      avatar: userDetails.picture,
+      name,
+    };
+
+    logger.info("set-user policy: Prepared user data", {
+      user_id: userDetails.sub,
+      email: userDetails.email,
     });
     return true;
   }
 
-  logger.warn("Failed to add new user to DB");
+  logger.warn("set-user policy: No user in state");
   return false;
 };

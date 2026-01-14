@@ -1,0 +1,39 @@
+{
+    "kind": "collectionType",
+    "collectionName": "owners",
+    "info": {
+        "name": "owners"
+    },
+    "options": {
+        "increments": true,
+        "timestamps": true,
+        "draftAndPublish": false
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "company": {
+            "type": "string"
+        },
+        "contact_name": {
+            "type": "string"
+        },
+        "email": {
+            "type": "email"
+        },
+        "tel": {
+            "type": "string"
+        },
+        "level": {
+            "type": "enumeration",
+            "enum": [
+                "starter",
+                "pro",
+                "premium"
+            ]
+        },
+        "sites": {
+            "via": "owner",
+            "collection": "sites"
+        }
+    }
+}

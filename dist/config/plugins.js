@@ -17,34 +17,36 @@ exports.default = ({ env }) => {
         },
         email: {
             config: {
-                provider: "strapi-provider-email-smtp",
+                provider: "nodemailer",
                 providerOptions: {
                     host: "smtp.gmail.com",
                     port: 465,
                     secure: true,
-                    username: "wildway.app@gmail.com",
-                    password: env("WILDWAY_GMAIL_PASSWORD"),
-                    rejectUnauthorized: true,
-                    requireTLS: true,
-                    connectionTimeout: 1,
+                    auth: {
+                        user: "wildway.app@gmail.com",
+                        pass: env("WILDWAY_GMAIL_PASSWORD"),
+                    },
+                },
+                settings: {
+                    defaultFrom: "wildway.app@gmail.com",
+                    defaultReplyTo: "wildway.app@gmail.com",
                 },
             },
-            settings: {
-                defaultFrom: "wildway.app@gmail.com",
-                defaultReplyTo: "wildway.app@gmail.com",
-            },
         },
-        moderator: {
-            enabled: true,
-            resolve: "./src/plugins/moderator",
-        },
-        "verify-user-email": {
-            enabled: true,
-            resolve: "./src/plugins/verify-user-email",
-        },
-        "content-export-import": {
-            enabled: true,
-            resolve: "./src/plugins/content-export-import",
-        },
+        // Custom plugins temporarily disabled for Strapi 5 migration
+        // These need admin panel updates for Strapi 5 Design System
+        // TODO: Re-enable after fixing admin components
+        // moderator: {
+        //   enabled: true,
+        //   resolve: "./src/plugins/moderator",
+        // },
+        // "verify-user-email": {
+        //   enabled: true,
+        //   resolve: "./src/plugins/verify-user-email",
+        // },
+        // "content-export-import": {
+        //   enabled: true,
+        //   resolve: "./src/plugins/content-export-import",
+        // },
     };
 };

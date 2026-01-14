@@ -3,6 +3,7 @@ interface RouteConfig {
   path: string;
   handler: string;
   config?: {
+    auth?: boolean;
     middlewares?: string[];
     policies?: string[];
   };
@@ -19,8 +20,9 @@ const config: RoutesConfig = {
       path: "/user-routes",
       handler: "user-route.find",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -28,8 +30,9 @@ const config: RoutesConfig = {
       path: "/user-routes/public",
       handler: "user-route.findPublic",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed"],
+        policies: ["global::firebase-authed"],
       },
     },
     {
@@ -37,8 +40,9 @@ const config: RoutesConfig = {
       path: "/user-routes/user/:id",
       handler: "user-route.findRoutesByUserId",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed"],
+        policies: ["global::firebase-authed"],
       },
     },
     {
@@ -46,8 +50,9 @@ const config: RoutesConfig = {
       path: "/user-routes/:id",
       handler: "user-route.findOne",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -55,8 +60,9 @@ const config: RoutesConfig = {
       path: "/user-routes/public/:id",
       handler: "user-route.findOnePublic",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed"],
+        policies: ["global::firebase-authed"],
       },
     },
     {
@@ -64,8 +70,9 @@ const config: RoutesConfig = {
       path: "/user-routes",
       handler: "user-route.create",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed", "global::set-owner"],
+        policies: ["global::firebase-authed", "global::set-owner"],
       },
     },
     {
@@ -73,8 +80,9 @@ const config: RoutesConfig = {
       path: "/user-routes/:id",
       handler: "user-route.update",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -82,8 +90,9 @@ const config: RoutesConfig = {
       path: "/user-routes/:id",
       handler: "user-route.delete",
       config: {
+        auth: false,
         middlewares: ["api::user-route.populate-user-routes"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
   ],

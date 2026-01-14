@@ -16,8 +16,9 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
     },
     async find(ctx) {
         var _a;
-        const sites = await strapi.entityService.findMany("api::site.site", {
-            fields: [
+        const sites = await strapi.db.query("api::site.site").findMany({
+            select: [
+                "id",
                 "title",
                 "description",
                 "category",
@@ -26,8 +27,8 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 "lng",
                 "slug",
             ],
-            filters: qs_1.default.parse(ctx.query.filters),
-            sort: ctx.query.sort || { priority: "DESC" },
+            where: qs_1.default.parse(ctx.query.filters),
+            orderBy: ctx.query.sort || { priority: "DESC" },
             populate: {
                 type: {
                     populate: {
@@ -54,9 +55,9 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
     },
     async findRecent(ctx) {
         var _a;
-        const sites = await strapi.entityService.findMany("api::site.site", {
-            fields: ["title", "image", "lat", "lng", "slug"],
-            filters: {
+        const sites = await strapi.db.query("api::site.site").findMany({
+            select: ["id", "title", "image", "lat", "lng", "slug"],
+            where: {
                 $or: [
                     {
                         owners: {
@@ -70,7 +71,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                     },
                 ],
             },
-            sort: ctx.query.sort || { priority: "DESC" },
+            orderBy: ctx.query.sort || { priority: "DESC" },
             populate: {
                 type: true,
                 images: true,

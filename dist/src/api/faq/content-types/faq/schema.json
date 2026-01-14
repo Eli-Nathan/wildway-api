@@ -1,27 +1,27 @@
 {
-  "kind": "collectionType",
-  "collectionName": "faqs",
-  "info": {
-    "singularName": "faq",
-    "pluralName": "faqs",
-    "displayName": "FAQs",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "title": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "faqs",
+    "info": {
+        "singularName": "faq",
+        "pluralName": "faqs",
+        "displayName": "FAQs",
+        "description": ""
     },
-    "content": {
-      "type": "text",
-      "required": true
+    "options": {
+        "draftAndPublish": false
     },
-    "order": {
-      "type": "integer"
+    "pluginOptions": {},
+    "attributes": {
+        "title": {
+            "type": "string",
+            "required": true
+        },
+        "content": {
+            "type": "text",
+            "required": true
+        },
+        "order": {
+            "type": "integer"
+        }
     }
-  }
 }

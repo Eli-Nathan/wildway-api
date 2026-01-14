@@ -1,46 +1,46 @@
 {
-  "kind": "collectionType",
-  "collectionName": "comments",
-  "info": {
-    "singularName": "comment",
-    "pluralName": "comments",
-    "displayName": "Comments",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "title": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "comments",
+    "info": {
+        "singularName": "comment",
+        "pluralName": "comments",
+        "displayName": "Comments",
+        "description": ""
     },
-    "comment": {
-      "type": "text"
+    "options": {
+        "draftAndPublish": false
     },
-    "owner": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::auth-user.auth-user",
-      "inversedBy": "comments"
-    },
-    "status": {
-      "type": "enumeration",
-      "enum": [
-        "submitted",
-        "pending",
-        "moderating",
-        "rejected",
-        "complete"
-      ],
-      "default": "submitted"
-    },
-    "site": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::site.site",
-      "inversedBy": "comments"
+    "pluginOptions": {},
+    "attributes": {
+        "title": {
+            "type": "string",
+            "required": true
+        },
+        "comment": {
+            "type": "text"
+        },
+        "owner": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "comments"
+        },
+        "status": {
+            "type": "enumeration",
+            "enum": [
+                "submitted",
+                "pending",
+                "moderating",
+                "rejected",
+                "complete"
+            ],
+            "default": "submitted"
+        },
+        "site": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::site.site",
+            "inversedBy": "comments"
+        }
     }
-  }
 }

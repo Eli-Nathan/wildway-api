@@ -1,37 +1,37 @@
 {
-  "kind": "collectionType",
-  "collectionName": "filters",
-  "info": {
-    "singularName": "filter",
-    "pluralName": "filters",
-    "displayName": "Filters",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "title": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "filters",
+    "info": {
+        "singularName": "filter",
+        "pluralName": "filters",
+        "displayName": "Filters",
+        "description": ""
     },
-    "filter": {
-      "displayName": "filter",
-      "type": "component",
-      "repeatable": false,
-      "component": "filter.filter"
+    "options": {
+        "draftAndPublish": false
     },
-    "icon": {
-      "type": "string"
-    },
-    "remote_icon": {
-      "type": "media",
-      "multiple": true,
-      "required": false,
-      "allowedTypes": [
-        "images"
-      ]
+    "pluginOptions": {},
+    "attributes": {
+        "title": {
+            "type": "string",
+            "required": true
+        },
+        "filter": {
+            "displayName": "filter",
+            "type": "component",
+            "repeatable": false,
+            "component": "filter.filter"
+        },
+        "icon": {
+            "type": "string"
+        },
+        "remote_icon": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+                "images"
+            ]
+        }
     }
-  }
 }

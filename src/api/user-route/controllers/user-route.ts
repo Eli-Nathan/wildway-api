@@ -85,33 +85,30 @@ export default factories.createCoreController(
     },
 
     async findOne(ctx: StrapiContext) {
-      const route = await strapi.entityService.findOne(
-        `api::user-route.user-route`,
-        ctx.params.id as string,
-        {
-          filters: {
-            owner: ctx.state.user.id,
-          },
-          populate: {
-            image: true,
-            sites: {
-              populate: {
-                site: {
-                  populate: {
-                    type: true,
-                    images: true,
-                  },
+      const route = await strapi.db.query("api::user-route.user-route").findOne({
+        where: {
+          id: ctx.params.id,
+          owner: ctx.state.user.id,
+        },
+        populate: {
+          image: true,
+          sites: {
+            populate: {
+              site: {
+                populate: {
+                  type: true,
+                  images: true,
                 },
               },
             },
-            owner: {
-              populate: {
-                profile_pic: true,
-              },
+          },
+          owner: {
+            populate: {
+              profile_pic: true,
             },
           },
-        }
-      );
+        },
+      });
 
       if (!route) {
         ctx.status = 404;
@@ -172,40 +169,30 @@ export default factories.createCoreController(
     },
 
     async findOnePublic(ctx: StrapiContext) {
-      if (!ctx.query) {
-        ctx.query = {};
-      }
-      if (!ctx.query.filters) {
-        ctx.query.filters = {};
-      }
-      ctx.query.filters.public = true;
-      const route = await strapi.entityService.findOne(
-        `api::user-route.user-route`,
-        ctx.params.id as string,
-        {
-          filters: {
-            public: true,
-          },
-          populate: {
-            image: true,
-            sites: {
-              populate: {
-                site: {
-                  populate: {
-                    type: true,
-                    images: true,
-                  },
+      const route = await strapi.db.query("api::user-route.user-route").findOne({
+        where: {
+          id: ctx.params.id,
+          public: true,
+        },
+        populate: {
+          image: true,
+          sites: {
+            populate: {
+              site: {
+                populate: {
+                  type: true,
+                  images: true,
                 },
               },
             },
-            owner: {
-              populate: {
-                profile_pic: true,
-              },
+          },
+          owner: {
+            populate: {
+              profile_pic: true,
             },
           },
-        }
-      );
+        },
+      });
       // @ts-expect-error - Strapi core controller method
       return this.transformResponse(route);
     },
@@ -266,20 +253,17 @@ export default factories.createCoreController(
     },
 
     async update(ctx: StrapiContext) {
-      const existingRoute = (await strapi.entityService.findOne(
-        `api::user-route.user-route`,
-        ctx.params.id as string,
-        {
-          fields: ["polyline"],
-          populate: {
-            sites: {
-              populate: {
-                site: { fields: ["id"] },
-              },
+      const existingRoute = (await strapi.db.query("api::user-route.user-route").findOne({
+        where: { id: ctx.params.id },
+        select: ["id", "polyline", "mode"],
+        populate: {
+          sites: {
+            populate: {
+              site: { select: ["id"] },
             },
           },
-        }
-      )) as ExistingRoute;
+        },
+      })) as ExistingRoute;
 
       const sitesHaveChanged = !checkIfPlacesMatch(
         existingRoute.sites,

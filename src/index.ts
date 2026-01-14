@@ -1,47 +1,47 @@
-// @ts-nocheck
-import { initializeApp, applicationDefault } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import type { Strapi } from "@strapi/strapi";
-import type { Context } from "koa";
-import logger from "./nomad/logger";
+import { initializeApp, cert, applicationDefault } from "firebase-admin/app";
+import path from "path";
+import fs from "fs";
 
-initializeApp({
-  credential: applicationDefault(),
-});
+// Initialize Firebase Admin SDK
+// This is used by the firebase-auth middleware and verify-user-email plugin
+const initializeFirebase = () => {
+  // Try to load credentials from file first
+  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (credentialsPath) {
+    // Resolve relative paths from project root
+    const absolutePath = path.isAbsolute(credentialsPath)
+      ? credentialsPath
+      : path.join(process.cwd(), credentialsPath);
 
-interface AuthUser {
-  id: number;
-  email?: string;
-  user_id?: string;
-  sites?: unknown[];
-  siteCount?: number;
-  role?: unknown;
-  sub?: string;
-}
+    if (fs.existsSync(absolutePath)) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const serviceAccount = require(absolutePath);
+      return initializeApp({
+        credential: cert(serviceAccount),
+      });
+    }
+  }
 
-interface FirebaseUserData {
-  sub: string;
-  email?: string;
-  picture?: string;
-  name?: string;
-}
+  // Try to load from inline GOOGLE_CREDENTIALS env var
+  const inlineCredentials = process.env.GOOGLE_CREDENTIALS;
+  if (inlineCredentials) {
+    try {
+      const serviceAccount = JSON.parse(inlineCredentials);
+      return initializeApp({
+        credential: cert(serviceAccount),
+      });
+    } catch {
+      console.error("Failed to parse GOOGLE_CREDENTIALS");
+    }
+  }
 
-interface StrapiContext extends Context {
-  state: {
-    user?: AuthUser & FirebaseUserData;
-  };
-  request: Context["request"] & {
-    header: {
-      authorization?: string;
-    };
-  };
-  unauthorized: (error: unknown) => void;
-}
+  // Fall back to application default (works on GCP)
+  return initializeApp({
+    credential: applicationDefault(),
+  });
+};
 
-interface AuthResult {
-  authenticated: boolean;
-  credentials?: AuthUser | FirebaseUserData;
-}
+initializeFirebase();
 
 export default {
   /**
@@ -50,79 +50,9 @@ export default {
    *
    * This gives you an opportunity to extend code.
    */
-  register({ strapi }: { strapi: Strapi }): void {
-    strapi.container.get("auth").register("content-api", {
-      name: "firebase-jwt-verifier",
-      async authenticate(ctx: StrapiContext): Promise<AuthResult> {
-        if (ctx.state.user) {
-          logger.info("User already authed", {
-            user: ctx.state.user,
-          });
-          return { authenticated: true, credentials: ctx.state.user };
-        }
-
-        if (
-          ctx.request &&
-          ctx.request.header &&
-          ctx.request.header.authorization
-        ) {
-          try {
-            const token = ctx.request.header.authorization.replace(
-              "Bearer ",
-              ""
-            );
-            const userData = (await getAuth().verifyIdToken(
-              token
-            )) as unknown as FirebaseUserData;
-
-            const nomadUser = (await strapi.db
-              .query(`api::auth-user.auth-user`)
-              .findOne({
-                where: {
-                  user_id: userData.sub,
-                },
-                populate: {
-                  role: true,
-                  sites: true,
-                },
-              })) as AuthUser | null;
-
-            if (nomadUser && userData) {
-              if (nomadUser.sites) {
-                nomadUser.siteCount = nomadUser.sites.length || 0;
-              }
-              const mergedData = { ...userData, ...nomadUser };
-              logger.info("User from DB verified with Firebase", {
-                email: mergedData.email,
-              });
-              ctx.state.user = mergedData;
-              return { authenticated: true, credentials: mergedData };
-            }
-
-            if (nomadUser) {
-              logger.warn("User from DB potentially unverified", {
-                email: nomadUser.email,
-              });
-              ctx.state.user = { ...nomadUser, sub: userData.sub } as AuthUser &
-                FirebaseUserData;
-              return { authenticated: true, credentials: nomadUser };
-            }
-
-            if (userData) {
-              ctx.state.user = userData as AuthUser & FirebaseUserData;
-              return { authenticated: true, credentials: userData };
-            }
-            return { authenticated: false };
-          } catch (error) {
-            logger.error("User login error ", error);
-            return ctx.unauthorized(error) as unknown as AuthResult;
-          }
-        }
-
-        logger.warn("User login unsuccessful");
-        return { authenticated: false };
-      },
-    });
+  register(): void {
+    // Firebase authentication is now handled by the global::firebase-auth middleware
+    // See: src/middlewares/firebase-auth.ts
   },
 
   /**
@@ -132,5 +62,23 @@ export default {
    * This gives you an opportunity to set up your data model,
    * run jobs, or perform some special logic.
    */
-  bootstrap(/* { strapi } */): void {},
+  async bootstrap({ strapi }) {
+    // Seed base user role if it doesn't exist
+    const baseRole = await strapi.db.query("api::user-role.user-role").findOne({
+      where: { level: 0 },
+    });
+
+    if (!baseRole) {
+      strapi.log.info("Creating base user role (level 0)...");
+      await strapi.db.query("api::user-role.user-role").create({
+        data: {
+          name: "Free",
+          level: 0,
+          maxImages: 1,
+          maxDescriptionWords: 50,
+        },
+      });
+      strapi.log.info("Base user role created");
+    }
+  },
 };

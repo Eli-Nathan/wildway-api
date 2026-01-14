@@ -10,7 +10,8 @@ exports.default = strapi_1.factories.createCoreController("api::nomad-route.noma
         return this.sanitizeOutput(routes, ctx);
     },
     async findOne(ctx) {
-        const route = await strapi.entityService.findOne(`api::nomad-route.nomad-route`, ctx.params.id, {
+        const route = await strapi.db.query("api::nomad-route.nomad-route").findOne({
+            where: { id: ctx.params.id },
             populate: {
                 image: true,
                 tags: true,

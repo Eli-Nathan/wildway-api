@@ -39,8 +39,9 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         return this.sanitizeOutput(routes, ctx);
     },
     async findOne(ctx) {
-        const route = await strapi.entityService.findOne(`api::user-route.user-route`, ctx.params.id, {
-            filters: {
+        const route = await strapi.db.query("api::user-route.user-route").findOne({
+            where: {
+                id: ctx.params.id,
                 owner: ctx.state.user.id,
             },
             populate: {
@@ -118,15 +119,9 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         return this.sanitizeOutput(routes, ctx);
     },
     async findOnePublic(ctx) {
-        if (!ctx.query) {
-            ctx.query = {};
-        }
-        if (!ctx.query.filters) {
-            ctx.query.filters = {};
-        }
-        ctx.query.filters.public = true;
-        const route = await strapi.entityService.findOne(`api::user-route.user-route`, ctx.params.id, {
-            filters: {
+        const route = await strapi.db.query("api::user-route.user-route").findOne({
+            where: {
+                id: ctx.params.id,
                 public: true,
             },
             populate: {
@@ -197,12 +192,13 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
     },
     async update(ctx) {
         var _a, _b, _c, _d, _e, _g, _h, _j, _k, _l, _m;
-        const existingRoute = (await strapi.entityService.findOne(`api::user-route.user-route`, ctx.params.id, {
-            fields: ["polyline"],
+        const existingRoute = (await strapi.db.query("api::user-route.user-route").findOne({
+            where: { id: ctx.params.id },
+            select: ["id", "polyline", "mode"],
             populate: {
                 sites: {
                     populate: {
-                        site: { fields: ["id"] },
+                        site: { select: ["id"] },
                     },
                 },
             },

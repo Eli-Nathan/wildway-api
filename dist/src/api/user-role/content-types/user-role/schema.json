@@ -1,38 +1,38 @@
 {
-  "kind": "collectionType",
-  "collectionName": "user_roles",
-  "info": {
-    "singularName": "user-role",
-    "pluralName": "user-roles",
-    "displayName": "User roles",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "name": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "user_roles",
+    "info": {
+        "singularName": "user-role",
+        "pluralName": "user-roles",
+        "displayName": "User roles",
+        "description": ""
     },
-    "level": {
-      "type": "integer",
-      "unique": true
+    "options": {
+        "draftAndPublish": false
     },
-    "users": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::auth-user.auth-user",
-      "mappedBy": "role"
-    },
-    "maxImages": {
-      "type": "integer",
-      "default": 1
-    },
-    "maxDescriptionWords": {
-      "type": "integer",
-      "default": 50
+    "pluginOptions": {},
+    "attributes": {
+        "name": {
+            "type": "string",
+            "required": true
+        },
+        "level": {
+            "type": "integer",
+            "unique": true
+        },
+        "users": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::auth-user.auth-user",
+            "mappedBy": "role"
+        },
+        "maxImages": {
+            "type": "integer",
+            "default": 1
+        },
+        "maxDescriptionWords": {
+            "type": "integer",
+            "default": 50
+        }
     }
-  }
 }

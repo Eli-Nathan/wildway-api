@@ -1,35 +1,35 @@
 {
-  "kind": "collectionType",
-  "collectionName": "quicklinks",
-  "info": {
-    "singularName": "quicklink",
-    "pluralName": "quicklinks",
-    "displayName": "Quicklinks",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": true
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "title": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "quicklinks",
+    "info": {
+        "singularName": "quicklink",
+        "pluralName": "quicklinks",
+        "displayName": "Quicklinks",
+        "description": ""
     },
-    "linkType": {
-      "type": "enumeration",
-      "enum": [
-        "internal",
-        "external"
-      ]
+    "options": {
+        "draftAndPublish": true
     },
-    "link": {
-      "type": "string"
-    },
-    "order": {
-      "type": "integer",
-      "default": 1,
-      "required": true
+    "pluginOptions": {},
+    "attributes": {
+        "title": {
+            "type": "string",
+            "required": true
+        },
+        "linkType": {
+            "type": "enumeration",
+            "enum": [
+                "internal",
+                "external"
+            ]
+        },
+        "link": {
+            "type": "string"
+        },
+        "order": {
+            "type": "integer",
+            "default": 1,
+            "required": true
+        }
     }
-  }
 }

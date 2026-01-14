@@ -1,43 +1,43 @@
 {
-  "kind": "collectionType",
-  "collectionName": "facilities",
-  "info": {
-    "singularName": "facility",
-    "pluralName": "facilities",
-    "displayName": "Facilities",
-    "description": ""
-  },
-  "options": {
-    "draftAndPublish": false
-  },
-  "pluginOptions": {},
-  "attributes": {
-    "name": {
-      "type": "string",
-      "required": true
+    "kind": "collectionType",
+    "collectionName": "facilities",
+    "info": {
+        "singularName": "facility",
+        "pluralName": "facilities",
+        "displayName": "Facilities",
+        "description": ""
     },
-    "icon": {
-      "type": "string",
-      "required": true
+    "options": {
+        "draftAndPublish": false
     },
-    "relevance": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::site-type.site-type",
-      "mappedBy": "facilities"
-    },
-    "remote_icon": {
-      "type": "media",
-      "multiple": true,
-      "required": false,
-      "allowedTypes": [
-        "images"
-      ]
-    },
-    "priority": {
-      "type": "integer",
-      "unique": false,
-      "default": 10
+    "pluginOptions": {},
+    "attributes": {
+        "name": {
+            "type": "string",
+            "required": true
+        },
+        "icon": {
+            "type": "string",
+            "required": true
+        },
+        "relevance": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::site-type.site-type",
+            "mappedBy": "facilities"
+        },
+        "remote_icon": {
+            "type": "media",
+            "multiple": true,
+            "required": false,
+            "allowedTypes": [
+                "images"
+            ]
+        },
+        "priority": {
+            "type": "integer",
+            "unique": false,
+            "default": 10
+        }
     }
-  }
 }
