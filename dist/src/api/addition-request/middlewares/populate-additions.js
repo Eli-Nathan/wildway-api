@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const populateList = ["images"];
+const populateList = ["images", "potential_duplicates"];
 const enrichCtx = (ctx) => {
     if (!ctx.query) {
         ctx.query = {};
