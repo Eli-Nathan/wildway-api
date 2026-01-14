@@ -27,7 +27,7 @@ const searchService = {
             // First try exact/contains search
             let sites = await strapi.entityService.findMany("api::site.site", {
                 start,
-                limit: limit * 2,
+                limit: limit * 2, // Get more results for fuzzy filtering
                 fields: [
                     "title",
                     "description",
@@ -61,7 +61,7 @@ const searchService = {
                 // Get all sites for fuzzy matching (with pagination for performance)
                 const allSites = await strapi.entityService.findMany("api::site.site", {
                     start: 0,
-                    limit: 500,
+                    limit: 500, // Reasonable limit for fuzzy search
                     fields: [
                         "title",
                         "description",
@@ -150,7 +150,7 @@ const searchService = {
             console.log('findSimilarSites called with:', { placeName, lat, lng, radius });
             // Get sites for similarity check
             let sites = await strapi.entityService.findMany("api::site.site", {
-                limit: 1000,
+                limit: 1000, // Get a reasonable number for checking
                 fields: ["title", "description", "lat", "lng", "slug", "image"],
                 populate: {
                     type: {
@@ -183,7 +183,7 @@ const searchService = {
             }
             // Find similar places using fuzzy matching
             const similarSites = (0, fuzzySearch_1.findSimilarPlaces)(sites, placeName, {
-                threshold: 0.5,
+                threshold: 0.5, // Lower threshold to catch more potential duplicates
                 maxResults: 10,
                 keys: ["title", "description"],
             });
