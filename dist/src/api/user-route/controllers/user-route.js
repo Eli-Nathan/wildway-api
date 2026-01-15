@@ -24,6 +24,14 @@ const checkIfPlacesMatch = (api, req) => {
     });
     return eachMatch.every(Boolean);
 };
+// Helper to format entity in Strapi 4 format (id separate from attributes)
+const formatStrapi4Response = (entity) => {
+    const { id, documentId, ...attributes } = entity;
+    return {
+        id,
+        attributes,
+    };
+};
 exports.default = strapi_1.factories.createCoreController("api::user-route.user-route", ({ strapi }) => ({
     async find(ctx) {
         // Strapi 5: Use db.query directly for better control
@@ -43,10 +51,7 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         });
         // Return in Strapi 4 format
         return {
-            data: routes.map((route) => ({
-                id: route.id,
-                attributes: route,
-            })),
+            data: routes.map((route) => formatStrapi4Response(route)),
             meta: {
                 pagination: {
                     page: 1,
@@ -86,8 +91,7 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             ctx.status = 404;
             return { status: 404, message: "Route not found" };
         }
-        // @ts-expect-error - Strapi core controller method
-        return this.transformResponse(route);
+        return { data: formatStrapi4Response(route), meta: {} };
     },
     async findPublic(ctx) {
         if (!ctx.query) {
@@ -184,8 +188,11 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
                 },
             },
         });
-        // @ts-expect-error - Strapi core controller method
-        return this.transformResponse(route);
+        if (!route) {
+            ctx.status = 404;
+            return { status: 404, message: "Route not found" };
+        }
+        return { data: formatStrapi4Response(route), meta: {} };
     },
     async create(ctx) {
         var _a, _b, _c, _d;
@@ -264,13 +271,7 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             }
             logger_1.default.info("user-route create: Success, route id:", route === null || route === void 0 ? void 0 : route.id, "documentId:", route === null || route === void 0 ? void 0 : route.documentId);
             // Return in Strapi 4 format
-            return {
-                data: {
-                    id: route.id,
-                    attributes: route,
-                },
-                meta: {},
-            };
+            return { data: formatStrapi4Response(route), meta: {} };
         }
         catch (error) {
             logger_1.default.error("user-route create: Error:", error);
@@ -357,12 +358,6 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             data: updateData,
         });
         // Return in Strapi 4 format
-        return {
-            data: {
-                id: route.id,
-                attributes: route,
-            },
-            meta: {},
-        };
+        return { data: formatStrapi4Response(route), meta: {} };
     },
 }));
