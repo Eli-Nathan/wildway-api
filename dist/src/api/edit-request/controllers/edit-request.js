@@ -17,6 +17,24 @@ const getEditableFieldsFromSite = (siteData) => {
         type,
     };
 };
+/**
+ * Strapi 5: Transform request data for compatibility
+ * - Transform relations to connect syntax
+ */
+const transformEditRequestData = (data) => {
+    const transformed = { ...data };
+    // Transform single relation: site
+    if (typeof transformed.site === "number") {
+        transformed.site = { connect: [{ id: transformed.site }] };
+    }
+    // Transform array relation: facilities
+    if (Array.isArray(transformed.facilities)) {
+        transformed.facilities = {
+            connect: transformed.facilities.map((id) => ({ id })),
+        };
+    }
+    return transformed;
+};
 exports.default = strapi_1.factories.createCoreController("api::edit-request.edit-request", ({ strapi }) => ({
     async create(ctx) {
         var _a;
@@ -55,6 +73,8 @@ exports.default = strapi_1.factories.createCoreController("api::edit-request.edi
                 };
             }
         }
+        // Strapi 5: Transform request data before super.create()
+        ctx.request.body.data = transformEditRequestData(ctx.request.body.data);
         // @ts-expect-error - Strapi core controller method
         const edit = await super.create(ctx);
         await (0, slack_1.sendEntryToSlack)(edit, "editRequest", ctx);

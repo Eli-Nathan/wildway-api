@@ -203,6 +203,21 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         if (polyline) {
             ctx.request.body.data.polyline = polyline;
         }
+        // Strapi 5: Transform sites to proper format
+        // - Remove lat/lng (not in schema, only used for polyline generation above)
+        // - Transform site relation to connect syntax
+        if (ctx.request.body.data.sites) {
+            ctx.request.body.data.sites = ctx.request.body.data.sites.map((site) => {
+                if (site.site) {
+                    // Site reference: transform to connect syntax, remove lat/lng
+                    return {
+                        site: { connect: [{ id: site.site }] },
+                    };
+                }
+                // Custom site: just keep the custom field
+                return { custom: site.custom };
+            });
+        }
         // @ts-expect-error - Strapi core controller method
         const route = await super.create(ctx);
         // @ts-expect-error - Strapi core controller method
@@ -213,7 +228,7 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         return sanitized;
     },
     async update(ctx) {
-        var _a, _b, _c, _d, _e, _g, _h, _j, _k, _l, _m;
+        var _a, _b, _c, _d, _e, _g, _h, _j, _k, _l, _m, _o, _p;
         const existingRoute = (await strapi.db.query("api::user-route.user-route").findOne({
             where: { id: ctx.params.id },
             select: ["id", "polyline", "mode"],
@@ -258,6 +273,21 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             else {
                 logger_1.default.warn(`No polyline generated when updating route: ${ctx.params.id}`);
             }
+        }
+        // Strapi 5: Transform sites to proper format
+        // - Remove lat/lng (not in schema, only used for polyline generation above)
+        // - Transform site relation to connect syntax
+        if ((_p = (_o = ctx.request.body) === null || _o === void 0 ? void 0 : _o.data) === null || _p === void 0 ? void 0 : _p.sites) {
+            ctx.request.body.data.sites = ctx.request.body.data.sites.map((site) => {
+                if (site.site) {
+                    // Site reference: transform to connect syntax, remove lat/lng
+                    return {
+                        site: { connect: [{ id: site.site }] },
+                    };
+                }
+                // Custom site: just keep the custom field
+                return { custom: site.custom };
+            });
         }
         // @ts-expect-error - Strapi core controller method
         const route = await super.update(ctx);

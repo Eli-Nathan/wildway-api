@@ -261,6 +261,23 @@ export default factories.createCoreController(
       if (polyline) {
         ctx.request.body.data.polyline = polyline;
       }
+
+      // Strapi 5: Transform sites to proper format
+      // - Remove lat/lng (not in schema, only used for polyline generation above)
+      // - Transform site relation to connect syntax
+      if (ctx.request.body.data.sites) {
+        ctx.request.body.data.sites = ctx.request.body.data.sites.map((site) => {
+          if (site.site) {
+            // Site reference: transform to connect syntax, remove lat/lng
+            return {
+              site: { connect: [{ id: site.site }] },
+            };
+          }
+          // Custom site: just keep the custom field
+          return { custom: site.custom };
+        });
+      }
+
       // @ts-expect-error - Strapi core controller method
       const route = await super.create(ctx);
       // @ts-expect-error - Strapi core controller method
@@ -334,6 +351,22 @@ export default factories.createCoreController(
             `No polyline generated when updating route: ${ctx.params.id}`
           );
         }
+      }
+
+      // Strapi 5: Transform sites to proper format
+      // - Remove lat/lng (not in schema, only used for polyline generation above)
+      // - Transform site relation to connect syntax
+      if (ctx.request.body?.data?.sites) {
+        ctx.request.body.data.sites = ctx.request.body.data.sites.map((site) => {
+          if (site.site) {
+            // Site reference: transform to connect syntax, remove lat/lng
+            return {
+              site: { connect: [{ id: site.site }] },
+            };
+          }
+          // Custom site: just keep the custom field
+          return { custom: site.custom };
+        });
       }
 
       // @ts-expect-error - Strapi core controller method

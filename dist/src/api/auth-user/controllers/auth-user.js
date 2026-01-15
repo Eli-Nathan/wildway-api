@@ -175,7 +175,8 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             dataToUpdate.name = enrichedCtx.request.body.data.name;
         }
         if (enrichedCtx.request.body.data.profilePic) {
-            dataToUpdate.profile_pic = enrichedCtx.request.body.data.profilePic;
+            // Strapi 5: Media fields use connect syntax
+            dataToUpdate.profile_pic = { connect: [{ id: enrichedCtx.request.body.data.profilePic }] };
         }
         if (enrichedCtx.request.body.data.businessName) {
             dataToUpdate.businessName = enrichedCtx.request.body.data.businessName;
@@ -215,8 +216,9 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             enrichedCtx.request.body.data.favourites = [];
         }
         const { favourites } = enrichedCtx.request.body.data;
+        // Strapi 5: Relations use set syntax to replace all values
         enrichedCtx.request.body.data = {
-            favourites,
+            favourites: { set: favourites.map((id) => ({ id })) },
         };
         // @ts-expect-error - Strapi core controller method
         const user = await super.update(enrichedCtx);
@@ -247,16 +249,17 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 params: { id: enrichedCtx.params.id },
             }));
             const savedRoutes = currentUser.data.attributes.saved_public_routes.data.map((r) => r.id) || [];
+            let newSavedRoutes;
             if (savedRoutes.includes(routeId)) {
-                enrichedCtx.request.body.data = {
-                    saved_public_routes: savedRoutes.filter((r) => r !== routeId),
-                };
+                newSavedRoutes = savedRoutes.filter((r) => r !== routeId);
             }
             else {
-                enrichedCtx.request.body.data = {
-                    saved_public_routes: [...savedRoutes, routeId],
-                };
+                newSavedRoutes = [...savedRoutes, routeId];
             }
+            // Strapi 5: Relations use set syntax to replace all values
+            enrichedCtx.request.body.data = {
+                saved_public_routes: { set: newSavedRoutes.map((id) => ({ id })) },
+            };
             // @ts-expect-error - Strapi core controller method
             const user = await super.update(enrichedCtx);
             // @ts-expect-error - Strapi core controller method
