@@ -70,6 +70,27 @@ const checkIfPlacesMatch = (
 // Helper to format entity in Strapi 4 format (id separate from attributes)
 const formatStrapi4Response = (entity: Record<string, unknown>) => {
   const { id, documentId, ...attributes } = entity;
+
+  // Format sites array - each site component may have a nested site relation
+  if (attributes.sites && Array.isArray(attributes.sites)) {
+    attributes.sites = (attributes.sites as any[]).map((siteItem) => {
+      if (siteItem.site && typeof siteItem.site === 'object') {
+        // Format the nested site relation in Strapi 4 format
+        const { id: siteId, documentId: siteDocId, ...siteAttrs } = siteItem.site as Record<string, unknown>;
+        return {
+          ...siteItem,
+          site: {
+            data: {
+              id: siteId,
+              attributes: siteAttrs,
+            },
+          },
+        };
+      }
+      return siteItem;
+    });
+  }
+
   return {
     id,
     attributes,
