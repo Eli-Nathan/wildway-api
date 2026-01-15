@@ -17,7 +17,64 @@ const getEditableFieldsFromSite = (siteData) => {
         type,
     };
 };
+// Helper to format relation in Strapi 4 format
+const formatRelation = (relation) => {
+    if (!relation)
+        return null;
+    const { id, documentId, ...attrs } = relation;
+    return { data: { id, attributes: attrs } };
+};
 exports.default = strapi_1.factories.createCoreController("api::edit-request.edit-request", ({ strapi }) => ({
+    async find(ctx) {
+        var _a;
+        const edits = await strapi.db.query("api::edit-request.edit-request").findMany({
+            where: {
+                owner: (_a = ctx.state.user) === null || _a === void 0 ? void 0 : _a.id,
+            },
+            populate: {
+                site: true,
+                owner: true,
+            },
+        });
+        return edits.map((edit) => {
+            const { id, documentId, ...attributes } = edit;
+            // Format site relation in Strapi 4 format
+            if (attributes.site) {
+                attributes.site = formatRelation(attributes.site);
+            }
+            return {
+                id,
+                ...attributes,
+            };
+        });
+    },
+    async findOne(ctx) {
+        var _a;
+        const edit = await strapi.db.query("api::edit-request.edit-request").findOne({
+            where: {
+                id: ctx.params.id,
+                owner: (_a = ctx.state.user) === null || _a === void 0 ? void 0 : _a.id,
+            },
+            populate: {
+                site: true,
+                owner: true,
+            },
+        });
+        if (!edit) {
+            return { data: null };
+        }
+        const { id, documentId, ...attributes } = edit;
+        if (attributes.site) {
+            attributes.site = formatRelation(attributes.site);
+        }
+        return {
+            data: {
+                id,
+                attributes,
+            },
+            meta: {},
+        };
+    },
     async create(ctx) {
         var _a, _b;
         const siteId = ctx.request.body.data.site;

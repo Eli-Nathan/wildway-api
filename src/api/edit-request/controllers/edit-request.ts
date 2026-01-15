@@ -60,9 +60,69 @@ const getEditableFieldsFromSite = (siteData: SiteData): SiteData => {
   };
 };
 
+// Helper to format relation in Strapi 4 format
+const formatRelation = (relation: Record<string, unknown> | null) => {
+  if (!relation) return null;
+  const { id, documentId, ...attrs } = relation;
+  return { data: { id, attributes: attrs } };
+};
+
 export default factories.createCoreController(
   "api::edit-request.edit-request",
   ({ strapi }) => ({
+    async find(ctx: StrapiContext) {
+      const edits = await strapi.db.query("api::edit-request.edit-request").findMany({
+        where: {
+          owner: ctx.state.user?.id,
+        },
+        populate: {
+          site: true,
+          owner: true,
+        },
+      });
+
+      return edits.map((edit) => {
+        const { id, documentId, ...attributes } = edit;
+        // Format site relation in Strapi 4 format
+        if (attributes.site) {
+          attributes.site = formatRelation(attributes.site as Record<string, unknown>);
+        }
+        return {
+          id,
+          ...attributes,
+        };
+      });
+    },
+
+    async findOne(ctx: StrapiContext & { params: { id: string } }) {
+      const edit = await strapi.db.query("api::edit-request.edit-request").findOne({
+        where: {
+          id: ctx.params.id,
+          owner: ctx.state.user?.id,
+        },
+        populate: {
+          site: true,
+          owner: true,
+        },
+      });
+
+      if (!edit) {
+        return { data: null };
+      }
+
+      const { id, documentId, ...attributes } = edit;
+      if (attributes.site) {
+        attributes.site = formatRelation(attributes.site as Record<string, unknown>);
+      }
+      return {
+        data: {
+          id,
+          attributes,
+        },
+        meta: {},
+      };
+    },
+
     async create(ctx: StrapiContext) {
       const siteId = ctx.request.body.data.site;
       if (ctx.state.user) {
