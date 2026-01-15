@@ -67,6 +67,13 @@ const checkIfPlacesMatch = (
   return eachMatch.every(Boolean);
 };
 
+// Helper to format a relation in Strapi 4 format
+const formatRelation = (relation: Record<string, unknown> | null) => {
+  if (!relation) return null;
+  const { id, documentId, ...attrs } = relation;
+  return { data: { id, attributes: attrs } };
+};
+
 // Helper to format entity in Strapi 4 format (id separate from attributes)
 const formatStrapi4Response = (entity: Record<string, unknown>) => {
   const { id, documentId, ...attributes } = entity;
@@ -76,7 +83,24 @@ const formatStrapi4Response = (entity: Record<string, unknown>) => {
     attributes.sites = (attributes.sites as any[]).map((siteItem) => {
       if (siteItem.site && typeof siteItem.site === 'object') {
         // Format the nested site relation in Strapi 4 format
-        const { id: siteId, documentId: siteDocId, ...siteAttrs } = siteItem.site as Record<string, unknown>;
+        const site = siteItem.site as Record<string, unknown>;
+        const { id: siteId, documentId: siteDocId, ...siteAttrs } = site;
+
+        // Format nested type relation
+        if (siteAttrs.type && typeof siteAttrs.type === 'object') {
+          siteAttrs.type = formatRelation(siteAttrs.type as Record<string, unknown>);
+        }
+
+        // Format nested images relation (array)
+        if (siteAttrs.images && Array.isArray(siteAttrs.images)) {
+          siteAttrs.images = {
+            data: (siteAttrs.images as any[]).map((img) => {
+              const { id: imgId, documentId: imgDocId, ...imgAttrs } = img;
+              return { id: imgId, attributes: imgAttrs };
+            }),
+          };
+        }
+
         return {
           ...siteItem,
           site: {
@@ -110,7 +134,12 @@ export default factories.createCoreController(
           image: true,
           sites: {
             populate: {
-              site: true,
+              site: {
+                populate: {
+                  type: true,
+                  images: true,
+                },
+              },
             },
           },
         },

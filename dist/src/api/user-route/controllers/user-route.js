@@ -24,6 +24,13 @@ const checkIfPlacesMatch = (api, req) => {
     });
     return eachMatch.every(Boolean);
 };
+// Helper to format a relation in Strapi 4 format
+const formatRelation = (relation) => {
+    if (!relation)
+        return null;
+    const { id, documentId, ...attrs } = relation;
+    return { data: { id, attributes: attrs } };
+};
 // Helper to format entity in Strapi 4 format (id separate from attributes)
 const formatStrapi4Response = (entity) => {
     const { id, documentId, ...attributes } = entity;
@@ -32,7 +39,21 @@ const formatStrapi4Response = (entity) => {
         attributes.sites = attributes.sites.map((siteItem) => {
             if (siteItem.site && typeof siteItem.site === 'object') {
                 // Format the nested site relation in Strapi 4 format
-                const { id: siteId, documentId: siteDocId, ...siteAttrs } = siteItem.site;
+                const site = siteItem.site;
+                const { id: siteId, documentId: siteDocId, ...siteAttrs } = site;
+                // Format nested type relation
+                if (siteAttrs.type && typeof siteAttrs.type === 'object') {
+                    siteAttrs.type = formatRelation(siteAttrs.type);
+                }
+                // Format nested images relation (array)
+                if (siteAttrs.images && Array.isArray(siteAttrs.images)) {
+                    siteAttrs.images = {
+                        data: siteAttrs.images.map((img) => {
+                            const { id: imgId, documentId: imgDocId, ...imgAttrs } = img;
+                            return { id: imgId, attributes: imgAttrs };
+                        }),
+                    };
+                }
                 return {
                     ...siteItem,
                     site: {
@@ -62,7 +83,12 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
                 image: true,
                 sites: {
                     populate: {
-                        site: true,
+                        site: {
+                            populate: {
+                                type: true,
+                                images: true,
+                            },
+                        },
                     },
                 },
             },
