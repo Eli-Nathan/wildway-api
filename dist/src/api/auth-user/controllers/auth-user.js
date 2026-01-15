@@ -3,46 +3,67 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
 const emails_1 = require("../../../nomad/emails");
-const dangerousList = [
-    "addition_requests",
-    "edit_requests",
-    "saved_public_routes",
-    "edit_requests.site",
-    "edit_requests.site.type",
-    "role",
-];
-const safePopulateList = [
-    "favourites",
-    "favourites.type",
-    "profile_pic",
-    "comments",
-    "comments.site",
-    "sites",
-    "sites.type",
-    "sites.images",
-    "sites_added",
-    "sites_added.type",
-    "sites_added.images",
-];
-const populateList = [...dangerousList, ...safePopulateList];
+/**
+ * Strapi 5 populate format - object notation required
+ * Converting from nested dot-notation arrays to object format
+ */
+const populateConfig = {
+    addition_requests: true,
+    edit_requests: {
+        populate: {
+            site: {
+                populate: {
+                    type: true,
+                },
+            },
+        },
+    },
+    saved_public_routes: true,
+    role: true,
+    favourites: {
+        populate: {
+            type: true,
+        },
+    },
+    profile_pic: true,
+    comments: {
+        populate: {
+            site: true,
+        },
+    },
+    sites: {
+        populate: {
+            type: true,
+            images: true,
+        },
+    },
+    sites_added: {
+        populate: {
+            type: true,
+            images: true,
+        },
+    },
+};
 const enrichCtx = (ctx) => {
     if (!ctx.query) {
         ctx.query = {};
     }
-    const currentPopulateList = ctx.query.populate || [];
-    ctx.query.populate = [...currentPopulateList, ...populateList];
+    const existingPopulate = ctx.query.populate || {};
+    if (typeof existingPopulate === "object" && !Array.isArray(existingPopulate)) {
+        ctx.query.populate = { ...existingPopulate, ...populateConfig };
+    }
+    else {
+        ctx.query.populate = populateConfig;
+    }
     return ctx;
 };
 exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-user", ({ strapi }) => ({
     async findMe(ctx) {
         strapi.log.info("findMe: Looking up user with id:", ctx.params.id);
-        // Use db.query directly for Strapi 5 compatibility
+        // Use db.query directly for Strapi 5 compatibility with nested object populate
         const user = await strapi.db.query("api::auth-user.auth-user").findOne({
             where: { id: ctx.params.id },
-            populate: populateList.reduce((acc, field) => {
-                acc[field.split('.')[0]] = true;
-                return acc;
-            }, {}),
+            populate: populateConfig,
         });
         if (!user) {
             strapi.log.warn("findMe: User not found");

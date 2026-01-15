@@ -62,6 +62,24 @@ Upgrading nomad-api from Strapi 4 + Node 18 to Strapi 5 + Node 20+.
 - **JSX File Extensions**: Renamed `.js` files with JSX to `.jsx` for Vite compatibility
 - **Plugin enabled** in `config/plugins.ts`
 
+### 11. Populate Parameter Format (IMPORTANT)
+- **Issue**: Strapi 5 requires object notation for populate, not string arrays
+- **Strapi 4 format**: `["type", "type.remote_icon", "comments.owner"]`
+- **Strapi 5 format**: `{ type: { populate: { remote_icon: true } }, comments: { populate: { owner: true } } }`
+- **Fixes Applied**:
+  - Updated `strapi4-query-params.ts` middleware to transform incoming populate params
+  - Updated all populate middlewares in `src/api/*/middlewares/populate-*.ts`:
+    - `populate-filterlinks.ts` (home-filterlink)
+    - `populate-nomad-routes.ts` (nomad-route)
+    - `populate-additions.ts` (addition-request)
+    - `populate-comments.ts` (comment)
+    - `populate-facilities.ts` (facility)
+    - `populate-user-routes.ts` (user-route)
+    - `populate-site.ts` and `populate-sites.ts` (site)
+    - `populate-edits.ts` (edit-request)
+  - Updated `auth-user/controllers/auth-user.ts` enrichCtx function
+  - Updated `user-route/controllers/user-route.ts` findPublic and findRoutesByUserId methods
+
 ## Current Status
 - User registration: **WORKING** (user created in DB)
 - User login (GET /auth-users/me): **WORKING** (200 response)
@@ -70,6 +88,9 @@ Upgrading nomad-api from Strapi 4 + Node 18 to Strapi 5 + Node 20+.
 - Addition requests API: **WORKING** - updated to use Firebase auth
 - Edit requests API: **WORKING** - updated to use Firebase auth
 - Comments API: **WORKING** - updated to use Firebase auth
+- Home filterlinks API: **WORKING** - fixed populate format (was returning 400)
+- Sites API: **WORKING** - fixed populate format
+- Facilities API: **WORKING** - fixed populate format
 - Moderator plugin: **BUILDS** - migrated to Strapi 5, needs testing
 - Email sending: Failing (Gmail credentials issue - not blocking)
 - verifyEmail endpoint: **Fixed** - converted to db.query
@@ -214,6 +235,28 @@ const { data } = await get('/my-endpoint');
 
 ### 8. JSX Files for Vite
 Strapi 5 uses Vite. Files containing JSX should have `.jsx` extension, not `.js`.
+
+### 9. Populate Must Use Object Notation (CRITICAL)
+Strapi 5 changed populate from string arrays to nested object notation:
+```typescript
+// OLD (Strapi 4) - Will cause 400 errors in Strapi 5!
+ctx.query.populate = ["type", "type.remote_icon", "comments.owner"];
+
+// NEW (Strapi 5) - Object notation with nested populate
+ctx.query.populate = {
+  type: {
+    populate: {
+      remote_icon: true,
+    },
+  },
+  comments: {
+    populate: {
+      owner: true,
+    },
+  },
+};
+```
+The `strapi4-query-params.ts` middleware handles this transformation for incoming API requests, but any middleware or controller that sets `ctx.query.populate` internally must use object notation.
 
 ## Next Steps
 1. **Test moderator plugin** - Verify admin panel UI works and approve/reject flows

@@ -4,7 +4,8 @@
  *
  * Changes:
  * - sort=field:direction -> { field: "direction" } (object format for db.query)
- * - Also sets ctx.query.sort for controllers that use it directly
+ * - populate[0]=field -> { field: true } (object format for populate)
+ * - Also sets ctx.query.sort and ctx.query.populate for controllers that use them
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const EXCLUDED_PATHS = ["/admin", "/_health", "/upload"];
@@ -69,6 +70,79 @@ const parseSortString = (item) => {
     }
     return { [field]: normalizedDirection };
 };
+/**
+ * Transform populate parameter from Strapi 4 array format to Strapi 5 object format
+ * Strapi 4: populate[0]=field, populate[1]=field.nested
+ * Strapi 5: { field: { populate: { nested: true } } }
+ */
+const transformPopulateParam = (populate) => {
+    if (!populate)
+        return undefined;
+    // If it's already an object (not array), it might already be in Strapi 5 format
+    if (typeof populate === "object" && !Array.isArray(populate)) {
+        const keys = Object.keys(populate);
+        // Check if it's an indexed object (like populate[0]=...) vs a proper populate object
+        const isIndexedObject = keys.every((k) => !isNaN(Number(k)));
+        if (!isIndexedObject) {
+            // Already in Strapi 5 format
+            return populate;
+        }
+        // It's an indexed object, convert to array and process
+        const populateArray = [];
+        const populateObj = populate;
+        const sortedKeys = keys.sort((a, b) => Number(a) - Number(b));
+        for (const key of sortedKeys) {
+            populateArray.push(String(populateObj[key]));
+        }
+        return convertPopulateArrayToObject(populateArray);
+    }
+    // If it's an array of strings
+    if (Array.isArray(populate)) {
+        return convertPopulateArrayToObject(populate.map(String));
+    }
+    // If it's a single string
+    if (typeof populate === "string") {
+        if (populate === "*") {
+            // Strapi 5 doesn't support "*" the same way, return as-is and let Strapi handle it
+            return undefined;
+        }
+        return convertPopulateArrayToObject([populate]);
+    }
+    return undefined;
+};
+/**
+ * Convert an array of dot-notation paths to nested object format
+ * ["type", "type.remote_icon", "comments.owner"] ->
+ * { type: { populate: { remote_icon: true } }, comments: { populate: { owner: true } } }
+ */
+const convertPopulateArrayToObject = (paths) => {
+    const result = {};
+    for (const path of paths) {
+        const parts = path.split(".");
+        let current = result;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLast = i === parts.length - 1;
+            if (isLast) {
+                // Last part - set to true or preserve existing nested structure
+                if (!current[part]) {
+                    current[part] = true;
+                }
+            }
+            else {
+                // Not last - ensure we have a nested populate object
+                if (!current[part] || current[part] === true) {
+                    current[part] = { populate: {} };
+                }
+                const nested = current[part];
+                if (typeof nested === "object" && "populate" in nested) {
+                    current = nested.populate;
+                }
+            }
+        }
+    }
+    return result;
+};
 exports.default = () => {
     return async (ctx, next) => {
         // Only transform API requests
@@ -83,6 +157,17 @@ exports.default = () => {
                 // Also set on ctx.query which is what controllers typically access
                 if (ctx.query) {
                     ctx.query.sort = transformedSort;
+                }
+            }
+        }
+        // Transform populate parameter if present (Strapi 4 array -> Strapi 5 object)
+        if (ctx.request.query.populate !== undefined) {
+            const transformedPopulate = transformPopulateParam(ctx.request.query.populate);
+            if (transformedPopulate) {
+                ctx.request.query.populate = transformedPopulate;
+                // Also set on ctx.query which is what controllers typically access
+                if (ctx.query) {
+                    ctx.query.populate = transformedPopulate;
                 }
             }
         }

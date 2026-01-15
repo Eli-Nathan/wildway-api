@@ -1,27 +1,43 @@
 import type { StrapiContext, MiddlewareFactory } from "../../../types/strapi";
 
-const populateList = [
-  "type",
-  "type.remote_icon",
-  "type.remote_marker",
-  "type",
-  "comments",
-  "comments.owner",
-  "comments.site",
-  "owners",
-  "facilities",
-  "sub_types",
-  "images",
-  "tags",
-  "likes",
-];
+/**
+ * Strapi 5 populate format - object notation required
+ * Converting from:
+ * ["type", "type.remote_icon", "type.remote_marker", "comments",
+ *  "comments.owner", "comments.site", "owners", "facilities",
+ *  "sub_types", "images", "tags", "likes"]
+ */
+const populateConfig = {
+  type: {
+    populate: {
+      remote_icon: true,
+      remote_marker: true,
+    },
+  },
+  comments: {
+    populate: {
+      owner: true,
+      site: true,
+    },
+  },
+  owners: true,
+  facilities: true,
+  sub_types: true,
+  images: true,
+  tags: true,
+  likes: true,
+};
 
 const enrichCtx = (ctx: StrapiContext): StrapiContext => {
   if (!ctx.query) {
     ctx.query = {};
   }
-  const currentPopulateList = (ctx.query.populate as string[]) || [];
-  ctx.query.populate = [...currentPopulateList, ...populateList];
+  const existingPopulate = ctx.query.populate || {};
+  if (typeof existingPopulate === "object" && !Array.isArray(existingPopulate)) {
+    ctx.query.populate = { ...existingPopulate, ...populateConfig };
+  } else {
+    ctx.query.populate = populateConfig;
+  }
   return ctx;
 };
 

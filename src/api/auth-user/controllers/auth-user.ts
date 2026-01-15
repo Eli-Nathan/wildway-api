@@ -46,37 +46,58 @@ interface UserWithRoutes {
   };
 }
 
-const dangerousList = [
-  "addition_requests",
-  "edit_requests",
-  "saved_public_routes",
-  "edit_requests.site",
-  "edit_requests.site.type",
-  "role",
-];
-
-const safePopulateList = [
-  "favourites",
-  "favourites.type",
-  "profile_pic",
-  "comments",
-  "comments.site",
-  "sites",
-  "sites.type",
-  "sites.images",
-  "sites_added",
-  "sites_added.type",
-  "sites_added.images",
-];
-
-const populateList = [...dangerousList, ...safePopulateList];
+/**
+ * Strapi 5 populate format - object notation required
+ * Converting from nested dot-notation arrays to object format
+ */
+const populateConfig = {
+  addition_requests: true,
+  edit_requests: {
+    populate: {
+      site: {
+        populate: {
+          type: true,
+        },
+      },
+    },
+  },
+  saved_public_routes: true,
+  role: true,
+  favourites: {
+    populate: {
+      type: true,
+    },
+  },
+  profile_pic: true,
+  comments: {
+    populate: {
+      site: true,
+    },
+  },
+  sites: {
+    populate: {
+      type: true,
+      images: true,
+    },
+  },
+  sites_added: {
+    populate: {
+      type: true,
+      images: true,
+    },
+  },
+};
 
 const enrichCtx = (ctx: StrapiContext): StrapiContext => {
   if (!ctx.query) {
     ctx.query = {};
   }
-  const currentPopulateList = ctx.query.populate || [];
-  ctx.query.populate = [...currentPopulateList, ...populateList];
+  const existingPopulate = ctx.query.populate || {};
+  if (typeof existingPopulate === "object" && !Array.isArray(existingPopulate)) {
+    ctx.query.populate = { ...existingPopulate, ...populateConfig };
+  } else {
+    ctx.query.populate = populateConfig;
+  }
   return ctx;
 };
 
@@ -86,13 +107,10 @@ export default factories.createCoreController(
     async findMe(ctx: StrapiContext) {
       strapi.log.info("findMe: Looking up user with id:", ctx.params.id);
 
-      // Use db.query directly for Strapi 5 compatibility
+      // Use db.query directly for Strapi 5 compatibility with nested object populate
       const user = await strapi.db.query("api::auth-user.auth-user").findOne({
         where: { id: ctx.params.id },
-        populate: populateList.reduce((acc, field) => {
-          acc[field.split('.')[0]] = true;
-          return acc;
-        }, {} as Record<string, boolean>),
+        populate: populateConfig,
       });
 
       if (!user) {

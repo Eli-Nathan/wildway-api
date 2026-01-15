@@ -77,15 +77,26 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         if (!ctx.query.filters) {
             ctx.query.filters = {};
         }
-        if (!ctx.query.populate) {
-            ctx.query.populate = [];
-        }
-        ctx.query.populate = [
-            ...ctx.query.populate,
-            "image",
-            "owner",
-            "owner.profile_pic",
-        ];
+        // Strapi 5: Use object notation for populate
+        const existingPopulate = ctx.query.populate || {};
+        ctx.query.populate = typeof existingPopulate === "object" && !Array.isArray(existingPopulate)
+            ? {
+                ...existingPopulate,
+                image: true,
+                owner: {
+                    populate: {
+                        profile_pic: true,
+                    },
+                },
+            }
+            : {
+                image: true,
+                owner: {
+                    populate: {
+                        profile_pic: true,
+                    },
+                },
+            };
         ctx.query.filters.public = true;
         // @ts-expect-error - Strapi core controller method
         const routes = await super.find(ctx);
@@ -99,15 +110,26 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         if (!ctx.query.filters) {
             ctx.query.filters = {};
         }
-        if (!ctx.query.populate) {
-            ctx.query.populate = [];
-        }
-        ctx.query.populate = [
-            ...ctx.query.populate,
-            "image",
-            "owner",
-            "owner.profile_pic",
-        ];
+        // Strapi 5: Use object notation for populate
+        const existingPopulate = ctx.query.populate || {};
+        ctx.query.populate = typeof existingPopulate === "object" && !Array.isArray(existingPopulate)
+            ? {
+                ...existingPopulate,
+                image: true,
+                owner: {
+                    populate: {
+                        profile_pic: true,
+                    },
+                },
+            }
+            : {
+                image: true,
+                owner: {
+                    populate: {
+                        profile_pic: true,
+                    },
+                },
+            };
         const isOwner = Number(ctx.state.user.id) === Number(ctx.params.id);
         if (!isOwner) {
             ctx.query.filters.public = true;
