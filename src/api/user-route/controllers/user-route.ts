@@ -274,14 +274,15 @@ export default factories.createCoreController(
         // Strapi 5: Clean sites data for db.query
         // - Remove lat/lng (not in component schema, only used for polyline above)
         // - Keep site relation as simple ID (db.query accepts this)
+        // - Don't include null fields - only pass the field that's populated
         const cleanedSites = (requestData.sites || []).map((siteItem) => {
           if (siteItem.site) {
             // Site reference: extract ID if it's an object, otherwise use as-is
             const siteId = typeof siteItem.site === 'object' ? siteItem.site.id : siteItem.site;
-            return { site: siteId, custom: null };
+            return { site: siteId };
           }
           // Custom site: just keep the custom field
-          return { site: null, custom: siteItem.custom };
+          return { custom: siteItem.custom };
         });
 
         logger.info("user-route create: Cleaned sites: " + JSON.stringify(cleanedSites));
@@ -395,9 +396,9 @@ export default factories.createCoreController(
       const cleanedSites = (requestData.sites || []).map((siteItem) => {
         if (siteItem.site) {
           const siteId = typeof siteItem.site === 'object' ? siteItem.site.id : siteItem.site;
-          return { site: siteId, custom: null };
+          return { site: siteId };
         }
-        return { site: null, custom: siteItem.custom };
+        return { custom: siteItem.custom };
       });
 
       // Build update data
