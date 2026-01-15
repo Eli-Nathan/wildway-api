@@ -263,13 +263,25 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
                 sites: cleanedSites,
             };
             logger_1.default.info("user-route create: Create data: " + JSON.stringify(createData));
-            const route = await strapi.documents("api::user-route.user-route").create({
+            const createdRoute = await strapi.documents("api::user-route.user-route").create({
                 data: createData,
             });
             if (!polyline) {
-                logger_1.default.warn("No polyline generated when creating route:", route === null || route === void 0 ? void 0 : route.documentId);
+                logger_1.default.warn("No polyline generated when creating route:", createdRoute === null || createdRoute === void 0 ? void 0 : createdRoute.documentId);
             }
-            logger_1.default.info("user-route create: Success, route id:", route === null || route === void 0 ? void 0 : route.id, "documentId:", route === null || route === void 0 ? void 0 : route.documentId);
+            logger_1.default.info("user-route create: Success, route id:", createdRoute === null || createdRoute === void 0 ? void 0 : createdRoute.id, "documentId:", createdRoute === null || createdRoute === void 0 ? void 0 : createdRoute.documentId);
+            // Fetch the full route with sites populated for the response
+            const route = await strapi.db.query("api::user-route.user-route").findOne({
+                where: { id: createdRoute.id },
+                populate: {
+                    image: true,
+                    sites: {
+                        populate: {
+                            site: true,
+                        },
+                    },
+                },
+            });
             // Return in Strapi 4 format
             return { data: formatStrapi4Response(route), meta: {} };
         }

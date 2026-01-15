@@ -330,15 +330,28 @@ export default factories.createCoreController(
         };
         logger.info("user-route create: Create data: " + JSON.stringify(createData));
 
-        const route = await strapi.documents("api::user-route.user-route").create({
+        const createdRoute = await strapi.documents("api::user-route.user-route").create({
           data: createData,
         });
 
         if (!polyline) {
-          logger.warn("No polyline generated when creating route:", route?.documentId);
+          logger.warn("No polyline generated when creating route:", createdRoute?.documentId);
         }
 
-        logger.info("user-route create: Success, route id:", route?.id, "documentId:", route?.documentId);
+        logger.info("user-route create: Success, route id:", createdRoute?.id, "documentId:", createdRoute?.documentId);
+
+        // Fetch the full route with sites populated for the response
+        const route = await strapi.db.query("api::user-route.user-route").findOne({
+          where: { id: createdRoute.id },
+          populate: {
+            image: true,
+            sites: {
+              populate: {
+                site: true,
+              },
+            },
+          },
+        });
 
         // Return in Strapi 4 format
         return { data: formatStrapi4Response(route), meta: {} };
