@@ -293,20 +293,29 @@ export default factories.createCoreController(
           : ctx.state.user.id;
         logger.info("user-route create: Owner ID: " + ownerId + " (type: " + typeof ownerId + ")");
 
+        // First create without sites to isolate the issue
         const createData = {
           name: requestData.name,
           public: requestData.public || false,
           mode: requestData.mode,
           polyline: polyline || undefined,
-          sites: cleanedSites,
           owner: ownerId,
         };
-        logger.info("user-route create: Full create data: " + JSON.stringify(createData));
+        logger.info("user-route create: Create data (no sites): " + JSON.stringify(createData));
 
         // Use db.query directly (accepts simple IDs for relations)
         const route = await strapi.db.query("api::user-route.user-route").create({
           data: createData,
         });
+
+        // Now update with sites separately
+        if (cleanedSites.length > 0) {
+          logger.info("user-route create: Adding sites: " + JSON.stringify(cleanedSites));
+          await strapi.db.query("api::user-route.user-route").update({
+            where: { id: route.id },
+            data: { sites: cleanedSites },
+          });
+        }
 
         if (!polyline) {
           logger.warn("No polyline generated when creating route:", route?.id);

@@ -169,71 +169,104 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         return this.transformResponse(route);
     },
     async create(ctx) {
-        var _a, _b;
+        var _a, _b, _c, _d;
         if (!((_b = (_a = ctx.request) === null || _a === void 0 ? void 0 : _a.body) === null || _b === void 0 ? void 0 : _b.data)) {
             return {
                 status: 400,
                 message: "Bad request",
             };
         }
-        const requestData = ctx.request.body.data;
-        const sitesAsWaypoints = (requestData.sites || []).map((site) => {
-            if (site.custom) {
-                return {
-                    latitude: site.custom.lat,
-                    longitude: site.custom.lng,
-                };
-            }
+        if (!((_d = (_c = ctx.state) === null || _c === void 0 ? void 0 : _c.user) === null || _d === void 0 ? void 0 : _d.id)) {
+            logger_1.default.error("user-route create: No user in context");
             return {
-                latitude: site.lat,
-                longitude: site.lng,
+                status: 401,
+                message: "Unauthorized",
             };
-        });
-        const waypointsWithoutFirstAndLast = [...sitesAsWaypoints].filter((_f, i) => i !== 0 && i !== sitesAsWaypoints.length - 1);
-        const waypoints = waypointsWithoutFirstAndLast.length > 0
-            ? waypointsWithoutFirstAndLast
-            : undefined;
-        const origin = sitesAsWaypoints === null || sitesAsWaypoints === void 0 ? void 0 : sitesAsWaypoints[0];
-        const destination = sitesAsWaypoints === null || sitesAsWaypoints === void 0 ? void 0 : sitesAsWaypoints[sitesAsWaypoints.length - 1];
-        const polyline = await (0, getPolyline_1.default)({
-            waypoints,
-            origin,
-            destination,
-            mode: requestData.mode,
-        });
-        // Strapi 5: Clean sites data for db.query
-        // - Remove lat/lng (not in component schema, only used for polyline above)
-        // - Keep site relation as simple ID (db.query accepts this)
-        const cleanedSites = (requestData.sites || []).map((site) => {
-            if (site.site) {
-                // Site reference: just keep the site ID
-                return { site: site.site };
-            }
-            // Custom site: just keep the custom field
-            return { custom: site.custom };
-        });
-        // Use db.query directly (accepts simple IDs for relations)
-        const route = await strapi.db.query("api::user-route.user-route").create({
-            data: {
+        }
+        const requestData = ctx.request.body.data;
+        logger_1.default.info("user-route create: Starting with data:", JSON.stringify(requestData));
+        try {
+            const sitesAsWaypoints = (requestData.sites || []).map((site) => {
+                if (site.custom) {
+                    return {
+                        latitude: site.custom.lat,
+                        longitude: site.custom.lng,
+                    };
+                }
+                return {
+                    latitude: site.lat,
+                    longitude: site.lng,
+                };
+            });
+            const waypointsWithoutFirstAndLast = [...sitesAsWaypoints].filter((_f, i) => i !== 0 && i !== sitesAsWaypoints.length - 1);
+            const waypoints = waypointsWithoutFirstAndLast.length > 0
+                ? waypointsWithoutFirstAndLast
+                : undefined;
+            const origin = sitesAsWaypoints === null || sitesAsWaypoints === void 0 ? void 0 : sitesAsWaypoints[0];
+            const destination = sitesAsWaypoints === null || sitesAsWaypoints === void 0 ? void 0 : sitesAsWaypoints[sitesAsWaypoints.length - 1];
+            const polyline = await (0, getPolyline_1.default)({
+                waypoints,
+                origin,
+                destination,
+                mode: requestData.mode,
+            });
+            // Strapi 5: Clean sites data for db.query
+            // - Remove lat/lng (not in component schema, only used for polyline above)
+            // - Keep site relation as simple ID (db.query accepts this)
+            // - Don't include null fields - only pass the field that's populated
+            const cleanedSites = (requestData.sites || []).map((siteItem) => {
+                if (siteItem.site) {
+                    // Site reference: extract ID if it's an object, otherwise use as-is
+                    const siteId = typeof siteItem.site === 'object' ? siteItem.site.id : siteItem.site;
+                    return { site: siteId };
+                }
+                // Custom site: just keep the custom field
+                return { custom: siteItem.custom };
+            });
+            logger_1.default.info("user-route create: Cleaned sites: " + JSON.stringify(cleanedSites));
+            // Ensure owner is just an ID
+            const ownerId = typeof ctx.state.user.id === 'object'
+                ? ctx.state.user.id.id || ctx.state.user.id
+                : ctx.state.user.id;
+            logger_1.default.info("user-route create: Owner ID: " + ownerId + " (type: " + typeof ownerId + ")");
+            // First create without sites to isolate the issue
+            const createData = {
                 name: requestData.name,
                 public: requestData.public || false,
                 mode: requestData.mode,
                 polyline: polyline || undefined,
-                sites: cleanedSites,
-                owner: ctx.state.user.id,
-            },
-        });
-        if (!polyline) {
-            logger_1.default.warn("No polyline generated when creating route:", route === null || route === void 0 ? void 0 : route.id);
+                owner: ownerId,
+            };
+            logger_1.default.info("user-route create: Create data (no sites): " + JSON.stringify(createData));
+            // Use db.query directly (accepts simple IDs for relations)
+            const route = await strapi.db.query("api::user-route.user-route").create({
+                data: createData,
+            });
+            // Now update with sites separately
+            if (cleanedSites.length > 0) {
+                logger_1.default.info("user-route create: Adding sites: " + JSON.stringify(cleanedSites));
+                await strapi.db.query("api::user-route.user-route").update({
+                    where: { id: route.id },
+                    data: { sites: cleanedSites },
+                });
+            }
+            if (!polyline) {
+                logger_1.default.warn("No polyline generated when creating route:", route === null || route === void 0 ? void 0 : route.id);
+            }
+            logger_1.default.info("user-route create: Success, route id:", route === null || route === void 0 ? void 0 : route.id);
+            // Return in Strapi 4 format
+            return {
+                data: {
+                    id: route.id,
+                    attributes: route,
+                },
+                meta: {},
+            };
         }
-        // Return in Strapi 4 format
-        return {
-            data: {
-                id: route.id,
-                attributes: route,
-            },
-            meta: {},
-        };
+        catch (error) {
+            logger_1.default.error("user-route create: Error:", error);
+            throw error;
+        }
     },
     async update(ctx) {
         var _a;
@@ -285,11 +318,12 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             }
         }
         // Strapi 5: Clean sites data for db.query
-        const cleanedSites = (requestData.sites || []).map((site) => {
-            if (site.site) {
-                return { site: site.site };
+        const cleanedSites = (requestData.sites || []).map((siteItem) => {
+            if (siteItem.site) {
+                const siteId = typeof siteItem.site === 'object' ? siteItem.site.id : siteItem.site;
+                return { site: siteId };
             }
-            return { custom: site.custom };
+            return { custom: siteItem.custom };
         });
         // Build update data
         const updateData = {};
