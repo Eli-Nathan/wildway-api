@@ -271,13 +271,12 @@ export default factories.createCoreController(
           mode: requestData.mode,
         });
 
-        // Strapi 5: Clean sites data for db.query
-        // For component relations, try using connect syntax
+        // Strapi 5 Document Service: For components with relations, use simple IDs
         const cleanedSites = (requestData.sites || []).map((siteItem) => {
           if (siteItem.site) {
-            // Site reference: use connect syntax for the relation inside the component
+            // Site reference: use simple ID for Document Service
             const siteId = typeof siteItem.site === 'object' ? siteItem.site.id : siteItem.site;
-            return { site: { connect: [{ id: siteId }] } };
+            return { site: siteId };
           }
           // Custom site: just keep the custom field
           return { custom: siteItem.custom };
@@ -291,35 +290,26 @@ export default factories.createCoreController(
           : ctx.state.user.id;
         logger.info("user-route create: Owner ID: " + ownerId + " (type: " + typeof ownerId + ")");
 
-        // First create without sites to isolate the issue
+        // Use Document Service API for Strapi 5 - handles components with relations properly
         const createData = {
           name: requestData.name,
           public: requestData.public || false,
           mode: requestData.mode,
           polyline: polyline || undefined,
           owner: ownerId,
+          sites: cleanedSites,
         };
-        logger.info("user-route create: Create data (no sites): " + JSON.stringify(createData));
+        logger.info("user-route create: Create data: " + JSON.stringify(createData));
 
-        // Use db.query directly (accepts simple IDs for relations)
-        const route = await strapi.db.query("api::user-route.user-route").create({
+        const route = await strapi.documents("api::user-route.user-route").create({
           data: createData,
         });
 
-        // Now update with sites separately
-        if (cleanedSites.length > 0) {
-          logger.info("user-route create: Adding sites: " + JSON.stringify(cleanedSites));
-          await strapi.db.query("api::user-route.user-route").update({
-            where: { id: route.id },
-            data: { sites: cleanedSites },
-          });
-        }
-
         if (!polyline) {
-          logger.warn("No polyline generated when creating route:", route?.id);
+          logger.warn("No polyline generated when creating route:", route?.documentId);
         }
 
-        logger.info("user-route create: Success, route id:", route?.id);
+        logger.info("user-route create: Success, route id:", route?.id, "documentId:", route?.documentId);
 
         // Return in Strapi 4 format
         return {
@@ -336,9 +326,10 @@ export default factories.createCoreController(
     },
 
     async update(ctx: StrapiContext) {
+      // First get the existing route to check for changes and get documentId
       const existingRoute = (await strapi.db.query("api::user-route.user-route").findOne({
         where: { id: ctx.params.id },
-        select: ["id", "polyline", "mode"],
+        select: ["id", "documentId", "polyline", "mode"],
         populate: {
           sites: {
             populate: {
@@ -346,7 +337,11 @@ export default factories.createCoreController(
             },
           },
         },
-      })) as ExistingRoute;
+      })) as ExistingRoute & { documentId: string };
+
+      if (!existingRoute) {
+        return { status: 404, message: "Route not found" };
+      }
 
       const requestData = ctx.request.body?.data;
       if (!requestData) {
@@ -399,11 +394,11 @@ export default factories.createCoreController(
         }
       }
 
-      // Strapi 5: Clean sites data for db.query
+      // Strapi 5 Document Service: For components with relations, use simple IDs
       const cleanedSites = (requestData.sites || []).map((siteItem) => {
         if (siteItem.site) {
           const siteId = typeof siteItem.site === 'object' ? siteItem.site.id : siteItem.site;
-          return { site: { connect: [{ id: siteId }] } };
+          return { site: siteId };
         }
         return { custom: siteItem.custom };
       });
@@ -416,9 +411,11 @@ export default factories.createCoreController(
       if (requestData.sites !== undefined) updateData.sites = cleanedSites;
       if (polyline) updateData.polyline = polyline;
 
-      // Use db.query directly
-      const route = await strapi.db.query("api::user-route.user-route").update({
-        where: { id: ctx.params.id },
+      logger.info("user-route update: documentId:", existingRoute.documentId, "data:", JSON.stringify(updateData));
+
+      // Use Document Service API for Strapi 5 - handles components with relations properly
+      const route = await strapi.documents("api::user-route.user-route").update({
+        documentId: existingRoute.documentId,
         data: updateData,
       });
 
