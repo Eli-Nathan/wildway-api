@@ -36,6 +36,49 @@ const transformToStrapi4Format = (data: unknown): unknown => {
   return transformSingleItem(data);
 };
 
+/**
+ * Transform nested object fields (for components and relations)
+ * This handles relations inside components that need { data: {...} } wrapping
+ */
+const transformNestedFields = (obj: Record<string, unknown>): Record<string, unknown> => {
+  const transformed: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value && typeof value === "object") {
+      if (Array.isArray(value)) {
+        // Array: check if it's an array of entities or components
+        if (value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
+          if ("id" in value[0]) {
+            // Array of entities - transform each item
+            transformed[key] = value.map((v) => transformSingleItem(v));
+          } else {
+            // Array of components or primitives - recursively transform
+            transformed[key] = value.map((v) =>
+              typeof v === "object" && v !== null
+                ? transformNestedFields(v as Record<string, unknown>)
+                : v
+            );
+          }
+        } else {
+          transformed[key] = value;
+        }
+      } else if ("id" in (value as Record<string, unknown>)) {
+        // Single relation (has id): wrap in { data: {...} }
+        transformed[key] = {
+          data: transformSingleItem(value),
+        };
+      } else {
+        // Component (no id): recursively transform its fields for nested relations
+        transformed[key] = transformNestedFields(value as Record<string, unknown>);
+      }
+    } else {
+      transformed[key] = value;
+    }
+  }
+
+  return transformed;
+};
+
 const transformSingleItem = (item: unknown): unknown => {
   if (item === null || item === undefined || typeof item !== "object") {
     return item;
@@ -48,39 +91,16 @@ const transformSingleItem = (item: unknown): unknown => {
     return obj;
   }
 
-  // If it doesn't have an id, it's not a Strapi entity
+  // If it doesn't have an id, it's a component - transform its nested fields
   if (!("id" in obj)) {
-    return obj;
+    return transformNestedFields(obj);
   }
 
   // Extract id and documentId, put everything else in attributes
   const { id, documentId, ...attributes } = obj;
 
-  // Recursively transform nested relations
-  // NOTE: Only wrap SINGLE relations in { data: {...} }
-  // Array relations stay flat - frontend sanitizeApiResponse only unwraps top-level
-  const transformedAttributes: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(attributes)) {
-    if (value && typeof value === "object") {
-      if (Array.isArray(value)) {
-        // Array relations: transform items but keep as flat array (no { data: [...] } wrapper)
-        if (value.length > 0 && typeof value[0] === "object" && value[0] !== null && "id" in value[0]) {
-          transformedAttributes[key] = value.map((v) => transformSingleItem(v));
-        } else {
-          transformedAttributes[key] = value;
-        }
-      } else if ("id" in (value as Record<string, unknown>)) {
-        // Single relation: wrap in { data: {...} } for sanitizeApiResponse compatibility
-        transformedAttributes[key] = {
-          data: transformSingleItem(value),
-        };
-      } else {
-        transformedAttributes[key] = value;
-      }
-    } else {
-      transformedAttributes[key] = value;
-    }
-  }
+  // Transform nested fields (handles both relations and components)
+  const transformedAttributes = transformNestedFields(attributes);
 
   return {
     id,

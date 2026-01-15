@@ -80,6 +80,13 @@ Upgrading nomad-api from Strapi 4 + Node 18 to Strapi 5 + Node 20+.
   - Updated `auth-user/controllers/auth-user.ts` enrichCtx function
   - Updated `user-route/controllers/user-route.ts` findPublic and findRoutesByUserId methods
 
+### 12. Response Format for Nested Components (CRITICAL)
+- **Issue**: Components (objects without `id`) containing relations weren't being transformed
+- **Symptom**: Filter icons/names not showing - nested `siteType`/`facility` relations missing `{ data: {...} }` wrapper
+- **Fix**: Updated `strapi4-response-format.ts` to recursively transform nested relations inside components
+- **Before**: Components passed through unchanged, their nested relations stayed flat
+- **After**: Components' nested relations now get wrapped in `{ data: { id, attributes } }` format
+
 ## Current Status
 - User registration: **WORKING** (user created in DB)
 - User login (GET /auth-users/me): **WORKING** (200 response)
@@ -89,6 +96,7 @@ Upgrading nomad-api from Strapi 4 + Node 18 to Strapi 5 + Node 20+.
 - Edit requests API: **WORKING** - updated to use Firebase auth
 - Comments API: **WORKING** - updated to use Firebase auth
 - Home filterlinks API: **WORKING** - fixed populate format (was returning 400)
+- Filter groups API: **WORKING** - fixed nested component response format
 - Sites API: **WORKING** - fixed populate format
 - Facilities API: **WORKING** - fixed populate format
 - Moderator plugin: **BUILDS** - migrated to Strapi 5, needs testing
