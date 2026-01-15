@@ -71,17 +71,37 @@ export default factories.createCoreController(
   "api::user-route.user-route",
   ({ strapi }) => ({
     async find(ctx: StrapiContext) {
-      if (!ctx.query) {
-        ctx.query = {};
-      }
-      if (!ctx.query.filters) {
-        ctx.query.filters = {};
-      }
-      ctx.query.filters.owner = ctx.state.user.id;
-      // @ts-expect-error - Strapi core controller method
-      const routes = await super.find(ctx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(routes, ctx);
+      // Strapi 5: Use db.query directly for better control
+      const routes = await strapi.db.query("api::user-route.user-route").findMany({
+        where: {
+          owner: ctx.state.user.id,
+        },
+        populate: {
+          image: true,
+          sites: {
+            populate: {
+              site: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Return in Strapi 4 format
+      return {
+        data: routes.map((route) => ({
+          id: route.id,
+          attributes: route,
+        })),
+        meta: {
+          pagination: {
+            page: 1,
+            pageSize: routes.length,
+            pageCount: 1,
+            total: routes.length,
+          },
+        },
+      };
     },
 
     async findOne(ctx: StrapiContext) {
@@ -236,7 +256,8 @@ export default factories.createCoreController(
       }
 
       const requestData = ctx.request.body.data;
-      logger.info("user-route create: Starting with data:", JSON.stringify(requestData));
+      logger.info("user-route create: Starting with data: " + JSON.stringify(requestData));
+      logger.info("user-route create: Incoming sites: " + JSON.stringify(requestData.sites));
 
       try {
         const sitesAsWaypoints = (requestData.sites || []).map(
