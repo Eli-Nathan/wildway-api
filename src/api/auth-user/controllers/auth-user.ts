@@ -229,29 +229,33 @@ export default factories.createCoreController(
     },
 
     async editProfile(ctx: StrapiContext) {
-      let dataToUpdate: Record<string, unknown> = {};
-      const enrichedCtx = enrichCtx(ctx);
-      if (!enrichedCtx.request.body) {
-        enrichedCtx.request.body = {};
+      const requestData = ctx.request.body?.data || {};
+      const dataToUpdate: Record<string, unknown> = {};
+
+      if (requestData.name) {
+        dataToUpdate.name = requestData.name;
       }
-      if (!enrichedCtx.request.body.data) {
-        enrichedCtx.request.body.data = {};
+      if (requestData.profilePic) {
+        dataToUpdate.profile_pic = requestData.profilePic;
       }
-      if (enrichedCtx.request.body.data.name) {
-        dataToUpdate.name = enrichedCtx.request.body.data.name;
+      if (requestData.businessName) {
+        dataToUpdate.businessName = requestData.businessName;
       }
-      if (enrichedCtx.request.body.data.profilePic) {
-        // Strapi 5: Media fields use connect syntax
-        dataToUpdate.profile_pic = { connect: [{ id: enrichedCtx.request.body.data.profilePic }] };
-      }
-      if (enrichedCtx.request.body.data.businessName) {
-        dataToUpdate.businessName = enrichedCtx.request.body.data.businessName;
-      }
-      enrichedCtx.request.body.data = dataToUpdate as typeof enrichedCtx.request.body.data;
-      // @ts-expect-error - Strapi core controller method
-      const user = await super.update(enrichedCtx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(user, ctx);
+
+      // Strapi 5: Use db.query directly
+      const user = await strapi.db.query("api::auth-user.auth-user").update({
+        where: { id: ctx.params.id },
+        data: dataToUpdate,
+        populate: populateConfig,
+      });
+
+      return {
+        data: {
+          id: user.id,
+          attributes: user,
+        },
+        meta: {},
+      };
     },
 
     async verifyEmail(ctx: StrapiContext) {
@@ -276,30 +280,26 @@ export default factories.createCoreController(
     },
 
     async updateFavourites(ctx: StrapiContext) {
-      const enrichedCtx = enrichCtx(ctx);
-      if (!enrichedCtx.request.body) {
-        enrichedCtx.request.body = {};
-      }
-      if (!enrichedCtx.request.body.data) {
-        enrichedCtx.request.body.data = {};
-      }
-      if (!enrichedCtx.request.body.data.favourites) {
-        enrichedCtx.request.body.data.favourites = [];
-      }
-      const { favourites } = enrichedCtx.request.body.data;
-      // Strapi 5: Relations use set syntax to replace all values
-      enrichedCtx.request.body.data = {
-        favourites: { set: (favourites as number[]).map((id) => ({ id })) },
-      } as unknown as typeof enrichedCtx.request.body.data;
-      // @ts-expect-error - Strapi core controller method
-      const user = await super.update(enrichedCtx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(user, ctx);
+      const favourites = ctx.request.body?.data?.favourites || [];
+
+      // Strapi 5: Use db.query directly (accepts array of IDs for relations)
+      const user = await strapi.db.query("api::auth-user.auth-user").update({
+        where: { id: ctx.params.id },
+        data: { favourites },
+        populate: populateConfig,
+      });
+
+      return {
+        data: {
+          id: user.id,
+          attributes: user,
+        },
+        meta: {},
+      };
     },
 
     async updateSavedRoutes(ctx: StrapiContext) {
-      const enrichedCtx = enrichCtx(ctx);
-      const routeId = enrichedCtx.request.body?.data?.route;
+      const routeId = ctx.request.body?.data?.route;
       if (!routeId) {
         return {
           status: 400,
@@ -317,8 +317,8 @@ export default factories.createCoreController(
       if (serverRoute.public) {
         // @ts-expect-error - Custom method on this
         const currentUser = (await this.findMe({
-          ...enrichedCtx,
-          params: { id: enrichedCtx.params.id },
+          ...ctx,
+          params: { id: ctx.params.id },
         })) as UserWithRoutes;
 
         const savedRoutes =
@@ -331,14 +331,21 @@ export default factories.createCoreController(
         } else {
           newSavedRoutes = [...savedRoutes, routeId];
         }
-        // Strapi 5: Relations use set syntax to replace all values
-        enrichedCtx.request.body!.data = {
-          saved_public_routes: { set: newSavedRoutes.map((id) => ({ id })) },
-        } as unknown as typeof enrichedCtx.request.body.data;
-        // @ts-expect-error - Strapi core controller method
-        const user = await super.update(enrichedCtx);
-        // @ts-expect-error - Strapi core controller method
-        return this.sanitizeOutput(user, ctx);
+
+        // Strapi 5: Use db.query directly
+        const user = await strapi.db.query("api::auth-user.auth-user").update({
+          where: { id: ctx.params.id },
+          data: { saved_public_routes: newSavedRoutes },
+          populate: populateConfig,
+        });
+
+        return {
+          data: {
+            id: user.id,
+            attributes: user,
+          },
+          meta: {},
+        };
       } else {
         ctx.status = 400;
         return {

@@ -7,18 +7,22 @@ exports.default = strapi_1.factories.createCoreController("api::form-submission.
     async create(ctx) {
         const requestBody = JSON.parse(ctx.request.body);
         if (ctx.params.id && requestBody.data) {
-            ctx.request.body = {
+            // Strapi 5: Use db.query directly (accepts simple IDs for relations)
+            const submission = await strapi.db.query("api::form-submission.form-submission").create({
                 data: {
                     data: requestBody.data,
                     form: ctx.params.id,
                 },
+            });
+            const result = {
+                data: {
+                    id: submission.id,
+                    attributes: submission,
+                },
+                meta: {},
             };
-            // @ts-expect-error - Strapi core controller method
-            const submission = await super.create(ctx);
-            // @ts-expect-error - Strapi core controller method
-            const sanitized = await this.sanitizeOutput(submission, ctx);
-            await (0, slack_1.sendEntryToSlack)(sanitized, "form", ctx);
-            return sanitized;
+            await (0, slack_1.sendEntryToSlack)(result, "form", ctx);
+            return result;
         }
         ctx.status = 400;
         return {
