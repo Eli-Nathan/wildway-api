@@ -67,8 +67,10 @@ const transformNestedFields = (obj: Record<string, unknown>): Record<string, unk
         if (value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
           const firstItem = value[0] as Record<string, unknown>;
           if (isEntity(firstItem)) {
-            // Array of entities - transform each item
-            transformed[key] = value.map((v) => transformSingleItem(v));
+            // Array of entities - wrap in { data: [...] } for sanitizeApiResponse
+            transformed[key] = {
+              data: value.map((v) => transformSingleItem(v)),
+            };
           } else if (isComponent(firstItem)) {
             // Array of components - transform their nested fields but don't wrap
             transformed[key] = value.map((v) => transformComponentFields(v as Record<string, unknown>));
@@ -119,7 +121,10 @@ const transformComponentFields = (component: Record<string, unknown>): Record<st
         if (value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
           const firstItem = value[0] as Record<string, unknown>;
           if (isEntity(firstItem)) {
-            transformed[key] = value.map((v) => transformSingleItem(v));
+            // Array of entities - wrap in { data: [...] } for sanitizeApiResponse
+            transformed[key] = {
+              data: value.map((v) => transformSingleItem(v)),
+            };
           } else if (isComponent(firstItem)) {
             transformed[key] = value.map((v) => transformComponentFields(v as Record<string, unknown>));
           } else {

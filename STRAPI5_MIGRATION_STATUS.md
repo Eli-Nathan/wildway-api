@@ -87,6 +87,21 @@ Upgrading nomad-api from Strapi 4 + Node 18 to Strapi 5 + Node 20+.
 - **Before**: Components passed through unchanged, their nested relations stayed flat
 - **After**: Components' nested relations now get wrapped in `{ data: { id, attributes } }` format
 
+### 13. Entity vs Component Distinction (CRITICAL)
+- **Issue**: Strapi 5 adds `id` to components, so old check for `id` no longer distinguishes entities from components
+- **Symptom**: Components were incorrectly getting `{ data: { id, attributes } }` wrapper
+- **Fix**: Added `isEntity()` (checks for `documentId`) and `isComponent()` (has `id` but no `documentId`) helpers
+- **Key insight**: In Strapi 5, entities have both `id` AND `documentId`, while components have only `id`
+
+### 14. Array Relations Must Wrap in { data: [...] }
+- **Issue**: Array relations (e.g., `relevance` on facilities) weren't wrapped in `{ data: [...] }`
+- **Symptom**: Frontend's `sanitizeApiResponse` couldn't process arrays like facilities' relevance
+- **Fix**: Updated `transformNestedFields` and `transformComponentFields` to wrap arrays of entities:
+  ```typescript
+  // Before: relevance: [{ id, attributes }]  - NOT processed by sanitizeApiResponse
+  // After:  relevance: { data: [{ id, attributes }] }  - Correctly processed
+  ```
+
 ## Current Status
 - User registration: **WORKING** (user created in DB)
 - User login (GET /auth-users/me): **WORKING** (200 response)
@@ -98,7 +113,7 @@ Upgrading nomad-api from Strapi 4 + Node 18 to Strapi 5 + Node 20+.
 - Home filterlinks API: **WORKING** - fixed populate format (was returning 400)
 - Filter groups API: **WORKING** - fixed nested component response format
 - Sites API: **WORKING** - fixed populate format
-- Facilities API: **WORKING** - fixed populate format
+- Facilities API: **WORKING** - fixed populate format, array relations now wrapped in { data }
 - Moderator plugin: **BUILDS** - migrated to Strapi 5, needs testing
 - Email sending: Failing (Gmail credentials issue - not blocking)
 - verifyEmail endpoint: **Fixed** - converted to db.query
