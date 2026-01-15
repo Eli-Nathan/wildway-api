@@ -1,1 +1,1 @@
-export { default } from "./RequestsTable";
+export { default } from "./RequestsTable.jsx";

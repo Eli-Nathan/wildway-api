@@ -1,3 +1,3 @@
-'use strict';
+import admin from './admin/src/index.jsx';
 
-module.exports = require('./admin/src').default;
+export default admin;

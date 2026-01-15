@@ -3,6 +3,7 @@ interface RouteConfig {
   path: string;
   handler: string;
   config?: {
+    auth?: boolean;
     middlewares?: string[];
     policies?: string[];
   };
@@ -19,8 +20,9 @@ const config: RoutesConfig = {
       path: "/edit-requests",
       handler: "edit-request.find",
       config: {
+        auth: false,
         middlewares: ["api::edit-request.populate-edits"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -28,8 +30,9 @@ const config: RoutesConfig = {
       path: "/edit-requests/:id",
       handler: "edit-request.findOne",
       config: {
+        auth: false,
         middlewares: ["api::edit-request.populate-edits"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -37,8 +40,9 @@ const config: RoutesConfig = {
       path: "/edit-requests",
       handler: "edit-request.create",
       config: {
+        auth: false,
         middlewares: ["api::edit-request.populate-edits"],
-        policies: ["plugin::users-permissions.isAuthed", "global::set-owner"],
+        policies: ["global::firebase-authed", "global::set-owner"],
       },
     },
   ],

@@ -10,8 +10,9 @@ export default {
       path: "/addition-requests",
       handler: "addition-request.find",
       config: {
+        auth: false,
         middlewares: ["api::addition-request.populate-additions"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -19,8 +20,9 @@ export default {
       path: "/addition-requests/:id",
       handler: "addition-request.findOne",
       config: {
+        auth: false,
         middlewares: ["api::addition-request.populate-additions"],
-        policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -28,8 +30,9 @@ export default {
       path: "/addition-requests",
       handler: "addition-request.create",
       config: {
+        auth: false,
         middlewares: ["api::addition-request.populate-additions"],
-        policies: ["plugin::users-permissions.isAuthed", "global::set-owner"],
+        policies: ["global::firebase-authed", "global::set-owner"],
       },
     },
   ],

@@ -1,33 +1,30 @@
 import React from "react";
 import _ from "lodash";
-import { Box } from "@strapi/design-system/Box";
-import { Typography } from "@strapi/design-system/Typography";
-import { LinkButton } from "@strapi/design-system/LinkButton";
-import { Button } from "@strapi/design-system/Button";
-import Plus from "@strapi/icons/Plus";
-import Eye from "@strapi/icons/Eye";
-import Check from "@strapi/icons/Check";
-import Close from "@strapi/icons/Cross";
-import { EmptyStateLayout } from "@strapi/design-system/EmptyStateLayout";
-import { Flex } from "@strapi/design-system/Flex";
-import { Table, Thead, Tbody, Tr, Td, Th } from "@strapi/design-system/Table";
 import {
+  Box,
+  Typography,
+  LinkButton,
+  Button,
+  EmptyStateLayout,
+  Flex,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Td,
+  Th,
   Tabs,
-  Tab,
-  TabGroup,
-  TabPanels,
-  TabPanel,
-} from "@strapi/design-system/Tabs";
+} from "@strapi/design-system";
+import { Plus, Eye, Check, Cross } from "@strapi/icons";
 
 const TabContent = ({
   collection,
   name,
   rejectRequest,
   approveRequest,
-  initialSelectedTabIndex,
 }) => {
   return (
-    <TabPanel>
+    <Tabs.Content value={name}>
       {/* TABLE */}
       <Table colCount={2} rowCount={collection.length}>
         <Thead>
@@ -84,7 +81,7 @@ const TabContent = ({
                     <Button
                       onClick={() => rejectRequest(name, item.id)}
                       variant="danger-light"
-                      startIcon={<Close />}
+                      startIcon={<Cross />}
                     >
                       Reject
                     </Button>
@@ -103,9 +100,11 @@ const TabContent = ({
       </Table>
 
       {/* END TABLE */}
-    </TabPanel>
+    </Tabs.Content>
   );
 };
+
+const TAB_VALUES = ["addition-request", "edit-request", "comment"];
 
 const RequestsTable = ({
   requests,
@@ -113,45 +112,41 @@ const RequestsTable = ({
   approveRequest,
   initialSelectedTabIndex,
 }) => {
+  const defaultValue = TAB_VALUES[initialSelectedTabIndex] || TAB_VALUES[0];
+
   return (
     <Box padding={8}>
-      <TabGroup
-        label="label"
-        id="tabs"
-        initialSelectedTabIndex={initialSelectedTabIndex}
-      >
-        <Tabs>
-          <Tab>
+      <Tabs.Root defaultValue={defaultValue}>
+        <Tabs.List aria-label="Moderation tabs">
+          <Tabs.Trigger value="addition-request">
             <Typography variant="omega">Addition requests</Typography>
-          </Tab>
-          <Tab>
+          </Tabs.Trigger>
+          <Tabs.Trigger value="edit-request">
             <Typography variant="omega">Edit requests</Typography>
-          </Tab>
-          <Tab>
+          </Tabs.Trigger>
+          <Tabs.Trigger value="comment">
             <Typography variant="omega">Comments</Typography>
-          </Tab>
-        </Tabs>
-        <TabPanels>
-          <TabContent
-            collection={requests.additions}
-            name="addition-request"
-            rejectRequest={rejectRequest}
-            approveRequest={approveRequest}
-          />
-          <TabContent
-            collection={requests.edits}
-            name="edit-request"
-            rejectRequest={rejectRequest}
-            approveRequest={approveRequest}
-          />
-          <TabContent
-            collection={requests.comments}
-            name="comment"
-            rejectRequest={rejectRequest}
-            approveRequest={approveRequest}
-          />
-        </TabPanels>
-      </TabGroup>
+          </Tabs.Trigger>
+        </Tabs.List>
+        <TabContent
+          collection={requests.additions}
+          name="addition-request"
+          rejectRequest={rejectRequest}
+          approveRequest={approveRequest}
+        />
+        <TabContent
+          collection={requests.edits}
+          name="edit-request"
+          rejectRequest={rejectRequest}
+          approveRequest={approveRequest}
+        />
+        <TabContent
+          collection={requests.comments}
+          name="comment"
+          rejectRequest={rejectRequest}
+          approveRequest={approveRequest}
+        />
+      </Tabs.Root>
     </Box>
   );
 };

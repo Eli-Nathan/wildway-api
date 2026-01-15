@@ -57,20 +57,20 @@ const transformSingleItem = (item: unknown): unknown => {
   const { id, documentId, ...attributes } = obj;
 
   // Recursively transform nested relations
+  // NOTE: Only wrap SINGLE relations in { data: {...} }
+  // Array relations stay flat - frontend sanitizeApiResponse only unwraps top-level
   const transformedAttributes: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(attributes)) {
     if (value && typeof value === "object") {
       if (Array.isArray(value)) {
-        // Check if it's an array of entities (has id property)
+        // Array relations: transform items but keep as flat array (no { data: [...] } wrapper)
         if (value.length > 0 && typeof value[0] === "object" && value[0] !== null && "id" in value[0]) {
-          transformedAttributes[key] = {
-            data: value.map((v) => transformSingleItem(v)),
-          };
+          transformedAttributes[key] = value.map((v) => transformSingleItem(v));
         } else {
           transformedAttributes[key] = value;
         }
       } else if ("id" in (value as Record<string, unknown>)) {
-        // Single relation
+        // Single relation: wrap in { data: {...} } for sanitizeApiResponse compatibility
         transformedAttributes[key] = {
           data: transformSingleItem(value),
         };

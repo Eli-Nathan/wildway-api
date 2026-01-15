@@ -1,12 +1,12 @@
 // ./admin/src/utils/api.js
-import { request } from "@strapi/helper-plugin";
+import { getFetchClient } from "@strapi/strapi/admin";
 import pluginId from "../pluginId";
+
+const { get } = getFetchClient();
 
 export const fetchAllRequests = async () => {
   try {
-    const data = await request(`/${pluginId}`, {
-      method: "GET",
-    });
+    const { data } = await get(`/${pluginId}`);
     return data;
   } catch (error) {
     return null;
@@ -15,9 +15,7 @@ export const fetchAllRequests = async () => {
 
 export const rejectRequest = async (type, id) => {
   try {
-    const data = await request(`/${pluginId}/update/${type}/${id}`, {
-      method: "GET",
-    });
+    const { data } = await get(`/${pluginId}/update/${type}/${id}`);
     return data;
   } catch (error) {
     return null;
@@ -26,9 +24,7 @@ export const rejectRequest = async (type, id) => {
 
 export const approveRequest = async (type, id) => {
   try {
-    const data = await request(`/${pluginId}/approve-${type}/${id}`, {
-      method: "GET",
-    });
+    const { data } = await get(`/${pluginId}/approve-${type}/${id}`);
     return data;
   } catch (error) {
     return null;

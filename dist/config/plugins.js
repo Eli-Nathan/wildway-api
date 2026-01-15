@@ -33,13 +33,11 @@ exports.default = ({ env }) => {
                 },
             },
         },
-        // Custom plugins temporarily disabled for Strapi 5 migration
-        // These need admin panel updates for Strapi 5 Design System
-        // TODO: Re-enable after fixing admin components
-        // moderator: {
-        //   enabled: true,
-        //   resolve: "./src/plugins/moderator",
-        // },
+        // Custom plugins - moderator re-enabled after Strapi 5 fixes
+        moderator: {
+            enabled: true,
+            resolve: "./src/plugins/moderator",
+        },
         // "verify-user-email": {
         //   enabled: true,
         //   resolve: "./src/plugins/verify-user-email",

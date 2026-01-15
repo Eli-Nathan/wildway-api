@@ -15,8 +15,9 @@ const config = {
             path: "/comments",
             handler: "comment.create",
             config: {
+                auth: false,
                 middlewares: ["api::comment.populate-comments"],
-                policies: ["plugin::users-permissions.isAuthed", "global::set-owner"],
+                policies: ["global::firebase-authed", "global::set-owner"],
             },
         },
         {
@@ -24,8 +25,9 @@ const config = {
             path: "/comments/:id",
             handler: "comment.delete",
             config: {
+                auth: false,
                 middlewares: ["api::comment.populate-comments"],
-                policies: ["plugin::users-permissions.isAuthed", "global::is-owner"],
+                policies: ["global::firebase-authed", "global::is-owner"],
             },
         },
     ],

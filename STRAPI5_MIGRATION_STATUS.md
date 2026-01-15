@@ -47,11 +47,30 @@ Upgrading nomad-api from Strapi 4 + Node 18 to Strapi 5 + Node 20+.
 ### 9. Bootstrap Seeding
 - Added bootstrap in `src/index.ts` to create base user role (level 0) if missing
 
+### 10. Moderator Plugin Migration to Strapi 5
+- **React Router v6**: Migrated from `Switch`/`Route` to `Routes`/`Route` with `element` prop
+- **Helper Plugin Removal**: `@strapi/helper-plugin` deprecated in Strapi 5
+  - `request()` → `getFetchClient()` from `@strapi/strapi/admin`
+  - `LoadingIndicatorPage` → `Page.Loading` from `@strapi/strapi/admin`
+  - `ConfirmDialog` → `Dialog.Root/Content/etc` from `@strapi/design-system`
+  - `prefixPluginTranslations` → inline helper function
+- **Design System Updates**:
+  - Old import paths (`@strapi/design-system/Box`) → direct imports (`@strapi/design-system`)
+  - Icon imports updated (`@strapi/icons/Eye` → `@strapi/icons`)
+  - Tabs API changed to `Tabs.Root/List/Trigger/Content`
+- **ESM Migration**: Converted CommonJS to ES modules (`module.exports` → `export default`)
+- **JSX File Extensions**: Renamed `.js` files with JSX to `.jsx` for Vite compatibility
+- **Plugin enabled** in `config/plugins.ts`
+
 ## Current Status
 - User registration: **WORKING** (user created in DB)
 - User login (GET /auth-users/me): **WORKING** (200 response)
 - User profile page: **WORKING** (after manual email verification)
 - User routes API: **WORKING** - updated to use Firebase auth
+- Addition requests API: **WORKING** - updated to use Firebase auth
+- Edit requests API: **WORKING** - updated to use Firebase auth
+- Comments API: **WORKING** - updated to use Firebase auth
+- Moderator plugin: **BUILDS** - migrated to Strapi 5, needs testing
 - Email sending: Failing (Gmail credentials issue - not blocking)
 - verifyEmail endpoint: **Fixed** - converted to db.query
 
@@ -69,9 +88,11 @@ All routes that use authentication need:
 Updated so far:
 - `src/api/auth-user/routes/auth-user.ts` ✓
 - `src/api/user-route/routes/user-route.ts` ✓
+- `src/api/addition-request/routes/addition-request.ts` ✓
+- `src/api/edit-request/routes/edit-request.ts` ✓
+- `src/api/comment/routes/comment.ts` ✓
 
-May still need updating:
-- Other API routes that use `plugin::users-permissions.isAuthed`
+All authenticated routes now use Firebase auth.
 
 ## Files Modified
 ```
@@ -84,7 +105,22 @@ src/api/auth-user/routes/auth-user.ts           # Added auth: false to routes
 src/api/auth-user/controllers/auth-user.ts      # Fixed create() to use db.query
 src/api/auth-user/policies/set-user.ts          # Only pass valid fields
 src/api/auth-user/policies/is-user.ts           # Removed state.route check
+src/api/user-route/routes/user-route.ts         # Firebase auth for user routes (road trips)
+src/api/addition-request/routes/addition-request.ts  # Firebase auth for addition requests
+src/api/edit-request/routes/edit-request.ts     # Firebase auth for edit requests
+src/api/comment/routes/comment.ts               # Firebase auth for comments
 config/middlewares.ts                           # Added custom middlewares
+config/plugins.ts                               # Re-enabled moderator plugin
+
+# Moderator Plugin - Strapi 5 Migration
+src/plugins/moderator/strapi-admin.js           # ESM export
+src/plugins/moderator/admin/src/index.jsx       # Removed helper-plugin, added inline helpers
+src/plugins/moderator/admin/src/pluginId.js     # ESM export
+src/plugins/moderator/admin/src/pages/App/App.jsx        # React Router v6
+src/plugins/moderator/admin/src/pages/HomePage/HomePage.jsx  # New Dialog API, Layouts
+src/plugins/moderator/admin/src/components/RequestsTable/RequestsTable.jsx  # New Tabs API
+src/plugins/moderator/admin/src/components/PluginIcon/index.jsx  # Fixed icon import
+src/plugins/moderator/admin/src/utils/api.js    # getFetchClient instead of request
 ```
 
 ## Gotchas / Migration Patterns
@@ -143,12 +179,48 @@ Firebase Admin SDK returns `uid`, not `sub`. Normalize in middleware:
 const userSub = userData.uid || userData.sub;
 ```
 
+### 7. Plugin Admin Migration (helper-plugin removed)
+`@strapi/helper-plugin` is deprecated in Strapi 5. Replace with:
+```javascript
+// OLD
+import { request, LoadingIndicatorPage, ConfirmDialog } from "@strapi/helper-plugin";
+
+// NEW
+import { getFetchClient, Page, Layouts } from "@strapi/strapi/admin";
+import { Dialog } from "@strapi/design-system";
+
+// API requests
+const { get, post } = getFetchClient();
+const { data } = await get('/my-endpoint');
+
+// Loading page
+<Page.Loading />
+
+// Header
+<Layouts.Header title="..." />
+
+// Dialogs use compound components
+<Dialog.Root open={isOpen} onOpenChange={setIsOpen}>
+  <Dialog.Content>
+    <Dialog.Header>Title</Dialog.Header>
+    <Dialog.Body>Content</Dialog.Body>
+    <Dialog.Footer>
+      <Dialog.Cancel><Button>Cancel</Button></Dialog.Cancel>
+      <Dialog.Action><Button onClick={...}>Confirm</Button></Dialog.Action>
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
+```
+
+### 8. JSX Files for Vite
+Strapi 5 uses Vite. Files containing JSX should have `.jsx` extension, not `.js`.
+
 ## Next Steps
-1. **Test login flow** - Verify GET /auth-users/me now works after is-user policy fix
-2. **Test other endpoints** - Sites, user-routes, etc.
-3. **Fix other routes** - May need `auth: false` + `global::firebase-authed` on other API routes
-4. **Update remaining policies** - Check other policies for Strapi 5 compatibility
-5. **Email config** - Fix Gmail credentials if email notifications needed
+1. **Test moderator plugin** - Verify admin panel UI works and approve/reject flows
+2. **Test addition/edit request flows** - End-to-end testing with the app
+3. **Migrate remaining plugins** - verify-user-email and content-export-import if needed
+4. **Email config** - Fix Gmail credentials if email notifications needed
+5. **Production deployment** - Follow checklist below
 
 ## Production Deployment Checklist
 
@@ -195,4 +267,5 @@ Ensure production has:
 
 ## Known Issues
 - Email sending fails (Gmail auth) - non-blocking
+- **PUT /auth-users/edit-profile returns 404** - needs investigation (route exists, PUT works with curl but app reports 404)
 - Some routes may still need `auth: false` configuration

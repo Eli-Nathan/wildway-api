@@ -8,11 +8,10 @@ import {
 
 import RequestsTable from "../../components/RequestsTable";
 
-import { LoadingIndicatorPage, ConfirmDialog } from "@strapi/helper-plugin";
-import Check from "@strapi/icons/Check";
-
-import { Box } from "@strapi/design-system/Box";
-import { BaseHeaderLayout } from "@strapi/design-system/Layout";
+import { Page } from "@strapi/strapi/admin";
+import { Check } from "@strapi/icons";
+import { Box, Dialog, Button, Flex, Typography } from "@strapi/design-system";
+import { Layouts } from "@strapi/strapi/admin";
 
 const HomePage = () => {
   const requests = useRef({});
@@ -68,19 +67,22 @@ const HomePage = () => {
     setIsLoading(false);
   };
 
-  useEffect(async () => {
-    requests.current = await fetchAllRequests();
-    setIsLoading(false);
+  useEffect(() => {
+    const loadRequests = async () => {
+      requests.current = await fetchAllRequests();
+      setIsLoading(false);
+    };
+    loadRequests();
   }, []);
 
   if (isLoading) {
-    return <LoadingIndicatorPage />;
+    return <Page.Loading />;
   }
 
   return (
     <>
       <Box background="neutral100">
-        <BaseHeaderLayout
+        <Layouts.Header
           title="Moderator"
           subtitle="Moderate addition and edit requests"
           as="h2"
@@ -93,36 +95,54 @@ const HomePage = () => {
         approveRequest={confirmApprove}
         initialSelectedTabIndex={initialSelectedTabIndex}
       />
-      <ConfirmDialog
-        bodyText={{
-          id: "reject-confirm",
-          defaultMessage: "This will reject this request",
-        }}
-        iconRightButton={<Check />}
-        isConfirmButtonLoading={false}
-        isOpen={isConfirmRejectDialogOpen}
-        onToggleDialog={() => {
+
+      <Dialog.Root open={isConfirmRejectDialogOpen} onOpenChange={(open) => {
+        if (!open) {
           setRejectItem({});
-          setIsConfirmRejectDialogOpen(!isConfirmRejectDialogOpen);
-        }}
-        onConfirm={reject}
-        variantRightButton="success-light"
-      />
-      <ConfirmDialog
-        bodyText={{
-          id: "approve-confirm",
-          defaultMessage: "This will approve this request",
-        }}
-        iconRightButton={<Check />}
-        isConfirmButtonLoading={false}
-        isOpen={isConfirmApproveDialogOpen}
-        onToggleDialog={() => {
+        }
+        setIsConfirmRejectDialogOpen(open);
+      }}>
+        <Dialog.Content>
+          <Dialog.Header>Confirm Rejection</Dialog.Header>
+          <Dialog.Body>
+            <Typography>This will reject this request</Typography>
+          </Dialog.Body>
+          <Dialog.Footer>
+            <Dialog.Cancel>
+              <Button variant="tertiary">Cancel</Button>
+            </Dialog.Cancel>
+            <Dialog.Action>
+              <Button variant="success-light" startIcon={<Check />} onClick={reject}>
+                Confirm
+              </Button>
+            </Dialog.Action>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog.Root>
+
+      <Dialog.Root open={isConfirmApproveDialogOpen} onOpenChange={(open) => {
+        if (!open) {
           setApproveItem({});
-          setIsConfirmApproveDialogOpen(!isConfirmApproveDialogOpen);
-        }}
-        onConfirm={approve}
-        variantRightButton="success-light"
-      />
+        }
+        setIsConfirmApproveDialogOpen(open);
+      }}>
+        <Dialog.Content>
+          <Dialog.Header>Confirm Approval</Dialog.Header>
+          <Dialog.Body>
+            <Typography>This will approve this request</Typography>
+          </Dialog.Body>
+          <Dialog.Footer>
+            <Dialog.Cancel>
+              <Button variant="tertiary">Cancel</Button>
+            </Dialog.Cancel>
+            <Dialog.Action>
+              <Button variant="success-light" startIcon={<Check />} onClick={approve}>
+                Confirm
+              </Button>
+            </Dialog.Action>
+          </Dialog.Footer>
+        </Dialog.Content>
+      </Dialog.Root>
     </>
   );
 };
