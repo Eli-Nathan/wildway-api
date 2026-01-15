@@ -508,5 +508,28 @@ export default factories.createCoreController(
       // Return in Strapi 4 format
       return { data: formatStrapi4Response(route), meta: {} };
     },
+
+    async delete(ctx: StrapiContext) {
+      // First get the route to verify ownership and get documentId
+      const existingRoute = await strapi.db.query("api::user-route.user-route").findOne({
+        where: {
+          id: ctx.params.id,
+          owner: ctx.state.user.id,
+        },
+        select: ["id", "documentId"],
+      });
+
+      if (!existingRoute) {
+        ctx.status = 404;
+        return { status: 404, message: "Route not found" };
+      }
+
+      // Use Document Service to delete
+      await strapi.documents("api::user-route.user-route").delete({
+        documentId: existingRoute.documentId,
+      });
+
+      return { data: { id: existingRoute.id }, meta: {} };
+    },
   })
 );
