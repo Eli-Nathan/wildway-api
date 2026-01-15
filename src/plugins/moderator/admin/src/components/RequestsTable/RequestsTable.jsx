@@ -46,7 +46,7 @@ const TabContent = ({
               <Tr key={item.id}>
                 <Td>
                   <Typography textColor="neutral800">
-                    {item.title || item.site.title}
+                    {item.title || item.site?.title || 'Untitled'}
                   </Typography>
                 </Td>
                 <Td>
