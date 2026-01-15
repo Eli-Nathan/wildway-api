@@ -37,6 +37,23 @@ const transformToStrapi4Format = (data: unknown): unknown => {
 };
 
 /**
+ * Check if an object is a Strapi entity (relation) vs a component
+ * In Strapi 5:
+ * - Entities/Relations have both `id` AND `documentId`
+ * - Components have `id` but NO `documentId`
+ */
+const isEntity = (obj: Record<string, unknown>): boolean => {
+  return "id" in obj && "documentId" in obj;
+};
+
+/**
+ * Check if an object is a Strapi 5 component (has id but no documentId)
+ */
+const isComponent = (obj: Record<string, unknown>): boolean => {
+  return "id" in obj && !("documentId" in obj);
+};
+
+/**
  * Transform nested object fields (for components and relations)
  * This handles relations inside components that need { data: {...} } wrapping
  */
@@ -48,11 +65,15 @@ const transformNestedFields = (obj: Record<string, unknown>): Record<string, unk
       if (Array.isArray(value)) {
         // Array: check if it's an array of entities or components
         if (value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
-          if ("id" in value[0]) {
+          const firstItem = value[0] as Record<string, unknown>;
+          if (isEntity(firstItem)) {
             // Array of entities - transform each item
             transformed[key] = value.map((v) => transformSingleItem(v));
+          } else if (isComponent(firstItem)) {
+            // Array of components - transform their nested fields but don't wrap
+            transformed[key] = value.map((v) => transformComponentFields(v as Record<string, unknown>));
           } else {
-            // Array of components or primitives - recursively transform
+            // Array of other objects - recursively transform
             transformed[key] = value.map((v) =>
               typeof v === "object" && v !== null
                 ? transformNestedFields(v as Record<string, unknown>)
@@ -62,13 +83,64 @@ const transformNestedFields = (obj: Record<string, unknown>): Record<string, unk
         } else {
           transformed[key] = value;
         }
-      } else if ("id" in (value as Record<string, unknown>)) {
-        // Single relation (has id): wrap in { data: {...} }
+      } else if (isEntity(value as Record<string, unknown>)) {
+        // Entity/Relation (has id AND documentId): wrap in { data: {...} }
         transformed[key] = {
           data: transformSingleItem(value),
         };
+      } else if (isComponent(value as Record<string, unknown>)) {
+        // Component (has id but no documentId): transform nested fields but DON'T wrap in { data }
+        transformed[key] = transformComponentFields(value as Record<string, unknown>);
       } else {
-        // Component (no id): recursively transform its fields for nested relations
+        // Other object (no id): recursively transform its fields
+        transformed[key] = transformNestedFields(value as Record<string, unknown>);
+      }
+    } else {
+      transformed[key] = value;
+    }
+  }
+
+  return transformed;
+};
+
+/**
+ * Transform a component's fields - similar to transformNestedFields but preserves component structure
+ * Components in Strapi 5 have an `id` but should NOT be wrapped in { data: { id, attributes } }
+ */
+const transformComponentFields = (component: Record<string, unknown>): Record<string, unknown> => {
+  const transformed: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(component)) {
+    if (key === "id") {
+      // Keep component id as-is (frontend might use it)
+      transformed[key] = value;
+    } else if (value && typeof value === "object") {
+      if (Array.isArray(value)) {
+        if (value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
+          const firstItem = value[0] as Record<string, unknown>;
+          if (isEntity(firstItem)) {
+            transformed[key] = value.map((v) => transformSingleItem(v));
+          } else if (isComponent(firstItem)) {
+            transformed[key] = value.map((v) => transformComponentFields(v as Record<string, unknown>));
+          } else {
+            transformed[key] = value.map((v) =>
+              typeof v === "object" && v !== null
+                ? transformNestedFields(v as Record<string, unknown>)
+                : v
+            );
+          }
+        } else {
+          transformed[key] = value;
+        }
+      } else if (isEntity(value as Record<string, unknown>)) {
+        // Relation inside component: wrap in { data: {...} }
+        transformed[key] = {
+          data: transformSingleItem(value),
+        };
+      } else if (isComponent(value as Record<string, unknown>)) {
+        // Nested component: transform but don't wrap
+        transformed[key] = transformComponentFields(value as Record<string, unknown>);
+      } else {
         transformed[key] = transformNestedFields(value as Record<string, unknown>);
       }
     } else {
@@ -91,11 +163,17 @@ const transformSingleItem = (item: unknown): unknown => {
     return obj;
   }
 
-  // If it doesn't have an id, it's a component - transform its nested fields
+  // If it's a component (has id but no documentId), transform its fields but don't wrap
+  if (isComponent(obj)) {
+    return transformComponentFields(obj);
+  }
+
+  // If it doesn't have an id at all, just transform nested fields
   if (!("id" in obj)) {
     return transformNestedFields(obj);
   }
 
+  // It's an entity (has id, and either has documentId or we treat it as entity)
   // Extract id and documentId, put everything else in attributes
   const { id, documentId, ...attributes } = obj;
 
