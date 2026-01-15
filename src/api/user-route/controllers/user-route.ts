@@ -284,18 +284,27 @@ export default factories.createCoreController(
           return { site: null, custom: siteItem.custom };
         });
 
-        logger.info("user-route create: Cleaned sites:", JSON.stringify(cleanedSites));
+        logger.info("user-route create: Cleaned sites: " + JSON.stringify(cleanedSites));
+
+        // Ensure owner is just an ID
+        const ownerId = typeof ctx.state.user.id === 'object'
+          ? (ctx.state.user.id as any).id || ctx.state.user.id
+          : ctx.state.user.id;
+        logger.info("user-route create: Owner ID: " + ownerId + " (type: " + typeof ownerId + ")");
+
+        const createData = {
+          name: requestData.name,
+          public: requestData.public || false,
+          mode: requestData.mode,
+          polyline: polyline || undefined,
+          sites: cleanedSites,
+          owner: ownerId,
+        };
+        logger.info("user-route create: Full create data: " + JSON.stringify(createData));
 
         // Use db.query directly (accepts simple IDs for relations)
         const route = await strapi.db.query("api::user-route.user-route").create({
-          data: {
-            name: requestData.name,
-            public: requestData.public || false,
-            mode: requestData.mode,
-            polyline: polyline || undefined,
-            sites: cleanedSites,
-            owner: ctx.state.user.id,
-          },
+          data: createData,
         });
 
         if (!polyline) {
