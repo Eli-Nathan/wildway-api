@@ -89,28 +89,40 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
         };
     },
     async findOne(ctx) {
-        // @ts-expect-error - Strapi core controller method
-        const site = await super.findOne(ctx);
-        if (site) {
-            const siteWithUsers = await strapi.db.query("api::site.site").findOne({
-                where: { id: ctx.params.id },
-                populate: {
-                    images: true,
-                    likes: true,
-                    owners: {
-                        populate: { profile_pic: true },
-                    },
-                    added_by: {
-                        populate: { profile_pic: true },
-                    },
-                    contributors: {
-                        populate: { profile_pic: true },
-                    },
+        // Strapi 5: Use db.query directly
+        const siteData = await strapi.db.query("api::site.site").findOne({
+            where: { id: ctx.params.id },
+            populate: {
+                type: true,
+                comments: true,
+                owners: {
+                    populate: { profile_pic: true },
                 },
-            });
-            // @ts-expect-error - Custom method
-            return this.parseSingleSite(ctx, site, siteWithUsers);
+                facilities: true,
+                sub_types: true,
+                images: true,
+                likes: true,
+                added_by: {
+                    populate: { profile_pic: true },
+                },
+                contributors: {
+                    populate: { profile_pic: true },
+                },
+            },
+        });
+        if (!siteData) {
+            return { data: null };
         }
+        // Format as Strapi 4 response for parseSingleSite
+        const { id, documentId, ...attributes } = siteData;
+        const site = {
+            data: {
+                id,
+                attributes,
+            },
+        };
+        // @ts-expect-error - Custom method
+        return this.parseSingleSite(ctx, site, siteData, false);
     },
     async findOneByUID(ctx) {
         const site = await strapi.db.query("api::site.site").findOne({
