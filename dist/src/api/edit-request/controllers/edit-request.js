@@ -68,10 +68,11 @@ exports.default = strapi_1.factories.createCoreController("api::edit-request.edi
         });
         await (0, slack_1.sendEntryToSlack)({ data: edit }, "editRequest", ctx);
         // Return in Strapi 4 format
+        const { id, documentId, ...attributes } = edit;
         return {
             data: {
-                id: edit.id,
-                attributes: edit,
+                id,
+                attributes,
             },
             meta: {},
         };

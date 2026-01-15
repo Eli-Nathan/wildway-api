@@ -410,9 +410,26 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
             updateData.polyline = polyline;
         logger_1.default.info("user-route update: documentId:", existingRoute.documentId, "data:", JSON.stringify(updateData));
         // Use Document Service API for Strapi 5 - handles components with relations properly
-        const route = await strapi.documents("api::user-route.user-route").update({
+        const updatedRoute = await strapi.documents("api::user-route.user-route").update({
             documentId: existingRoute.documentId,
             data: updateData,
+        });
+        // Fetch the full route with sites populated for the response
+        const route = await strapi.db.query("api::user-route.user-route").findOne({
+            where: { id: updatedRoute.id },
+            populate: {
+                image: true,
+                sites: {
+                    populate: {
+                        site: {
+                            populate: {
+                                type: true,
+                                images: true,
+                            },
+                        },
+                    },
+                },
+            },
         });
         // Return in Strapi 4 format
         return { data: formatStrapi4Response(route), meta: {} };

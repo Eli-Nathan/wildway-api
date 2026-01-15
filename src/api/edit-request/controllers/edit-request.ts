@@ -115,10 +115,11 @@ export default factories.createCoreController(
       });
       await sendEntryToSlack({ data: edit }, "editRequest", ctx);
       // Return in Strapi 4 format
+      const { id, documentId, ...attributes } = edit;
       return {
         data: {
-          id: edit.id,
-          attributes: edit,
+          id,
+          attributes,
         },
         meta: {},
       };
