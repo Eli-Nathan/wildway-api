@@ -227,7 +227,9 @@ export default factories.createCoreController(
         };
       }
 
-      const sitesAsWaypoints = (ctx.request.body.data.sites || []).map(
+      const requestData = ctx.request.body.data;
+
+      const sitesAsWaypoints = (requestData.sites || []).map(
         (site) => {
           if (site.custom) {
             return {
@@ -256,39 +258,45 @@ export default factories.createCoreController(
         waypoints,
         origin,
         destination,
-        mode: ctx.request?.body?.data?.mode,
+        mode: requestData.mode,
       });
-      if (polyline) {
-        ctx.request.body.data.polyline = polyline;
-      }
 
-      // Strapi 5: Transform sites to proper format
-      // - Remove lat/lng (not in schema, only used for polyline generation above)
-      // - Transform site relation to connect syntax
-      if (ctx.request.body.data.sites) {
-        ctx.request.body.data.sites = ctx.request.body.data.sites.map((site) => {
-          if (site.site) {
-            // Site reference: transform to connect syntax, remove lat/lng
-            return {
-              site: { connect: [{ id: site.site }] },
-            };
-          }
-          // Custom site: just keep the custom field
-          return { custom: site.custom };
-        });
-      }
+      // Strapi 5: Clean sites data for db.query
+      // - Remove lat/lng (not in component schema, only used for polyline above)
+      // - Keep site relation as simple ID (db.query accepts this)
+      const cleanedSites = (requestData.sites || []).map((site) => {
+        if (site.site) {
+          // Site reference: just keep the site ID
+          return { site: site.site };
+        }
+        // Custom site: just keep the custom field
+        return { custom: site.custom };
+      });
 
-      // @ts-expect-error - Strapi core controller method
-      const route = await super.create(ctx);
-      // @ts-expect-error - Strapi core controller method
-      const sanitized = await this.sanitizeOutput(route, ctx);
+      // Use db.query directly (accepts simple IDs for relations)
+      const route = await strapi.db.query("api::user-route.user-route").create({
+        data: {
+          name: requestData.name,
+          public: requestData.public || false,
+          mode: requestData.mode,
+          polyline: polyline || undefined,
+          sites: cleanedSites,
+          owner: ctx.state.user.id,
+        },
+      });
+
       if (!polyline) {
-        logger.warn(
-          "No polyline generated when creating route:",
-          sanitized?.data?.id
-        );
+        logger.warn("No polyline generated when creating route:", route?.id);
       }
-      return sanitized;
+
+      // Return in Strapi 4 format
+      return {
+        data: {
+          id: route.id,
+          attributes: route,
+        },
+        meta: {},
+      };
     },
 
     async update(ctx: StrapiContext) {
@@ -304,12 +312,17 @@ export default factories.createCoreController(
         },
       })) as ExistingRoute;
 
+      const requestData = ctx.request.body?.data;
+      if (!requestData) {
+        return { status: 400, message: "Bad request" };
+      }
+
       const sitesHaveChanged = !checkIfPlacesMatch(
         existingRoute.sites,
-        ctx.request.body?.data?.sites || []
+        requestData.sites || []
       );
 
-      const sitesAsWaypoints = (ctx.request.body?.data?.sites || []).map(
+      const sitesAsWaypoints = (requestData.sites || []).map(
         (site) => {
           if (site.custom) {
             return {
@@ -324,9 +337,10 @@ export default factories.createCoreController(
         }
       );
 
+      let polyline: string | undefined;
       if (
         sitesHaveChanged ||
-        existingRoute.mode !== ctx.request?.body?.data?.mode
+        existingRoute.mode !== requestData.mode
       ) {
         const waypointsWithoutFirstAndLast = [...sitesAsWaypoints].filter(
           (_f, i) => i !== 0 && i !== sitesAsWaypoints.length - 1
@@ -338,41 +352,47 @@ export default factories.createCoreController(
         const origin = sitesAsWaypoints?.[0];
         const destination = sitesAsWaypoints?.[sitesAsWaypoints.length - 1];
 
-        const polyline = await generatePolyline({
+        polyline = await generatePolyline({
           waypoints,
           origin,
           destination,
-          mode: ctx.request?.body?.data?.mode,
+          mode: requestData.mode,
         });
-        if (polyline && ctx.request.body?.data) {
-          ctx.request.body.data.polyline = polyline;
-        } else {
-          logger.warn(
-            `No polyline generated when updating route: ${ctx.params.id}`
-          );
+        if (!polyline) {
+          logger.warn(`No polyline generated when updating route: ${ctx.params.id}`);
         }
       }
 
-      // Strapi 5: Transform sites to proper format
-      // - Remove lat/lng (not in schema, only used for polyline generation above)
-      // - Transform site relation to connect syntax
-      if (ctx.request.body?.data?.sites) {
-        ctx.request.body.data.sites = ctx.request.body.data.sites.map((site) => {
-          if (site.site) {
-            // Site reference: transform to connect syntax, remove lat/lng
-            return {
-              site: { connect: [{ id: site.site }] },
-            };
-          }
-          // Custom site: just keep the custom field
-          return { custom: site.custom };
-        });
-      }
+      // Strapi 5: Clean sites data for db.query
+      const cleanedSites = (requestData.sites || []).map((site) => {
+        if (site.site) {
+          return { site: site.site };
+        }
+        return { custom: site.custom };
+      });
 
-      // @ts-expect-error - Strapi core controller method
-      const route = await super.update(ctx);
-      // @ts-expect-error - Strapi core controller method
-      return await this.sanitizeOutput(route, ctx);
+      // Build update data
+      const updateData: Record<string, unknown> = {};
+      if (requestData.name !== undefined) updateData.name = requestData.name;
+      if (requestData.public !== undefined) updateData.public = requestData.public;
+      if (requestData.mode !== undefined) updateData.mode = requestData.mode;
+      if (requestData.sites !== undefined) updateData.sites = cleanedSites;
+      if (polyline) updateData.polyline = polyline;
+
+      // Use db.query directly
+      const route = await strapi.db.query("api::user-route.user-route").update({
+        where: { id: ctx.params.id },
+        data: updateData,
+      });
+
+      // Return in Strapi 4 format
+      return {
+        data: {
+          id: route.id,
+          attributes: route,
+        },
+        meta: {},
+      };
     },
   })
 );

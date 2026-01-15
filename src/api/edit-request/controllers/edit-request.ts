@@ -60,28 +60,6 @@ const getEditableFieldsFromSite = (siteData: SiteData): SiteData => {
   };
 };
 
-/**
- * Strapi 5: Transform request data for compatibility
- * - Transform relations to connect syntax
- */
-const transformEditRequestData = (data: Record<string, unknown>): Record<string, unknown> => {
-  const transformed = { ...data };
-
-  // Transform single relation: site
-  if (typeof transformed.site === "number") {
-    transformed.site = { connect: [{ id: transformed.site }] };
-  }
-
-  // Transform array relation: facilities
-  if (Array.isArray(transformed.facilities)) {
-    transformed.facilities = {
-      connect: transformed.facilities.map((id) => ({ id })),
-    };
-  }
-
-  return transformed;
-};
-
 export default factories.createCoreController(
   "api::edit-request.edit-request",
   ({ strapi }) => ({
@@ -124,14 +102,26 @@ export default factories.createCoreController(
         }
       }
 
-      // Strapi 5: Transform request data before super.create()
-      ctx.request.body.data = transformEditRequestData(ctx.request.body.data);
-
-      // @ts-expect-error - Strapi core controller method
-      const edit = await super.create(ctx);
-      await sendEntryToSlack(edit, "editRequest", ctx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(edit, ctx);
+      // Strapi 5: Use db.query directly (accepts simple IDs for relations)
+      const requestData = ctx.request.body.data;
+      const edit = await strapi.db.query("api::edit-request.edit-request").create({
+        data: {
+          site: requestData.site,
+          data: requestData.data,
+          images: requestData.images,
+          facilities: requestData.facilities,
+          owner: ctx.state.user?.id,
+        },
+      });
+      await sendEntryToSlack({ data: edit }, "editRequest", ctx);
+      // Return in Strapi 4 format
+      return {
+        data: {
+          id: edit.id,
+          attributes: edit,
+        },
+        meta: {},
+      };
     },
   })
 );

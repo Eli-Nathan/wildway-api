@@ -29,39 +29,20 @@ interface StrapiContext {
 }
 
 /**
- * Strapi 5: Transform request data for compatibility
+ * Strapi 5: Clean request data for db.query compatibility
  * - Remove fields not in schema (location)
- * - Transform relations to connect syntax
+ * - Keep relations as simple IDs (db.query accepts this format)
  */
-const transformRequestData = (data: Record<string, unknown>): Record<string, unknown> => {
-  const transformed = { ...data };
+const cleanRequestData = (data: Record<string, unknown>): Record<string, unknown> => {
+  const cleaned = { ...data };
 
   // Remove location (not in schema - frontend sends it but we only need lat/lng)
-  delete transformed.location;
+  delete cleaned.location;
 
-  // Transform single relation: type
-  if (typeof transformed.type === "number") {
-    transformed.type = { connect: [{ id: transformed.type }] };
-  }
+  // Remove addingBusiness flag (not in schema, only used for logic)
+  delete cleaned.addingBusiness;
 
-  // Transform array relations: facilities, sub_types, potential_duplicates
-  if (Array.isArray(transformed.facilities)) {
-    transformed.facilities = {
-      connect: transformed.facilities.map((id) => ({ id })),
-    };
-  }
-  if (Array.isArray(transformed.sub_types)) {
-    transformed.sub_types = {
-      connect: transformed.sub_types.map((id) => ({ id })),
-    };
-  }
-  if (Array.isArray(transformed.potential_duplicates)) {
-    transformed.potential_duplicates = {
-      connect: transformed.potential_duplicates.map((id) => ({ id })),
-    };
-  }
-
-  return transformed;
+  return cleaned;
 };
 
 export default factories.createCoreController(
@@ -69,18 +50,18 @@ export default factories.createCoreController(
   ({ strapi }) => ({
     async create(ctx: StrapiContext) {
       if (ctx.state.user) {
-        // Strapi 5: Transform request data
-        ctx.request.body.data = transformRequestData(ctx.request.body.data);
+        const requestData = ctx.request.body.data;
 
         if (
-          ctx.request.body.data.addingBusiness &&
+          requestData.addingBusiness &&
           ctx.state.user.role &&
           ctx.state.user.role.level > 0 &&
           (ctx.state.user.siteCount || 0) < (ctx.state.user.maxSites || 0)
         ) {
+          const cleanedData = cleanRequestData(requestData);
           const newSite = await strapi.db.query(`api::site.site`).create({
             data: {
-              ...ctx.request.body.data,
+              ...cleanedData,
               owners: [ctx.state.user.id],
             },
           });
@@ -94,11 +75,23 @@ export default factories.createCoreController(
             },
           };
         } else {
-          // @ts-expect-error - Strapi core controller method
-          const addition = await super.create(ctx);
-          await sendEntryToSlack(addition, "additionRequest", ctx);
-          // @ts-expect-error - Strapi core controller method
-          return this.sanitizeOutput(addition, ctx);
+          // Strapi 5: Use db.query directly (accepts simple IDs for relations)
+          const cleanedData = cleanRequestData(requestData);
+          const addition = await strapi.db.query("api::addition-request.addition-request").create({
+            data: {
+              ...cleanedData,
+              owner: ctx.state.user.id,
+            },
+          });
+          await sendEntryToSlack({ data: addition }, "additionRequest", ctx);
+          // Return in Strapi 4 format
+          return {
+            data: {
+              id: addition.id,
+              attributes: addition,
+            },
+            meta: {},
+          };
         }
       }
     },
