@@ -114,7 +114,7 @@ exports.default = strapi_1.factories.createCoreController("api::edit-request.edi
         }
         // Strapi 5: Use db.query directly (accepts simple IDs for relations)
         const requestData = ctx.request.body.data;
-        const edit = await strapi.db.query("api::edit-request.edit-request").create({
+        const createdEdit = await strapi.db.query("api::edit-request.edit-request").create({
             data: {
                 site: requestData.site,
                 data: requestData.data,
@@ -123,9 +123,20 @@ exports.default = strapi_1.factories.createCoreController("api::edit-request.edi
                 owner: (_b = ctx.state.user) === null || _b === void 0 ? void 0 : _b.id,
             },
         });
-        await (0, slack_1.sendEntryToSlack)({ data: edit }, "editRequest", ctx);
-        // Return in Strapi 4 format
+        await (0, slack_1.sendEntryToSlack)({ data: createdEdit }, "editRequest", ctx);
+        // Fetch with site populated for the response
+        const edit = await strapi.db.query("api::edit-request.edit-request").findOne({
+            where: { id: createdEdit.id },
+            populate: {
+                site: true,
+                owner: true,
+            },
+        });
+        // Return in Strapi 4 format with site relation formatted
         const { id, documentId, ...attributes } = edit;
+        if (attributes.site) {
+            attributes.site = formatRelation(attributes.site);
+        }
         return {
             data: {
                 id,
