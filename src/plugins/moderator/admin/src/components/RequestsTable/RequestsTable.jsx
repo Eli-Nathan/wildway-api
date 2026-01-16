@@ -64,7 +64,7 @@ const TabContent = ({
                 <Td>
                   <Flex justifyContent="right" alignItems="right">
                     <LinkButton
-                      to={`/content-manager/collectionType/api::${name}.${name}/${item.id}`}
+                      to={`/content-manager/collection-types/api::${name}.${name}/${item.documentId}`}
                       style={{ marginRight: 12 }}
                       startIcon={<Eye />}
                     >
