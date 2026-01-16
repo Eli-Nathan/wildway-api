@@ -80,5 +80,33 @@ export default {
       });
       strapi.log.info("Base user role created");
     }
+
+    // Ensure upload permissions are enabled for authenticated users
+    const authenticatedRole = await strapi.db
+      .query("plugin::users-permissions.role")
+      .findOne({ where: { type: "authenticated" } });
+
+    if (authenticatedRole) {
+      // Check if upload permission exists
+      const uploadPermission = await strapi.db
+        .query("plugin::users-permissions.permission")
+        .findOne({
+          where: {
+            role: authenticatedRole.id,
+            action: "plugin::upload.content-api.upload",
+          },
+        });
+
+      if (!uploadPermission) {
+        strapi.log.info("Enabling upload permission for authenticated users...");
+        await strapi.db.query("plugin::users-permissions.permission").create({
+          data: {
+            action: "plugin::upload.content-api.upload",
+            role: authenticatedRole.id,
+          },
+        });
+        strapi.log.info("Upload permission enabled");
+      }
+    }
   },
 };
