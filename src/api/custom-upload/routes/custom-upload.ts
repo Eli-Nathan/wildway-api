@@ -5,7 +5,9 @@ export default {
       path: "/custom-upload",
       handler: "custom-upload.upload",
       config: {
-        policies: ["global::firebase-authed"],
+        // No policies - auth handled directly in controller
+        policies: [],
+        auth: false, // Disable Strapi's default auth
       },
     },
   ],

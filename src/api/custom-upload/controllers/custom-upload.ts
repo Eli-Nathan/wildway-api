@@ -1,9 +1,38 @@
 // Custom upload controller that uses Firebase authentication
+import { getAuth } from "firebase-admin/auth";
+
 export default {
   async upload(ctx) {
-    // User is already verified by firebase-authed policy
-    if (!ctx.state.user) {
-      return ctx.unauthorized("You must be logged in to upload files");
+    // Verify Firebase token directly in controller
+    const authHeader = ctx.request?.header?.authorization;
+
+    strapi.log.info("custom-upload: authHeader exists =", !!authHeader);
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return ctx.unauthorized("Missing or invalid credentials");
+    }
+
+    try {
+      const token = authHeader.replace("Bearer ", "");
+      const userData = await getAuth().verifyIdToken(token);
+      strapi.log.info("custom-upload: Token verified for user:", userData.email);
+
+      // Find user in database
+      const nomadUser = await strapi.db
+        .query("api::auth-user.auth-user")
+        .findOne({
+          where: { user_id: userData.uid },
+        });
+
+      if (!nomadUser) {
+        strapi.log.warn("custom-upload: User not found in DB for uid:", userData.uid);
+        return ctx.unauthorized("User not found");
+      }
+
+      strapi.log.info("custom-upload: User verified:", nomadUser.email);
+    } catch (error) {
+      strapi.log.error("custom-upload: Auth error:", error);
+      return ctx.unauthorized("Invalid token");
     }
 
     // Get the upload service
@@ -11,6 +40,8 @@ export default {
 
     // Get files from the request
     const { files } = ctx.request;
+
+    strapi.log.info("custom-upload: files =", Object.keys(files || {}));
 
     if (!files || !files.files) {
       return ctx.badRequest("No files provided");
