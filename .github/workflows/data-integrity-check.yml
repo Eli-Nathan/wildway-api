@@ -1,0 +1,46 @@
+name: Data Integrity Check
+
+on:
+  schedule:
+    # Run daily at 8am UTC
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  check-sites-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query sites endpoint
+        id: check
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            'https://nomadapp-api.herokuapp.com/api/sites?filters%5B$and%5D%5B0%5D%5Blat%5D%5B$gt%5D=49.21777449353679&filters%5B$and%5D%5B1%5D%5Blat%5D%5B$lt%5D=60.46612180338125&filters%5B$and%5D%5B2%5D%5Blng%5D%5B$gt%5D=-8.27952928841114&filters%5B$and%5D%5B3%5D%5Blng%5D%5B$lt%5D=1.7966213822364807&sort=priority:DESC&pagination%5Blimit%5D=45' \
+            -H 'Accept: application/json')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ API returned non-200 status: $HTTP_CODE"
+            exit 1
+          fi
+
+          # Count results in the data array
+          COUNT=$(echo "$BODY" | jq '.data | length')
+          echo "Sites returned: $COUNT"
+
+          if [ "$COUNT" -lt 1 ]; then
+            echo "❌ Data integrity check FAILED - no sites returned!"
+            exit 1
+          fi
+
+          echo "✅ Data integrity check passed - $COUNT sites found"
+
+      - name: Send Slack alert on failure
+        if: failure()
+        run: |
+          curl -X POST '${{ secrets.SLACK_WEBHOOK_URL }}' \
+            -H 'Content-Type: application/json' \
+            -d '{"text":"🚨 *Data integrity check FAILED!*\nPossible data loss on Wildway API.\n\n<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>"}'
