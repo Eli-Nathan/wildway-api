@@ -236,7 +236,7 @@ export default factories.createCoreController(
         dataToUpdate.name = requestData.name;
       }
       if (requestData.profilePic) {
-        dataToUpdate.profile_pic = requestData.profilePic;
+        dataToUpdate.profile_pic = { set: [requestData.profilePic] };
       }
       if (requestData.businessName) {
         dataToUpdate.businessName = requestData.businessName;
