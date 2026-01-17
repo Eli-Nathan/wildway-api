@@ -194,75 +194,93 @@ export default factories.createCoreController(
     },
 
     async findPublic(ctx: StrapiContext) {
-      if (!ctx.query) {
-        ctx.query = {};
-      }
-      if (!ctx.query.filters) {
-        ctx.query.filters = {};
-      }
-      // Strapi 5: Use object notation for populate
-      const existingPopulate = ctx.query.populate || {};
-      ctx.query.populate = typeof existingPopulate === "object" && !Array.isArray(existingPopulate)
-        ? {
-            ...existingPopulate,
-            image: true,
-            owner: {
-              populate: {
-                profile_pic: true,
+      // Strapi 5: Use db.query directly for better control
+      const routes = await strapi.db.query("api::user-route.user-route").findMany({
+        where: {
+          public: true,
+        },
+        populate: {
+          image: true,
+          sites: {
+            populate: {
+              site: {
+                populate: {
+                  type: true,
+                  images: true,
+                },
               },
             },
-          }
-        : {
-            image: true,
-            owner: {
-              populate: {
-                profile_pic: true,
-              },
+          },
+          owner: {
+            populate: {
+              profile_pic: true,
             },
-          };
-      ctx.query.filters.public = true;
-      // @ts-expect-error - Strapi core controller method
-      const routes = await super.find(ctx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(routes, ctx);
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Return in Strapi 4 format
+      return {
+        data: routes.map((route) => formatStrapi4Response(route)),
+        meta: {
+          pagination: {
+            page: 1,
+            pageSize: routes.length,
+            pageCount: 1,
+            total: routes.length,
+          },
+        },
+      };
     },
 
     async findRoutesByUserId(ctx: StrapiContext) {
-      if (!ctx.query) {
-        ctx.query = {};
-      }
-      if (!ctx.query.filters) {
-        ctx.query.filters = {};
-      }
-      // Strapi 5: Use object notation for populate
-      const existingPopulate = ctx.query.populate || {};
-      ctx.query.populate = typeof existingPopulate === "object" && !Array.isArray(existingPopulate)
-        ? {
-            ...existingPopulate,
-            image: true,
-            owner: {
-              populate: {
-                profile_pic: true,
-              },
-            },
-          }
-        : {
-            image: true,
-            owner: {
-              populate: {
-                profile_pic: true,
-              },
-            },
-          };
       const isOwner = Number(ctx.state.user.id) === Number(ctx.params.id);
+
+      // Build where clause
+      const where: Record<string, unknown> = {
+        owner: Number(ctx.params.id),
+      };
       if (!isOwner) {
-        ctx.query.filters.public = true;
+        where.public = true;
       }
-      ctx.query.filters.owner = Number(ctx.params.id);
-      // @ts-expect-error - Strapi core controller method
-      const routes = await super.find(ctx);
-      // @ts-expect-error - Strapi core controller method
-      return this.sanitizeOutput(routes, ctx);
+
+      // Strapi 5: Use db.query directly for better control
+      const routes = await strapi.db.query("api::user-route.user-route").findMany({
+        where,
+        populate: {
+          image: true,
+          sites: {
+            populate: {
+              site: {
+                populate: {
+                  type: true,
+                  images: true,
+                },
+              },
+            },
+          },
+          owner: {
+            populate: {
+              profile_pic: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Return in Strapi 4 format
+      return {
+        data: routes.map((route) => formatStrapi4Response(route)),
+        meta: {
+          pagination: {
+            page: 1,
+            pageSize: routes.length,
+            pageCount: 1,
+            total: routes.length,
+          },
+        },
+      };
     },
 
     async findOnePublic(ctx: StrapiContext) {
