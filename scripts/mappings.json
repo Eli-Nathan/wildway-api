@@ -1,0 +1,55 @@
+{
+  "_comment": "Map source data values to Strapi entity IDs. Update IDs from your Strapi admin.",
+  "_instructions": "Run 'node scripts/fetch-mappings.js' to auto-populate from Strapi",
+
+  "siteTypes": {
+    "_comment": "Maps type strings to site-type IDs in Strapi",
+    "camping": 1,
+    "overnight_parking": 19,
+    "parking": 19,
+    "campsites": 1,
+    "camp_site": 1,
+    "caravan_site": 1,
+    "campervans": 1,
+    "parking": 2,
+    "mountains": 3,
+    "peak": 3,
+    "munro": 3,
+    "beach": 4,
+    "beaches": 4,
+    "loch": 5,
+    "lochs": 5,
+    "lake": 5,
+    "ev_charging": 6,
+    "charging_station": 6,
+    "fuel": 7,
+    "historic": 8,
+    "castle": 8,
+    "monument": 8,
+    "ruins": 8,
+    "viewpoint": 9,
+    "viewpoints": 9
+  },
+
+  "facilities": {
+    "_comment": "Maps facility strings to facility IDs in Strapi",
+    "toilets": 1,
+    "showers": 2,
+    "drinking_water": 3,
+    "water": 3,
+    "electricity": 4,
+    "wifi": 5,
+    "shop": 6,
+    "restaurant": 7,
+    "laundry": 8,
+    "accessible": 9,
+    "dogs_allowed": 10,
+    "campfires": 11,
+    "paid": null,
+    "free": null
+  },
+
+  "defaultTypeId": 1,
+  "defaultPriority": 0,
+  "defaultPricerange": "---"
+}

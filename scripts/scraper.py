@@ -1,0 +1,747 @@
+import requests
+import json
+import time
+from typing import List, Dict, Set, Optional
+from dataclasses import dataclass, asdict
+from collections import defaultdict
+import hashlib
+from math import radians, cos, sin, asin, sqrt
+from bs4 import BeautifulSoup
+import re
+
+@dataclass
+class POI:
+    """Point of Interest data structure"""
+    id: str
+    title: str
+    type: str
+    lat: float
+    lng: float
+    description: str = ""
+    image_url: str = ""
+    facilities: List[str] = None
+    attributes: Dict = None
+    sources: List[str] = None
+
+    def __post_init__(self):
+        if self.facilities is None:
+            self.facilities = []
+        if self.attributes is None:
+            self.attributes = {}
+        if self.sources is None:
+            self.sources = []
+
+class ScotlandPOIScraper:
+    """Scraper for Scotland Points of Interest"""
+
+    # Scotland bounding box
+    SCOTLAND_BBOX = {
+        'south': 54.6,
+        'north': 60.9,
+        'west': -8.7,
+        'east': -0.7
+    }
+
+    # OSM query templates
+    OSM_QUERIES = {
+        'campsites': """
+            [out:json][timeout:60];
+            (
+              node["tourism"="camp_site"]({s},{w},{n},{e});
+              way["tourism"="camp_site"]({s},{w},{n},{e});
+              node["tourism"="caravan_site"]({s},{w},{n},{e});
+              way["tourism"="caravan_site"]({s},{w},{n},{e});
+            );
+            out center;
+        """,
+        'parking': """
+            [out:json][timeout:60];
+            (
+              node["amenity"="parking"]["caravan"="yes"]({s},{w},{n},{e});
+              way["amenity"="parking"]["caravan"="yes"]({s},{w},{n},{e});
+              node["amenity"="parking"]["motorhome"="yes"]({s},{w},{n},{e});
+              way["amenity"="parking"]["motorhome"="yes"]({s},{w},{n},{e});
+              node["amenity"="parking"]["overnight"="yes"]({s},{w},{n},{e});
+              way["amenity"="parking"]["overnight"="yes"]({s},{w},{n},{e});
+              node["amenity"="parking"]["camping"="yes"]({s},{w},{n},{e});
+              way["amenity"="parking"]["camping"="yes"]({s},{w},{n},{e});
+              node["tourism"="caravan_site"]["parking"="yes"]({s},{w},{n},{e});
+              way["tourism"="caravan_site"]["parking"="yes"]({s},{w},{n},{e});
+            );
+            out center;
+        """,
+        'mountains': """
+            [out:json][timeout:60];
+            (
+              node["natural"="peak"]({s},{w},{n},{e});
+            );
+            out;
+        """,
+        'lochs': """
+            [out:json][timeout:60];
+            (
+              way["natural"="water"]["water"="lake"]({s},{w},{n},{e});
+              way["natural"="water"]["water"="loch"]({s},{w},{n},{e});
+            );
+            out center;
+        """,
+        'beaches': """
+            [out:json][timeout:60];
+            (
+              node["natural"="beach"]({s},{w},{n},{e});
+              way["natural"="beach"]({s},{w},{n},{e});
+            );
+            out center;
+        """,
+        'fuel': """
+            [out:json][timeout:60];
+            (
+              node["amenity"="fuel"]({s},{w},{n},{e});
+              way["amenity"="fuel"]({s},{w},{n},{e});
+            );
+            out center;
+        """,
+        'ev_charging': """
+            [out:json][timeout:60];
+            (
+              node["amenity"="charging_station"]({s},{w},{n},{e});
+              way["amenity"="charging_station"]({s},{w},{n},{e});
+            );
+            out center;
+        """,
+        'historic': """
+            [out:json][timeout:60];
+            (
+              node["historic"~"castle|monument|ruins|archaeological_site"]({s},{w},{n},{e});
+              way["historic"~"castle|monument|ruins|archaeological_site"]({s},{w},{n},{e});
+            );
+            out center;
+        """,
+        'viewpoints': """
+            [out:json][timeout:60];
+            (
+              node["tourism"="viewpoint"]({s},{w},{n},{e});
+            );
+            out;
+        """,
+    }
+
+    def __init__(self, zapmap_api_key: Optional[str] = None):
+        self.overpass_url = "https://overpass-api.de/api/interpreter"
+        self.zapmap_api_key = zapmap_api_key
+        self.all_pois: List[POI] = []
+        self.poi_limit: Optional[int] = None  # Max POIs per category
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'ScotlandPOIScraper/1.0 (Educational Project)'
+        })
+
+    def haversine_distance(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """Calculate distance between two points in meters"""
+        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a))
+        return c * 6371000  # Earth radius in meters
+
+    def normalize_name(self, name: str) -> str:
+        """Normalize name for comparison"""
+        if not name:
+            return ""
+        name = name.lower()
+        # Remove common prefixes/suffixes
+        removals = ['the ', ' loch', ' beach', ' car park', ' parking']
+        for r in removals:
+            name = name.replace(r, '')
+        # Remove punctuation
+        name = ''.join(c for c in name if c.isalnum() or c.isspace())
+        return ' '.join(name.split())
+
+    def levenshtein_distance(self, s1: str, s2: str) -> int:
+        """Calculate Levenshtein distance between two strings"""
+        if len(s1) < len(s2):
+            return self.levenshtein_distance(s2, s1)
+        if len(s2) == 0:
+            return len(s1)
+
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1
+                deletions = current_row[j] + 1
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+
+        return previous_row[-1]
+
+    def query_overpass(self, query: str, category: str) -> List[POI]:
+        """Query Overpass API and convert to POI objects"""
+        bbox = self.SCOTLAND_BBOX
+        formatted_query = query.format(
+            s=bbox['south'],
+            n=bbox['north'],
+            w=bbox['west'],
+            e=bbox['east']
+        )
+
+        print(f"Querying {category}...")
+
+        try:
+            response = self.session.post(
+                self.overpass_url,
+                data={'data': formatted_query},
+                timeout=120
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            pois = []
+            for element in data.get('elements', []):
+                # Get coordinates
+                if 'lat' in element and 'lon' in element:
+                    lat, lng = element['lat'], element['lon']
+                elif 'center' in element:
+                    lat, lng = element['center']['lat'], element['center']['lon']
+                else:
+                    continue
+
+                tags = element.get('tags', {})
+                name = tags.get('name', tags.get('ref', f"Unnamed {category}"))
+
+                # Extract facilities
+                facilities = []
+                if tags.get('toilets') == 'yes':
+                    facilities.append('toilets')
+                if tags.get('shower') == 'yes':
+                    facilities.append('showers')
+                if tags.get('drinking_water') == 'yes':
+                    facilities.append('drinking_water')
+                if tags.get('fee') == 'yes':
+                    facilities.append('paid')
+
+                # Extract attributes
+                attributes = {}
+                if 'ele' in tags:
+                    try:
+                        attributes['elevation_m'] = float(tags['ele'])
+                    except ValueError:
+                        pass
+                if 'capacity' in tags:
+                    attributes['capacity'] = tags['capacity']
+                if 'opening_hours' in tags:
+                    attributes['opening_hours'] = tags['opening_hours']
+                if 'operator' in tags:
+                    attributes['operator'] = tags['operator']
+                if 'surface' in tags:
+                    attributes['surface'] = tags['surface']
+
+                # Generate unique ID
+                poi_id = hashlib.md5(
+                    f"{lat}{lng}{name}{category}".encode()
+                ).hexdigest()[:12]
+
+                poi = POI(
+                    id=poi_id,
+                    title=name,
+                    type=category,
+                    lat=lat,
+                    lng=lng,
+                    description=tags.get('description', ''),
+                    facilities=facilities,
+                    attributes=attributes,
+                    sources=['osm']
+                )
+                pois.append(poi)
+
+            # Apply limit if set
+            if self.poi_limit and len(pois) > self.poi_limit:
+                pois = pois[:self.poi_limit]
+                print(f"  Found {len(pois)} {category} (limited)")
+            else:
+                print(f"  Found {len(pois)} {category}")
+            return pois
+
+        except Exception as e:
+            print(f"  Error querying {category}: {e}")
+            return []
+
+    def scrape_walkhighlands_munros(self) -> List[POI]:
+        """Scrape munros from Walkhighlands"""
+        print("\nScraping Walkhighlands munros...")
+
+        pois = []
+        base_url = "https://www.walkhighlands.co.uk"
+
+        try:
+            # Get the munros list page
+            response = self.session.get(f"{base_url}/munros/", timeout=30)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # Find munro links - this is a simplified example
+            # In reality, you'd need to inspect the actual page structure
+            munro_links = soup.find_all('a', href=re.compile(r'/munros/[a-z-]+\.shtml'))
+
+            print(f"  Found {len(munro_links)} munro pages to scrape")
+
+            for idx, link in enumerate(munro_links[:50]):  # Limit to first 50 for demo
+                if idx > 0 and idx % 10 == 0:
+                    print(f"    Processed {idx} munros...")
+                    time.sleep(2)  # Be respectful
+
+                try:
+                    munro_url = base_url + link['href']
+                    munro_response = self.session.get(munro_url, timeout=30)
+                    munro_response.raise_for_status()
+                    munro_soup = BeautifulSoup(munro_response.content, 'html.parser')
+
+                    # Extract munro details (simplified - adjust selectors based on actual HTML)
+                    title_elem = munro_soup.find('h1')
+                    title = title_elem.text.strip() if title_elem else "Unknown Munro"
+
+                    # Look for coordinates in meta tags or script
+                    lat_pattern = re.compile(r'latitude["\s:]+(-?\d+\.\d+)')
+                    lng_pattern = re.compile(r'longitude["\s:]+(-?\d+\.\d+)')
+
+                    page_text = str(munro_soup)
+                    lat_match = lat_pattern.search(page_text)
+                    lng_match = lng_pattern.search(page_text)
+
+                    if not (lat_match and lng_match):
+                        continue
+
+                    lat = float(lat_match.group(1))
+                    lng = float(lng_match.group(1))
+
+                    # Extract description
+                    desc_elem = munro_soup.find('div', class_='description')
+                    description = desc_elem.text.strip() if desc_elem else ""
+
+                    # Extract elevation
+                    elevation = None
+                    height_pattern = re.compile(r'(\d+)m')
+                    height_match = height_pattern.search(page_text)
+                    if height_match:
+                        elevation = int(height_match.group(1))
+
+                    # Extract difficulty
+                    difficulty = "unknown"
+                    if 'grade' in page_text.lower():
+                        if 'easy' in page_text.lower():
+                            difficulty = 'easy'
+                        elif 'moderate' in page_text.lower():
+                            difficulty = 'moderate'
+                        elif 'hard' in page_text.lower() or 'difficult' in page_text.lower():
+                            difficulty = 'hard'
+
+                    # Extract image
+                    image_url = ""
+                    img_elem = munro_soup.find('img', class_=re.compile(r'munro|main'))
+                    if img_elem and img_elem.get('src'):
+                        image_url = img_elem['src']
+                        if not image_url.startswith('http'):
+                            image_url = base_url + image_url
+
+                    attributes = {
+                        'difficulty': difficulty,
+                        'url': munro_url
+                    }
+                    if elevation:
+                        attributes['elevation_m'] = elevation
+
+                    poi_id = hashlib.md5(
+                        f"{lat}{lng}{title}walkhighlands".encode()
+                    ).hexdigest()[:12]
+
+                    poi = POI(
+                        id=poi_id,
+                        title=title,
+                        type='mountains',
+                        lat=lat,
+                        lng=lng,
+                        description=description[:500],  # Truncate long descriptions
+                        image_url=image_url,
+                        attributes=attributes,
+                        sources=['walkhighlands']
+                    )
+                    pois.append(poi)
+
+                except Exception as e:
+                    print(f"    Error scraping munro {link.get('href', 'unknown')}: {e}")
+                    continue
+
+                time.sleep(1)  # Rate limiting
+
+            print(f"  Successfully scraped {len(pois)} munros from Walkhighlands")
+
+        except Exception as e:
+            print(f"  Error accessing Walkhighlands: {e}")
+
+        return pois
+
+    def fetch_zapmap_chargers(self) -> List[POI]:
+        """Fetch EV charging stations from Zap-Map API"""
+        print("\nFetching EV chargers from Zap-Map...")
+
+        if not self.zapmap_api_key:
+            print("  No Zap-Map API key provided, skipping...")
+            print("  Get a free API key at: https://www.zap-map.com/api/")
+            return []
+
+        pois = []
+
+        try:
+            # Zap-Map API endpoint (check current documentation)
+            url = "https://api.zap-map.com/v1/devices"
+
+            headers = {
+                'Authorization': f'Bearer {self.zapmap_api_key}',
+                'Accept': 'application/json'
+            }
+
+            params = {
+                'bbox': f"{self.SCOTLAND_BBOX['west']},{self.SCOTLAND_BBOX['south']},"
+                        f"{self.SCOTLAND_BBOX['east']},{self.SCOTLAND_BBOX['north']}",
+                'limit': 1000
+            }
+
+            response = self.session.get(url, headers=headers, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+
+            for device in data.get('devices', []):
+                location = device.get('location', {})
+                lat = location.get('latitude')
+                lng = location.get('longitude')
+
+                if not (lat and lng):
+                    continue
+
+                name = device.get('name', 'EV Charging Station')
+                address = location.get('address', '')
+
+                # Extract connector info
+                connectors = device.get('connectors', [])
+                connector_types = [c.get('type', '') for c in connectors]
+                power_kw = max([c.get('power_kw', 0) for c in connectors], default=0)
+
+                facilities = []
+                if device.get('accessible', False):
+                    facilities.append('accessible')
+                if device.get('free', False):
+                    facilities.append('free')
+                else:
+                    facilities.append('paid')
+
+                attributes = {
+                    'connector_types': connector_types,
+                    'power_kw': power_kw,
+                    'network': device.get('network', ''),
+                    'status': device.get('status', 'unknown')
+                }
+
+                poi_id = hashlib.md5(
+                    f"{lat}{lng}{name}zapmap".encode()
+                ).hexdigest()[:12]
+
+                poi = POI(
+                    id=poi_id,
+                    title=name,
+                    type='ev_charging',
+                    lat=lat,
+                    lng=lng,
+                    description=address,
+                    facilities=facilities,
+                    attributes=attributes,
+                    sources=['zapmap']
+                )
+                pois.append(poi)
+
+            print(f"  Found {len(pois)} EV chargers from Zap-Map")
+
+        except Exception as e:
+            print(f"  Error fetching from Zap-Map: {e}")
+
+        return pois
+
+    def fetch_wikimedia_image(self, poi: POI) -> Optional[str]:
+        """Fetch image from Wikimedia Commons for a POI"""
+        try:
+            # Wikimedia Commons API
+            url = "https://commons.wikimedia.org/w/api.php"
+
+            params = {
+                'action': 'query',
+                'list': 'geosearch',
+                'gscoord': f"{poi.lat}|{poi.lng}",
+                'gsradius': 1000,  # 1km radius
+                'gslimit': 10,
+                'format': 'json'
+            }
+
+            response = self.session.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            pages = data.get('query', {}).get('geosearch', [])
+
+            if not pages:
+                return None
+
+            # Get the first result and fetch its image
+            page_id = pages[0]['pageid']
+
+            image_params = {
+                'action': 'query',
+                'pageids': page_id,
+                'prop': 'imageinfo',
+                'iiprop': 'url',
+                'format': 'json'
+            }
+
+            image_response = self.session.get(url, params=image_params, timeout=10)
+            image_response.raise_for_status()
+            image_data = image_response.json()
+
+            pages_data = image_data.get('query', {}).get('pages', {})
+            if pages_data:
+                page_data = list(pages_data.values())[0]
+                imageinfo = page_data.get('imageinfo', [])
+                if imageinfo:
+                    return imageinfo[0].get('url')
+
+            return None
+
+        except Exception as e:
+            return None
+
+    def enrich_with_images(self):
+        """Enrich POIs with images from Wikimedia Commons"""
+        print("\nEnriching POIs with images from Wikimedia Commons...")
+
+        count = 0
+        total = len(self.all_pois)
+
+        for idx, poi in enumerate(self.all_pois):
+            if poi.image_url:  # Already has an image
+                continue
+
+            if idx > 0 and idx % 50 == 0:
+                print(f"  Processed {idx}/{total} POIs, found {count} images")
+
+            image_url = self.fetch_wikimedia_image(poi)
+            if image_url:
+                poi.image_url = image_url
+                count += 1
+
+            time.sleep(0.5)  # Rate limiting
+
+        print(f"  Added {count} images from Wikimedia Commons")
+
+    def scrape_all_categories(self):
+        """Scrape all POI categories from all sources"""
+        # 1. OSM Data
+        print("=== Phase 1: OpenStreetMap Data ===")
+        for category, query in self.OSM_QUERIES.items():
+            pois = self.query_overpass(query, category)
+            self.all_pois.extend(pois)
+            time.sleep(2)
+
+        # 2. Walkhighlands Data
+        print("\n=== Phase 2: Walkhighlands Data ===")
+        walkhighlands_pois = self.scrape_walkhighlands_munros()
+        self.all_pois.extend(walkhighlands_pois)
+
+        # 3. Zap-Map Data
+        print("\n=== Phase 3: Zap-Map EV Chargers ===")
+        zapmap_pois = self.fetch_zapmap_chargers()
+        self.all_pois.extend(zapmap_pois)
+
+        print(f"\n=== Total POIs collected: {len(self.all_pois)} ===")
+
+    def deduplicate(self, distance_threshold: float = 50.0) -> List[POI]:
+        """Remove duplicate POIs based on proximity and name similarity"""
+        print("\n=== Deduplication Phase ===")
+
+        # Group by approximate location (grid cells)
+        grid_size = 0.01  # ~1km
+        grid: Dict[tuple, List[POI]] = defaultdict(list)
+
+        for poi in self.all_pois:
+            grid_key = (
+                round(poi.lat / grid_size),
+                round(poi.lng / grid_size)
+            )
+            grid[grid_key].append(poi)
+
+        # Check for duplicates within and between adjacent cells
+        seen_ids: Set[str] = set()
+        unique_pois: List[POI] = []
+
+        for cell_key, cell_pois in grid.items():
+            # Get POIs from this cell and adjacent cells
+            nearby_pois = cell_pois.copy()
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dx == 0 and dy == 0:
+                        continue
+                    adjacent_key = (cell_key[0] + dx, cell_key[1] + dy)
+                    nearby_pois.extend(grid.get(adjacent_key, []))
+
+            for poi in cell_pois:
+                if poi.id in seen_ids:
+                    continue
+
+                # Check for duplicates
+                is_duplicate = False
+                for other_poi in nearby_pois:
+                    if poi.id == other_poi.id or other_poi.id in seen_ids:
+                        continue
+
+                    # Check distance
+                    dist = self.haversine_distance(
+                        poi.lat, poi.lng,
+                        other_poi.lat, other_poi.lng
+                    )
+
+                    if dist < distance_threshold:
+                        # Check name similarity
+                        norm_name1 = self.normalize_name(poi.title)
+                        norm_name2 = self.normalize_name(other_poi.title)
+
+                        if norm_name1 and norm_name2:
+                            lev_dist = self.levenshtein_distance(norm_name1, norm_name2)
+                            max_len = max(len(norm_name1), len(norm_name2))
+                            similarity = 1 - (lev_dist / max_len) if max_len > 0 else 0
+
+                            if similarity > 0.8:  # 80% similar
+                                # Merge the POIs
+                                better_poi = poi if (
+                                    len(poi.facilities) + len(poi.attributes) + len(poi.image_url) >=
+                                    len(other_poi.facilities) + len(other_poi.attributes) + len(other_poi.image_url)
+                                ) else other_poi
+
+                                worse_poi = other_poi if better_poi == poi else poi
+
+                                # Merge data
+                                better_poi.sources = list(set(better_poi.sources + worse_poi.sources))
+                                better_poi.facilities = list(set(better_poi.facilities + worse_poi.facilities))
+                                better_poi.attributes.update(worse_poi.attributes)
+
+                                if not better_poi.image_url and worse_poi.image_url:
+                                    better_poi.image_url = worse_poi.image_url
+                                if not better_poi.description and worse_poi.description:
+                                    better_poi.description = worse_poi.description
+
+                                seen_ids.add(worse_poi.id)
+
+                                if worse_poi == poi:
+                                    is_duplicate = True
+                                    break
+
+                if not is_duplicate:
+                    seen_ids.add(poi.id)
+                    unique_pois.append(poi)
+
+        print(f"Removed {len(self.all_pois) - len(unique_pois)} duplicates")
+        print(f"Unique POIs: {len(unique_pois)}")
+
+        return unique_pois
+
+    def export_to_json(self, filename: str = "scotland_pois.json"):
+        """Export POIs to JSON file"""
+        unique_pois = self.deduplicate()
+
+        data = {
+            'total_count': len(unique_pois),
+            'categories': {},
+            'pois': [asdict(poi) for poi in unique_pois]
+        }
+
+        # Count by category
+        for poi in unique_pois:
+            data['categories'][poi.type] = data['categories'].get(poi.type, 0) + 1
+
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        print(f"\n=== Export Complete ===")
+        print(f"Saved to: {filename}")
+        print(f"\nCategory breakdown:")
+        for cat, count in sorted(data['categories'].items()):
+            print(f"  {cat}: {count}")
+
+        # Source breakdown
+        source_counts = defaultdict(int)
+        for poi in unique_pois:
+            for source in poi.sources:
+                source_counts[source] += 1
+
+        print(f"\nSource breakdown:")
+        for source, count in sorted(source_counts.items()):
+            print(f"  {source}: {count}")
+
+# Example usage
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Scotland POI Scraper')
+    parser.add_argument('--lite', action='store_true',
+                        help='Lite mode: only fetch a small sample for testing')
+    parser.add_argument('--categories', type=str, default=None,
+                        help='Comma-separated categories to scrape (e.g., "campsites,beaches")')
+    parser.add_argument('--limit', type=int, default=None,
+                        help='Max POIs per category (default: unlimited, lite mode: 10)')
+    parser.add_argument('--no-images', action='store_true',
+                        help='Skip Wikimedia image enrichment')
+    parser.add_argument('--output', type=str, default='scotland_pois.json',
+                        help='Output filename (default: scotland_pois.json)')
+    parser.add_argument('--zapmap-key', type=str, default=None,
+                        help='Zap-Map API key for EV charger data')
+
+    args = parser.parse_args()
+
+    # Lite mode defaults
+    if args.lite:
+        args.limit = args.limit or 10
+        args.categories = args.categories or 'campsites,beaches,viewpoints'
+        args.output = args.output if args.output != 'scotland_pois.json' else 'scotland_pois_lite.json'
+        print("=== LITE MODE ===")
+        print(f"  Categories: {args.categories}")
+        print(f"  Limit per category: {args.limit}")
+        print("")
+
+    scraper = ScotlandPOIScraper(zapmap_api_key=args.zapmap_key)
+
+    # Filter categories if specified
+    if args.categories:
+        selected = [c.strip() for c in args.categories.split(',')]
+        scraper.OSM_QUERIES = {k: v for k, v in scraper.OSM_QUERIES.items() if k in selected}
+
+    # Set limit
+    scraper.poi_limit = args.limit
+
+    # Scrape all categories from all sources
+    scraper.scrape_all_categories()
+
+    # Enrich with Wikimedia images (unless skipped)
+    if not args.no_images:
+        scraper.enrich_with_images()
+    else:
+        print("\nSkipping image enrichment (--no-images)")
+
+    # Export deduplicated data
+    scraper.export_to_json(args.output)
+
+    print("\n✓ Scraping pipeline finished!")
+    print("\nUsage examples:")
+    print("  python scraper.py --lite                    # Quick test with ~30 POIs")
+    print("  python scraper.py --categories campsites   # Only campsites")
+    print("  python scraper.py --limit 50               # Max 50 per category")
+    print("  python scraper.py --no-images              # Skip slow image lookup")
+    print("\nIMPORTANT:")
+    print("  - Check robots.txt and ToS before scraping")
+    print("  - Use appropriate rate limiting")
