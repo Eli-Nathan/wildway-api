@@ -1047,6 +1047,7 @@ export interface ApiSiteTypeSiteType extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    applicable_metadata_fields: Schema.Attribute.JSON;
     contribute_description: Schema.Attribute.Text;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1139,6 +1140,7 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<0>;
     publishedAt: Schema.Attribute.DateTime;
     region: Schema.Attribute.String;
+    route_metadata: Schema.Attribute.Component<'route.metadata', false>;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
     sub_types: Schema.Attribute.Relation<
       'oneToMany',

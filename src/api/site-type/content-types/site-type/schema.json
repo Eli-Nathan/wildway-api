@@ -50,6 +50,9 @@
     },
     "contribute_description": {
       "type": "text"
+    },
+    "applicable_metadata_fields": {
+      "type": "json"
     }
   }
 }

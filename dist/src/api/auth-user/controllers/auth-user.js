@@ -170,7 +170,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             dataToUpdate.name = requestData.name;
         }
         if (requestData.profilePic) {
-            dataToUpdate.profile_pic = requestData.profilePic;
+            dataToUpdate.profile_pic = { set: [requestData.profilePic] };
         }
         if (requestData.businessName) {
             dataToUpdate.businessName = requestData.businessName;

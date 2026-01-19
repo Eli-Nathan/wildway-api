@@ -106,6 +106,15 @@ export interface UserRole extends BaseEntity {
   type: string;
 }
 
+// Route Metadata component
+export interface RouteMetadata {
+  id?: number;
+  elevation_gain?: number;
+  distance?: number;
+  loop?: "Circular" | "Linear";
+  difficulty?: "Easy" | "Moderate" | "Difficult" | "Expert";
+}
+
 // Site entity
 export interface Site extends BaseEntity {
   title: string;
@@ -124,13 +133,18 @@ export interface Site extends BaseEntity {
   contributors?: AuthUser[];
   likes?: AuthUser[];
   comments?: Comment[];
+  route_metadata?: RouteMetadata;
 }
 
 // Site Type entity
 export interface SiteType extends BaseEntity {
   name: string;
+  slug?: string;
   remote_icon?: MediaFile;
   remote_marker?: MediaFile;
+  applicable_metadata_fields?: {
+    route_metadata?: Array<keyof RouteMetadata>;
+  };
 }
 
 // Facility entity

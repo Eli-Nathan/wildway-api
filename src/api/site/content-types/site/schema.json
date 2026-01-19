@@ -154,6 +154,11 @@
     },
     "imageCaption": {
       "type": "string"
+    },
+    "route_metadata": {
+      "type": "component",
+      "repeatable": false,
+      "component": "route.metadata"
     }
   }
 }
