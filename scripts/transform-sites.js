@@ -212,6 +212,10 @@ function transformScraperPOI(poi, mappings, options) {
   const lng = parseFloat(poi.lng);
   if (isNaN(lat) || isNaN(lng)) return null;
 
+  // Build route_metadata from attributes if present
+  const attrs = poi.attributes || {};
+  const route_metadata = buildRouteMetadata(attrs);
+
   return {
     title,
     slug: generateSlug(title),
@@ -225,10 +229,61 @@ function transformScraperPOI(poi, mappings, options) {
     priority: mappings.defaultPriority,
     pricerange: mappings.defaultPricerange,
     image: poi.image_url || '',
+    route_metadata: route_metadata,
     _source: poi.sources?.join(',') || 'scraper',
     _originalType: poi.type,
     _attributes: poi.attributes || {},
   };
+}
+
+/**
+ * Build route_metadata object from scraper attributes
+ */
+function buildRouteMetadata(attrs) {
+  const metadata = {};
+
+  // Elevation gain (from elevation_gain or elevation_m)
+  if (attrs.elevation_gain != null) {
+    metadata.elevation_gain = parseInt(attrs.elevation_gain, 10);
+  } else if (attrs.elevation_m != null) {
+    metadata.elevation_gain = parseInt(attrs.elevation_m, 10);
+  }
+
+  // Distance in km
+  if (attrs.distance_km != null) {
+    metadata.distance = parseFloat(attrs.distance_km);
+  }
+
+  // Loop type (Circular or Linear)
+  if (attrs.loop) {
+    const loopNormalized = attrs.loop.toLowerCase();
+    if (loopNormalized === 'circular' || loopNormalized === 'loop' || loopNormalized === 'round') {
+      metadata.loop = 'Circular';
+    } else if (loopNormalized === 'linear' || loopNormalized === 'point to point') {
+      metadata.loop = 'Linear';
+    } else if (attrs.loop === 'Circular' || attrs.loop === 'Linear') {
+      metadata.loop = attrs.loop;
+    }
+  }
+
+  // Difficulty (Easy, Moderate, Difficult, Expert)
+  if (attrs.difficulty) {
+    const diffNormalized = attrs.difficulty.toLowerCase();
+    if (diffNormalized === 'easy' || diffNormalized === 'beginner') {
+      metadata.difficulty = 'Easy';
+    } else if (diffNormalized === 'moderate' || diffNormalized === 'medium' || diffNormalized === 'intermediate') {
+      metadata.difficulty = 'Moderate';
+    } else if (diffNormalized === 'hard' || diffNormalized === 'difficult' || diffNormalized === 'challenging') {
+      metadata.difficulty = 'Difficult';
+    } else if (diffNormalized === 'expert' || diffNormalized === 'very hard' || diffNormalized === 'extreme') {
+      metadata.difficulty = 'Expert';
+    } else if (['Easy', 'Moderate', 'Difficult', 'Expert'].includes(attrs.difficulty)) {
+      metadata.difficulty = attrs.difficulty;
+    }
+  }
+
+  // Only return if we have at least one field
+  return Object.keys(metadata).length > 0 ? metadata : null;
 }
 
 function transformGenericRow(row, mappings, options) {

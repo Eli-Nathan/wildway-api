@@ -38,6 +38,35 @@ export interface OrderSites extends Struct.ComponentSchema {
   };
 }
 
+export interface RouteMetadata extends Struct.ComponentSchema {
+  collectionName: 'components_route_metadata';
+  info: {
+    description: 'Metadata for route-based sites like walks, cycling paths, and hikes';
+    displayName: 'Route Metadata';
+    icon: 'walk';
+  };
+  attributes: {
+    difficulty: Schema.Attribute.Enumeration<
+      ['Easy', 'Moderate', 'Difficult', 'Expert']
+    >;
+    distance: Schema.Attribute.Decimal &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    elevation_gain: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    loop: Schema.Attribute.Enumeration<['Circular', 'Linear']>;
+  };
+}
+
 export interface SeoSeoBlock extends Struct.ComponentSchema {
   collectionName: 'components_seo_seo_blocks';
   info: {
@@ -56,6 +85,7 @@ declare module '@strapi/strapi' {
       'filter.filter': FilterFilter;
       'filter.filters': FilterFilters;
       'order.sites': OrderSites;
+      'route.metadata': RouteMetadata;
       'seo.seo-block': SeoSeoBlock;
     }
   }

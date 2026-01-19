@@ -28,7 +28,12 @@
     "monument": 8,
     "ruins": 8,
     "viewpoint": 9,
-    "viewpoints": 9
+    "viewpoints": 9,
+    "walks": 5,
+    "walk": 5,
+    "hiking": 5,
+    "trail": 5,
+    "footpath": 5
   },
 
   "facilities": {

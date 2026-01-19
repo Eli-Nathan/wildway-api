@@ -17,6 +17,7 @@ const populateConfig = {
   sub_types: true,
   tags: true,
   images: true,
+  route_metadata: true,
 };
 
 const enrichCtx = (ctx: StrapiContext): StrapiContext => {

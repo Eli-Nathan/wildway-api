@@ -124,6 +124,15 @@ class ScotlandPOIScraper:
             );
             out;
         """,
+        'walks': """
+            [out:json][timeout:120];
+            (
+              relation["route"="hiking"]({s},{w},{n},{e});
+              relation["route"="foot"]({s},{w},{n},{e});
+              way["highway"="path"]["name"]({s},{w},{n},{e});
+            );
+            out center tags;
+        """,
     }
 
     def __init__(self, zapmap_api_key: Optional[str] = None):
@@ -238,6 +247,46 @@ class ScotlandPOIScraper:
                 if 'surface' in tags:
                     attributes['surface'] = tags['surface']
 
+                # Walk/route-specific attributes
+                if 'distance' in tags:
+                    try:
+                        # Parse distance (may be "5 km" or "5000" meters)
+                        dist_str = tags['distance'].lower().replace(',', '.')
+                        if 'km' in dist_str:
+                            attributes['distance_km'] = float(dist_str.replace('km', '').strip())
+                        elif 'mi' in dist_str:
+                            attributes['distance_km'] = float(dist_str.replace('mi', '').strip()) * 1.60934
+                        else:
+                            # Assume meters
+                            attributes['distance_km'] = float(dist_str) / 1000
+                    except ValueError:
+                        pass
+                if 'ascent' in tags:
+                    try:
+                        attributes['elevation_gain'] = int(float(tags['ascent'].replace('m', '').strip()))
+                    except ValueError:
+                        pass
+                if 'roundtrip' in tags:
+                    attributes['loop'] = 'Circular' if tags['roundtrip'] == 'yes' else 'Linear'
+                elif 'route' in tags and tags['route'] in ['hiking', 'foot']:
+                    # Check for circular route indicators in name or description
+                    route_name = tags.get('name', '').lower()
+                    if 'circular' in route_name or 'loop' in route_name or 'round' in route_name:
+                        attributes['loop'] = 'Circular'
+                    elif 'linear' in route_name or 'point to point' in route_name:
+                        attributes['loop'] = 'Linear'
+                if 'sac_scale' in tags:
+                    # SAC hiking scale: hiking, mountain_hiking, demanding_mountain_hiking, etc.
+                    sac = tags['sac_scale']
+                    if sac == 'hiking':
+                        attributes['difficulty'] = 'Easy'
+                    elif sac == 'mountain_hiking':
+                        attributes['difficulty'] = 'Moderate'
+                    elif sac in ['demanding_mountain_hiking', 'alpine_hiking']:
+                        attributes['difficulty'] = 'Difficult'
+                    elif sac in ['demanding_alpine_hiking', 'difficult_alpine_hiking']:
+                        attributes['difficulty'] = 'Expert'
+
                 # Generate unique ID
                 poi_id = hashlib.md5(
                     f"{lat}{lng}{name}{category}".encode()
@@ -328,14 +377,36 @@ class ScotlandPOIScraper:
                         elevation = int(height_match.group(1))
 
                     # Extract difficulty
-                    difficulty = "unknown"
+                    difficulty = None
                     if 'grade' in page_text.lower():
                         if 'easy' in page_text.lower():
-                            difficulty = 'easy'
+                            difficulty = 'Easy'
                         elif 'moderate' in page_text.lower():
-                            difficulty = 'moderate'
+                            difficulty = 'Moderate'
                         elif 'hard' in page_text.lower() or 'difficult' in page_text.lower():
-                            difficulty = 'hard'
+                            difficulty = 'Difficult'
+                        elif 'expert' in page_text.lower() or 'scrambl' in page_text.lower():
+                            difficulty = 'Expert'
+
+                    # Extract distance
+                    distance_km = None
+                    distance_pattern = re.compile(r'(\d+(?:\.\d+)?)\s*(?:km|kilometres?)', re.IGNORECASE)
+                    distance_match = distance_pattern.search(page_text)
+                    if distance_match:
+                        distance_km = float(distance_match.group(1))
+                    else:
+                        # Try miles
+                        miles_pattern = re.compile(r'(\d+(?:\.\d+)?)\s*(?:mi|miles?)', re.IGNORECASE)
+                        miles_match = miles_pattern.search(page_text)
+                        if miles_match:
+                            distance_km = float(miles_match.group(1)) * 1.60934
+
+                    # Extract loop type
+                    loop_type = None
+                    if 'circular' in page_text.lower() or 'loop' in page_text.lower() or 'round trip' in page_text.lower():
+                        loop_type = 'Circular'
+                    elif 'linear' in page_text.lower() or 'point to point' in page_text.lower() or 'one way' in page_text.lower():
+                        loop_type = 'Linear'
 
                     # Extract image
                     image_url = ""
@@ -346,11 +417,16 @@ class ScotlandPOIScraper:
                             image_url = base_url + image_url
 
                     attributes = {
-                        'difficulty': difficulty,
                         'url': munro_url
                     }
                     if elevation:
-                        attributes['elevation_m'] = elevation
+                        attributes['elevation_gain'] = elevation
+                    if difficulty:
+                        attributes['difficulty'] = difficulty
+                    if distance_km:
+                        attributes['distance_km'] = round(distance_km, 2)
+                    if loop_type:
+                        attributes['loop'] = loop_type
 
                     poi_id = hashlib.md5(
                         f"{lat}{lng}{title}walkhighlands".encode()

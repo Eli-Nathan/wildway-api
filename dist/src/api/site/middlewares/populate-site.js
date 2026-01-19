@@ -26,6 +26,7 @@ const populateConfig = {
     images: true,
     tags: true,
     likes: true,
+    route_metadata: true,
 };
 const enrichCtx = (ctx) => {
     if (!ctx.query) {

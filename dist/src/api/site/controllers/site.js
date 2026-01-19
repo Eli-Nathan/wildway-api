@@ -40,6 +40,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 facilities: true,
                 sub_types: true,
                 owners: true,
+                route_metadata: true,
             },
             limit: ctx.query.limit || ((_a = ctx.query.pagination) === null || _a === void 0 ? void 0 : _a.limit),
         });
@@ -75,6 +76,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             populate: {
                 type: true,
                 images: true,
+                route_metadata: true,
             },
             limit: ctx.query.limit || ((_a = ctx.query.pagination) === null || _a === void 0 ? void 0 : _a.limit),
         });
@@ -108,6 +110,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 contributors: {
                     populate: { profile_pic: true },
                 },
+                route_metadata: true,
             },
         });
         if (!siteData) {
@@ -136,6 +139,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 facilities: true,
                 sub_types: true,
                 images: true,
+                route_metadata: true,
             },
         });
         if (site) {

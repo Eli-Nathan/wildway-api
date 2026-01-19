@@ -136,6 +136,7 @@ export default factories.createCoreController(
           facilities: true,
           sub_types: true,
           owners: true,
+          route_metadata: true,
         },
         limit: ctx.query.limit || ctx.query.pagination?.limit,
       });
@@ -170,6 +171,7 @@ export default factories.createCoreController(
         populate: {
           type: true,
           images: true,
+          route_metadata: true,
         },
         limit: ctx.query.limit || ctx.query.pagination?.limit,
       });
@@ -203,6 +205,7 @@ export default factories.createCoreController(
           contributors: {
             populate: { profile_pic: true },
           },
+          route_metadata: true,
         },
       });
 
@@ -235,6 +238,7 @@ export default factories.createCoreController(
           facilities: true,
           sub_types: true,
           images: true,
+          route_metadata: true,
         },
       });
       if (site) {
