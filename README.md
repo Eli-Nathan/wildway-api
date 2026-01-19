@@ -32,6 +32,37 @@ npm run build
 yarn build
 ```
 
+## 🗄️ Database
+
+### Local Development
+
+Local development uses SQLite stored at `.tmp/data.db`. Production uses PostgreSQL.
+
+### Migrating Production Data to Local
+
+To copy production data to your local SQLite database:
+
+```bash
+# Full replace (wipes local DB, copies everything from prod)
+node scripts/migrate-prod-to-local.js
+
+# Additive mode (adds new records, updates existing, preserves local-only data)
+node scripts/migrate-prod-to-local.js --additive
+```
+
+**Modes:**
+- **Full replace** (default): Deletes all local data and replaces with production data. Use this for a clean sync.
+- **Additive** (`--additive`): Upserts data - inserts new records and updates existing ones by ID. Local-only records are preserved.
+
+The script automatically:
+- Backs up your existing local database before migration
+- Handles PostgreSQL → SQLite type conversions (JSON, booleans, dates)
+- Migrates tables in dependency order (respecting foreign keys)
+- Reports progress and any errors
+
+**Environment:**
+- `DATABASE_URL` - Override the production database connection string
+
 ## ⚙️ Deployment
 
 Strapi gives you many possible deployment options for your project. Find the one that suits you on the [deployment section of the documentation](https://docs.strapi.io/developer-docs/latest/setup-deployment-guides/deployment.html).
