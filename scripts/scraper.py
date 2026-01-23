@@ -57,16 +57,8 @@ class ScotlandPOIScraper:
         'parking': """
             [out:json][timeout:60];
             (
-              node["amenity"="parking"]["caravan"="yes"]({s},{w},{n},{e});
-              way["amenity"="parking"]["caravan"="yes"]({s},{w},{n},{e});
-              node["amenity"="parking"]["motorhome"="yes"]({s},{w},{n},{e});
-              way["amenity"="parking"]["motorhome"="yes"]({s},{w},{n},{e});
-              node["amenity"="parking"]["overnight"="yes"]({s},{w},{n},{e});
-              way["amenity"="parking"]["overnight"="yes"]({s},{w},{n},{e});
-              node["amenity"="parking"]["camping"="yes"]({s},{w},{n},{e});
-              way["amenity"="parking"]["camping"="yes"]({s},{w},{n},{e});
-              node["tourism"="caravan_site"]["parking"="yes"]({s},{w},{n},{e});
-              way["tourism"="caravan_site"]["parking"="yes"]({s},{w},{n},{e});
+              node["amenity"="parking"]({s},{w},{n},{e});
+              way["amenity"="parking"]({s},{w},{n},{e});
             );
             out center;
         """,
@@ -124,22 +116,12 @@ class ScotlandPOIScraper:
             );
             out;
         """,
-        'walks': """
-            [out:json][timeout:120];
-            (
-              relation["route"="hiking"]({s},{w},{n},{e});
-              relation["route"="foot"]({s},{w},{n},{e});
-              way["highway"="path"]["name"]({s},{w},{n},{e});
-            );
-            out center tags;
-        """,
     }
 
     def __init__(self, zapmap_api_key: Optional[str] = None):
         self.overpass_url = "https://overpass-api.de/api/interpreter"
         self.zapmap_api_key = zapmap_api_key
         self.all_pois: List[POI] = []
-        self.poi_limit: Optional[int] = None  # Max POIs per category
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'ScotlandPOIScraper/1.0 (Educational Project)'
@@ -247,46 +229,6 @@ class ScotlandPOIScraper:
                 if 'surface' in tags:
                     attributes['surface'] = tags['surface']
 
-                # Walk/route-specific attributes
-                if 'distance' in tags:
-                    try:
-                        # Parse distance (may be "5 km" or "5000" meters)
-                        dist_str = tags['distance'].lower().replace(',', '.')
-                        if 'km' in dist_str:
-                            attributes['distance_km'] = float(dist_str.replace('km', '').strip())
-                        elif 'mi' in dist_str:
-                            attributes['distance_km'] = float(dist_str.replace('mi', '').strip()) * 1.60934
-                        else:
-                            # Assume meters
-                            attributes['distance_km'] = float(dist_str) / 1000
-                    except ValueError:
-                        pass
-                if 'ascent' in tags:
-                    try:
-                        attributes['elevation_gain'] = int(float(tags['ascent'].replace('m', '').strip()))
-                    except ValueError:
-                        pass
-                if 'roundtrip' in tags:
-                    attributes['loop'] = 'Circular' if tags['roundtrip'] == 'yes' else 'Linear'
-                elif 'route' in tags and tags['route'] in ['hiking', 'foot']:
-                    # Check for circular route indicators in name or description
-                    route_name = tags.get('name', '').lower()
-                    if 'circular' in route_name or 'loop' in route_name or 'round' in route_name:
-                        attributes['loop'] = 'Circular'
-                    elif 'linear' in route_name or 'point to point' in route_name:
-                        attributes['loop'] = 'Linear'
-                if 'sac_scale' in tags:
-                    # SAC hiking scale: hiking, mountain_hiking, demanding_mountain_hiking, etc.
-                    sac = tags['sac_scale']
-                    if sac == 'hiking':
-                        attributes['difficulty'] = 'Easy'
-                    elif sac == 'mountain_hiking':
-                        attributes['difficulty'] = 'Moderate'
-                    elif sac in ['demanding_mountain_hiking', 'alpine_hiking']:
-                        attributes['difficulty'] = 'Difficult'
-                    elif sac in ['demanding_alpine_hiking', 'difficult_alpine_hiking']:
-                        attributes['difficulty'] = 'Expert'
-
                 # Generate unique ID
                 poi_id = hashlib.md5(
                     f"{lat}{lng}{name}{category}".encode()
@@ -305,157 +247,124 @@ class ScotlandPOIScraper:
                 )
                 pois.append(poi)
 
-            # Apply limit if set
-            if self.poi_limit and len(pois) > self.poi_limit:
-                pois = pois[:self.poi_limit]
-                print(f"  Found {len(pois)} {category} (limited)")
-            else:
-                print(f"  Found {len(pois)} {category}")
+            print(f"  Found {len(pois)} {category}")
             return pois
 
         except Exception as e:
             print(f"  Error querying {category}: {e}")
             return []
 
-    def scrape_walkhighlands_munros(self) -> List[POI]:
-        """Scrape munros from Walkhighlands"""
-        print("\nScraping Walkhighlands munros...")
+    def fetch_dobih_hills(self) -> List[POI]:
+        """
+        Fetch hill data from Database of British and Irish Hills
+        This is the official, free, open database of all UK hills
+        Much better than scraping Walkhighlands!
+        """
+        print("\nFetching hills from Database of British and Irish Hills...")
 
         pois = []
-        base_url = "https://www.walkhighlands.co.uk"
 
-        try:
-            # Get the munros list page
-            response = self.session.get(f"{base_url}/munros/", timeout=30)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, 'html.parser')
+        # DoBIH download URLs
+        dobih_urls = {
+            'munros': 'http://www.hills-database.co.uk/downloads/munros.csv',
+            'corbetts': 'http://www.hills-database.co.uk/downloads/corbetts.csv',
+            'grahams': 'http://www.hills-database.co.uk/downloads/grahams.csv',
+        }
 
-            # Find munro links - this is a simplified example
-            # In reality, you'd need to inspect the actual page structure
-            munro_links = soup.find_all('a', href=re.compile(r'/munros/[a-z-]+\.shtml'))
+        for classification, url in dobih_urls.items():
+            try:
+                print(f"  Downloading {classification}...")
+                response = self.session.get(url, timeout=30)
+                response.raise_for_status()
 
-            print(f"  Found {len(munro_links)} munro pages to scrape")
+                # Parse CSV
+                import csv
+                import io
 
-            for idx, link in enumerate(munro_links[:50]):  # Limit to first 50 for demo
-                if idx > 0 and idx % 10 == 0:
-                    print(f"    Processed {idx} munros...")
-                    time.sleep(2)  # Be respectful
+                csv_file = io.StringIO(response.text)
+                reader = csv.DictReader(csv_file)
 
-                try:
-                    munro_url = base_url + link['href']
-                    munro_response = self.session.get(munro_url, timeout=30)
-                    munro_response.raise_for_status()
-                    munro_soup = BeautifulSoup(munro_response.content, 'html.parser')
+                count = 0
+                for row in reader:
+                    try:
+                        # DoBIH format varies, check actual column names
+                        name = row.get('Name', row.get('Hill Name', ''))
+                        if not name:
+                            continue
 
-                    # Extract munro details (simplified - adjust selectors based on actual HTML)
-                    title_elem = munro_soup.find('h1')
-                    title = title_elem.text.strip() if title_elem else "Unknown Munro"
+                        # Get coordinates - try multiple column name variations
+                        lat_str = row.get('Latitude', row.get('Lat', ''))
+                        lng_str = row.get('Longitude', row.get('Long', row.get('Lon', '')))
 
-                    # Look for coordinates in meta tags or script
-                    lat_pattern = re.compile(r'latitude["\s:]+(-?\d+\.\d+)')
-                    lng_pattern = re.compile(r'longitude["\s:]+(-?\d+\.\d+)')
+                        # If no direct coords, try grid reference conversion
+                        if not (lat_str and lng_str):
+                            # For now, skip - in production use OSGridConverter
+                            # from OSGridConverter import grid2latlong
+                            # grid_ref = row.get('Grid ref', row.get('GridRef', ''))
+                            # if grid_ref:
+                            #     lat, lng = grid2latlong(grid_ref)
+                            continue
 
-                    page_text = str(munro_soup)
-                    lat_match = lat_pattern.search(page_text)
-                    lng_match = lng_pattern.search(page_text)
+                        lat = float(lat_str)
+                        lng = float(lng_str)
 
-                    if not (lat_match and lng_match):
+                        # Get elevation
+                        height_str = row.get('Height(m)', row.get('Height', row.get('Metres', '0')))
+                        elevation = float(str(height_str).replace('m', '').strip())
+
+                        # Get region/area
+                        region = row.get('Region', row.get('Area', 'Unknown'))
+
+                        # Get map references
+                        map_50k = row.get('Map 1:50k', row.get('OS 1:50k', ''))
+                        grid_ref = row.get('Grid ref', row.get('GridRef', ''))
+
+                        # Determine difficulty based on height and classification
+                        difficulty = 'moderate'
+                        if elevation > 1100:
+                            difficulty = 'hard'
+                        elif elevation < 900:
+                            difficulty = 'moderate'
+
+                        if classification == 'munros':
+                            difficulty = 'hard'  # All munros are challenging
+
+                        attributes = {
+                            'elevation_m': elevation,
+                            'classification': classification,
+                            'region': region,
+                            'grid_ref': grid_ref,
+                            'os_map_50k': map_50k,
+                            'difficulty': difficulty
+                        }
+
+                        poi_id = hashlib.md5(
+                            f"{lat}{lng}{name}dobih".encode()
+                        ).hexdigest()[:12]
+
+                        poi = POI(
+                            id=poi_id,
+                            title=name,
+                            type='mountains',
+                            lat=lat,
+                            lng=lng,
+                            description=f"{classification.title()}: {elevation}m peak in {region}",
+                            attributes=attributes,
+                            sources=['dobih']
+                        )
+                        pois.append(poi)
+                        count += 1
+
+                    except Exception as e:
                         continue
 
-                    lat = float(lat_match.group(1))
-                    lng = float(lng_match.group(1))
+                print(f"    Added {count} {classification}")
+                time.sleep(1)
 
-                    # Extract description
-                    desc_elem = munro_soup.find('div', class_='description')
-                    description = desc_elem.text.strip() if desc_elem else ""
+            except Exception as e:
+                print(f"    Error fetching {classification}: {e}")
 
-                    # Extract elevation
-                    elevation = None
-                    height_pattern = re.compile(r'(\d+)m')
-                    height_match = height_pattern.search(page_text)
-                    if height_match:
-                        elevation = int(height_match.group(1))
-
-                    # Extract difficulty
-                    difficulty = None
-                    if 'grade' in page_text.lower():
-                        if 'easy' in page_text.lower():
-                            difficulty = 'Easy'
-                        elif 'moderate' in page_text.lower():
-                            difficulty = 'Moderate'
-                        elif 'hard' in page_text.lower() or 'difficult' in page_text.lower():
-                            difficulty = 'Difficult'
-                        elif 'expert' in page_text.lower() or 'scrambl' in page_text.lower():
-                            difficulty = 'Expert'
-
-                    # Extract distance
-                    distance_km = None
-                    distance_pattern = re.compile(r'(\d+(?:\.\d+)?)\s*(?:km|kilometres?)', re.IGNORECASE)
-                    distance_match = distance_pattern.search(page_text)
-                    if distance_match:
-                        distance_km = float(distance_match.group(1))
-                    else:
-                        # Try miles
-                        miles_pattern = re.compile(r'(\d+(?:\.\d+)?)\s*(?:mi|miles?)', re.IGNORECASE)
-                        miles_match = miles_pattern.search(page_text)
-                        if miles_match:
-                            distance_km = float(miles_match.group(1)) * 1.60934
-
-                    # Extract loop type
-                    loop_type = None
-                    if 'circular' in page_text.lower() or 'loop' in page_text.lower() or 'round trip' in page_text.lower():
-                        loop_type = 'Circular'
-                    elif 'linear' in page_text.lower() or 'point to point' in page_text.lower() or 'one way' in page_text.lower():
-                        loop_type = 'Linear'
-
-                    # Extract image
-                    image_url = ""
-                    img_elem = munro_soup.find('img', class_=re.compile(r'munro|main'))
-                    if img_elem and img_elem.get('src'):
-                        image_url = img_elem['src']
-                        if not image_url.startswith('http'):
-                            image_url = base_url + image_url
-
-                    attributes = {
-                        'url': munro_url
-                    }
-                    if elevation:
-                        attributes['elevation_gain'] = elevation
-                    if difficulty:
-                        attributes['difficulty'] = difficulty
-                    if distance_km:
-                        attributes['distance_km'] = round(distance_km, 2)
-                    if loop_type:
-                        attributes['loop'] = loop_type
-
-                    poi_id = hashlib.md5(
-                        f"{lat}{lng}{title}walkhighlands".encode()
-                    ).hexdigest()[:12]
-
-                    poi = POI(
-                        id=poi_id,
-                        title=title,
-                        type='mountains',
-                        lat=lat,
-                        lng=lng,
-                        description=description[:500],  # Truncate long descriptions
-                        image_url=image_url,
-                        attributes=attributes,
-                        sources=['walkhighlands']
-                    )
-                    pois.append(poi)
-
-                except Exception as e:
-                    print(f"    Error scraping munro {link.get('href', 'unknown')}: {e}")
-                    continue
-
-                time.sleep(1)  # Rate limiting
-
-            print(f"  Successfully scraped {len(pois)} munros from Walkhighlands")
-
-        except Exception as e:
-            print(f"  Error accessing Walkhighlands: {e}")
-
+        print(f"  Successfully fetched {len(pois)} hills from DoBIH")
         return pois
 
     def fetch_zapmap_chargers(self) -> List[POI]:
@@ -626,10 +535,10 @@ class ScotlandPOIScraper:
             self.all_pois.extend(pois)
             time.sleep(2)
 
-        # 2. Walkhighlands Data
-        print("\n=== Phase 2: Walkhighlands Data ===")
-        walkhighlands_pois = self.scrape_walkhighlands_munros()
-        self.all_pois.extend(walkhighlands_pois)
+        # 2. Database of British and Irish Hills (replaces Walkhighlands)
+        print("\n=== Phase 2: Database of British and Irish Hills ===")
+        dobih_pois = self.fetch_dobih_hills()
+        self.all_pois.extend(dobih_pois)
 
         # 3. Zap-Map Data
         print("\n=== Phase 3: Zap-Map EV Chargers ===")
@@ -762,62 +671,28 @@ class ScotlandPOIScraper:
 
 # Example usage
 if __name__ == "__main__":
-    import argparse
+    # Optional: Add your Zap-Map API key here
+    # Get one at: https://www.zap-map.com/api/
+    ZAPMAP_API_KEY = None  # or "your_api_key_here"
 
-    parser = argparse.ArgumentParser(description='Scotland POI Scraper')
-    parser.add_argument('--lite', action='store_true',
-                        help='Lite mode: only fetch a small sample for testing')
-    parser.add_argument('--categories', type=str, default=None,
-                        help='Comma-separated categories to scrape (e.g., "campsites,beaches")')
-    parser.add_argument('--limit', type=int, default=None,
-                        help='Max POIs per category (default: unlimited, lite mode: 10)')
-    parser.add_argument('--no-images', action='store_true',
-                        help='Skip Wikimedia image enrichment')
-    parser.add_argument('--output', type=str, default='scotland_pois.json',
-                        help='Output filename (default: scotland_pois.json)')
-    parser.add_argument('--zapmap-key', type=str, default=None,
-                        help='Zap-Map API key for EV charger data')
-
-    args = parser.parse_args()
-
-    # Lite mode defaults
-    if args.lite:
-        args.limit = args.limit or 10
-        args.categories = args.categories or 'campsites,beaches,viewpoints'
-        args.output = args.output if args.output != 'scotland_pois.json' else 'scotland_pois_lite.json'
-        print("=== LITE MODE ===")
-        print(f"  Categories: {args.categories}")
-        print(f"  Limit per category: {args.limit}")
-        print("")
-
-    scraper = ScotlandPOIScraper(zapmap_api_key=args.zapmap_key)
-
-    # Filter categories if specified
-    if args.categories:
-        selected = [c.strip() for c in args.categories.split(',')]
-        scraper.OSM_QUERIES = {k: v for k, v in scraper.OSM_QUERIES.items() if k in selected}
-
-    # Set limit
-    scraper.poi_limit = args.limit
+    scraper = ScotlandPOIScraper(zapmap_api_key=ZAPMAP_API_KEY)
 
     # Scrape all categories from all sources
     scraper.scrape_all_categories()
 
-    # Enrich with Wikimedia images (unless skipped)
-    if not args.no_images:
-        scraper.enrich_with_images()
-    else:
-        print("\nSkipping image enrichment (--no-images)")
+    # Enrich with Wikimedia images
+    scraper.enrich_with_images()
 
     # Export deduplicated data
-    scraper.export_to_json(args.output)
+    scraper.export_to_json("scotland_pois.json")
 
-    print("\n✓ Scraping pipeline finished!")
-    print("\nUsage examples:")
-    print("  python scraper.py --lite                    # Quick test with ~30 POIs")
-    print("  python scraper.py --categories campsites   # Only campsites")
-    print("  python scraper.py --limit 50               # Max 50 per category")
-    print("  python scraper.py --no-images              # Skip slow image lookup")
-    print("\nIMPORTANT:")
-    print("  - Check robots.txt and ToS before scraping")
-    print("  - Use appropriate rate limiting")
+    print("\n✓ Complete scraping pipeline finished!")
+    print("\nNote: Install dependencies with:")
+    print("  pip install requests beautifulsoup4")
+    print("\nData Sources Used:")
+    print("  ✓ OpenStreetMap - Comprehensive POI data")
+    print("  ✓ Database of British and Irish Hills - Official hills database")
+    print("  ✓ Zap-Map API - EV charging stations (if API key provided)")
+    print("  ✓ Wikimedia Commons - Geotagged images")
+    print("\nNote: Walkhighlands scraping removed (403 errors)")
+    print("      DoBIH provides the same hill data officially and freely")
