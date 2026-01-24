@@ -1,0 +1,1 @@
+worker: python scotland_poi_scraper.py
