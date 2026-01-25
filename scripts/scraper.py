@@ -131,6 +131,18 @@ OSM_QUERIES = {
     """,
 }
 
+# Separate query for hiking routes (relations are more complex)
+HIKING_ROUTES_QUERY = """
+    [out:json][timeout:120];
+    (
+      relation["type"="route"]["route"="hiking"]({s},{w},{n},{e});
+      relation["type"="route"]["route"="foot"]({s},{w},{n},{e});
+    );
+    out body;
+    >;
+    out skel qt;
+"""
+
 def __init__(self, zapmap_api_key: Optional[str] = None):
     self.overpass_url = "https://overpass-api.de/api/interpreter"
     self.zapmap_api_key = zapmap_api_key
@@ -290,9 +302,174 @@ def query_overpass(self, query: str, category: str) -> List[POI]:
         
         print(f"  Found {len(pois)} {category}")
         return pois
-        
+
     except Exception as e:
         print(f"  Error querying {category}: {e}")
+        return []
+
+def fetch_hiking_routes(self) -> List[POI]:
+    """Fetch hiking routes from OpenStreetMap"""
+    print("\nFetching hiking routes from OpenStreetMap...")
+
+    bbox = self.SCOTLAND_BBOX
+    formatted_query = self.HIKING_ROUTES_QUERY.format(
+        s=bbox['south'],
+        n=bbox['north'],
+        w=bbox['west'],
+        e=bbox['east']
+    )
+
+    try:
+        response = self.session.post(
+            self.overpass_url,
+            data={'data': formatted_query},
+            timeout=180
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        # Separate relations, ways, and nodes
+        relations = []
+        nodes = {}
+        ways = {}
+
+        for element in data.get('elements', []):
+            if element['type'] == 'relation':
+                relations.append(element)
+            elif element['type'] == 'node':
+                nodes[element['id']] = element
+            elif element['type'] == 'way':
+                ways[element['id']] = element
+
+        pois = []
+
+        for relation in relations:
+            tags = relation.get('tags', {})
+            name = tags.get('name', '')
+
+            if not name:
+                continue
+
+            # Calculate centroid from member nodes
+            member_coords = []
+            for member in relation.get('members', []):
+                if member['type'] == 'node' and member['ref'] in nodes:
+                    node = nodes[member['ref']]
+                    member_coords.append((node['lat'], node['lon']))
+                elif member['type'] == 'way' and member['ref'] in ways:
+                    way = ways[member['ref']]
+                    for node_id in way.get('nodes', []):
+                        if node_id in nodes:
+                            node = nodes[node_id]
+                            member_coords.append((node['lat'], node['lon']))
+
+            if not member_coords:
+                continue
+
+            # Use first point as location (start of route)
+            lat, lng = member_coords[0]
+
+            # Extract route metadata
+            attributes = {}
+
+            # Distance
+            distance_str = tags.get('distance', '')
+            if distance_str:
+                try:
+                    # Handle formats like "5.2 km", "5.2km", "5200 m"
+                    distance_str = distance_str.lower().strip()
+                    if 'km' in distance_str:
+                        attributes['distance_km'] = float(distance_str.replace('km', '').strip())
+                    elif 'm' in distance_str:
+                        meters = float(distance_str.replace('m', '').strip())
+                        attributes['distance_km'] = meters / 1000
+                    else:
+                        attributes['distance_km'] = float(distance_str)
+                except ValueError:
+                    pass
+
+            # Elevation / Ascent
+            ascent_str = tags.get('ascent', tags.get('ele:positive', ''))
+            if ascent_str:
+                try:
+                    ascent_str = ascent_str.lower().replace('m', '').strip()
+                    attributes['elevation_gain'] = int(float(ascent_str))
+                except ValueError:
+                    pass
+
+            # Loop type
+            roundtrip = tags.get('roundtrip', '')
+            if roundtrip == 'yes':
+                attributes['loop'] = 'Circular'
+            elif roundtrip == 'no':
+                attributes['loop'] = 'Linear'
+
+            # Difficulty
+            difficulty_tags = [
+                tags.get('sac_scale', ''),
+                tags.get('mtb:scale', ''),
+                tags.get('difficulty', ''),
+            ]
+            for diff_tag in difficulty_tags:
+                if diff_tag:
+                    diff_lower = diff_tag.lower()
+                    if any(x in diff_lower for x in ['hiking', 'easy', 't1', 'grade1']):
+                        attributes['difficulty'] = 'easy'
+                    elif any(x in diff_lower for x in ['mountain', 'moderate', 't2', 'grade2']):
+                        attributes['difficulty'] = 'moderate'
+                    elif any(x in diff_lower for x in ['demanding', 'difficult', 't3', 't4', 'grade3']):
+                        attributes['difficulty'] = 'hard'
+                    elif any(x in diff_lower for x in ['alpine', 'expert', 't5', 't6', 'grade4', 'grade5']):
+                        attributes['difficulty'] = 'expert'
+                    break
+
+            # Network type
+            network = tags.get('network', '')
+            if network:
+                attributes['network'] = network
+
+            # Operator
+            operator = tags.get('operator', '')
+            if operator:
+                attributes['operator'] = operator
+
+            # Generate ID
+            poi_id = hashlib.md5(
+                f"{lat}{lng}{name}hiking".encode()
+            ).hexdigest()[:12]
+
+            # Build description
+            desc_parts = []
+            if 'distance_km' in attributes:
+                desc_parts.append(f"{attributes['distance_km']}km")
+            if 'elevation_gain' in attributes:
+                desc_parts.append(f"{attributes['elevation_gain']}m ascent")
+            if 'loop' in attributes:
+                desc_parts.append(attributes['loop'].lower())
+
+            description = tags.get('description', '')
+            if desc_parts and not description:
+                description = ' | '.join(desc_parts)
+
+            poi = POI(
+                id=poi_id,
+                title=name,
+                type='walks',
+                lat=lat,
+                lng=lng,
+                description=description,
+                attributes=attributes,
+                sources=['osm']
+            )
+            pois.append(poi)
+
+        print(f"  Found {len(pois)} hiking routes")
+        return pois
+
+    except Exception as e:
+        print(f"  Error fetching hiking routes: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def fetch_dobih_hills(self) -> List[POI]:
@@ -614,9 +791,14 @@ def scrape_all_categories(self):
     print("\n=== Phase 2: Database of British and Irish Hills ===")
     dobih_pois = self.fetch_dobih_hills()
     self.all_pois.extend(dobih_pois)
-    
-    # 3. Zap-Map Data
-    print("\n=== Phase 3: Zap-Map EV Chargers ===")
+
+    # 3. Hiking Routes from OSM
+    print("\n=== Phase 3: Hiking Routes ===")
+    hiking_pois = self.fetch_hiking_routes()
+    self.all_pois.extend(hiking_pois)
+
+    # 4. Zap-Map Data
+    print("\n=== Phase 4: Zap-Map EV Chargers ===")
     zapmap_pois = self.fetch_zapmap_chargers()
     self.all_pois.extend(zapmap_pois)
     
@@ -769,6 +951,7 @@ print("\nDependencies:")
 print("  pip install requests beautifulsoup4 OSGridConverter")
 print("\nData Sources Used:")
 print("  ✓ OpenStreetMap - Comprehensive POI data")
+print("  ✓ OpenStreetMap - Hiking routes with distance, elevation, difficulty")
 print("  ✓ Database of British and Irish Hills - Official hills database")
 print("  ✓ Zap-Map API - EV charging stations (if API key provided)")
 print("  ✓ Wikimedia Commons - Geotagged images")
@@ -776,5 +959,5 @@ print("\nFeatures:")
 print("  ✓ Automatic grid reference to lat/lng conversion")
 print("  ✓ Smart deduplication across all sources")
 print("  ✓ Image enrichment from Wikimedia Commons")
-print("  ✓ Complete metadata for all POI types")
+print("  ✓ Route metadata: distance, elevation gain, loop type, difficulty")
 ```
