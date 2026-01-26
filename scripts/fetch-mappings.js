@@ -7,8 +7,9 @@
  *   node scripts/fetch-mappings.js [options]
  *
  * Options:
- *   --api-url <url>    Strapi URL (default: http://localhost:1337)
- *   --output <file>    Output file (default: ./mappings.json)
+ *   --api-url <url>      Strapi URL (default: $STRAPI_URL or http://localhost:1337)
+ *   --api-token <token>  API token (default: $STRAPI_API_TOKEN)
+ *   --output <file>      Output file (default: ./mappings.json)
  */
 
 const fs = require('fs');
@@ -20,12 +21,15 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     apiUrl: process.env.STRAPI_URL || 'http://localhost:1337',
+    apiToken: process.env.STRAPI_API_TOKEN || null,
     output: path.join(__dirname, 'mappings.json'),
   };
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--api-url' && args[i + 1]) {
       options.apiUrl = args[++i];
+    } else if (args[i] === '--api-token' && args[i + 1]) {
+      options.apiToken = args[++i];
     } else if (args[i] === '--output' && args[i + 1]) {
       options.output = args[++i];
     }
@@ -34,22 +38,37 @@ function parseArgs() {
   return options;
 }
 
-async function request(url) {
+async function request(url, apiToken) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const protocol = urlObj.protocol === 'https:' ? https : http;
 
-    protocol.get(url, (res) => {
+    const reqOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+      path: urlObj.pathname + urlObj.search,
+      method: 'GET',
+      headers: {},
+    };
+
+    if (apiToken) {
+      reqOptions.headers['Authorization'] = `Bearer ${apiToken}`;
+    }
+
+    const req = protocol.request(reqOptions, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
           resolve(JSON.parse(data));
         } catch {
-          reject(new Error(`Invalid JSON from ${url}`));
+          reject(new Error(`Invalid JSON from ${url}: ${data.substring(0, 100)}`));
         }
       });
-    }).on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.end();
   });
 }
 
@@ -59,6 +78,7 @@ async function main() {
   console.log('');
   console.log('Fetching mappings from Strapi...');
   console.log(`API URL: ${options.apiUrl}`);
+  console.log(`Auth:    ${options.apiToken ? 'Using API token' : 'No token (public access)'}`);
   console.log('');
 
   const mappings = {
@@ -74,7 +94,7 @@ async function main() {
   try {
     // Fetch site types
     console.log('Fetching site types...');
-    const typesResponse = await request(`${options.apiUrl}/api/site-types?pagination[limit]=100`);
+    const typesResponse = await request(`${options.apiUrl}/api/site-types?pagination[limit]=100`, options.apiToken);
     const types = typesResponse.data || [];
 
     for (const type of types) {
@@ -90,7 +110,7 @@ async function main() {
 
     // Fetch facilities
     console.log('Fetching facilities...');
-    const facilitiesResponse = await request(`${options.apiUrl}/api/facilities?pagination[limit]=100`);
+    const facilitiesResponse = await request(`${options.apiUrl}/api/facilities?pagination[limit]=100`, options.apiToken);
     const facilities = facilitiesResponse.data || [];
 
     for (const facility of facilities) {
@@ -129,6 +149,9 @@ async function main() {
   } catch (err) {
     console.error(`Error: ${err.message}`);
     console.error('\nMake sure Strapi is running at the specified URL.');
+    if (!options.apiToken) {
+      console.error('If the endpoint requires auth, set STRAPI_API_TOKEN or use --api-token.');
+    }
     process.exit(1);
   }
 }

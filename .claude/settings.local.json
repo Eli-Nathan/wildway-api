@@ -1,7 +1,8 @@
 {
   "permissions": {
     "additionalDirectories": [
-      "/Users/eli.nathan/repos/nomad"
+      "/Users/eli.nathan/repos/nomad",
+      "/Users/eli.nathan/repos/wayfinder"
     ]
   }
 }
