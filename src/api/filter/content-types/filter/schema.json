@@ -25,6 +25,10 @@
     "icon": {
       "type": "string"
     },
+    "iconify": {
+      "type": "string",
+      "required": false
+    },
     "remote_icon": {
       "type": "media",
       "multiple": true,
