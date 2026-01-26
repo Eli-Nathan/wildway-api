@@ -327,7 +327,8 @@ function transform(inputData, format, mappings, options) {
       records = inputData.pois || inputData.data || inputData;
       break;
     case InputFormat.ALREADY_TRANSFORMED:
-      console.log('Data is already transformed. Passing through with validation.');
+      // Note: this runs before log() is defined in main, use console.error directly
+      console.error('Data is already transformed. Passing through with validation.');
       records = inputData.data || inputData;
       break;
     case InputFormat.GENERIC_JSON:
@@ -488,6 +489,9 @@ function createOutput(results) {
 // CLI
 // ============================================================================
 
+// Use stderr for logs so stdout can be pure JSON (for piping/capture)
+const log = (...args) => console.error(...args);
+
 function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
@@ -578,11 +582,11 @@ async function main() {
 
   const mappings = JSON.parse(fs.readFileSync(mappingsPath, 'utf-8'));
 
-  console.log('');
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('              SITE TRANSFORMER');
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('');
+  log('');
+  log('═══════════════════════════════════════════════════════════');
+  log('              SITE TRANSFORMER');
+  log('═══════════════════════════════════════════════════════════');
+  log('');
 
   // Read and parse input
   let inputData;
@@ -591,47 +595,47 @@ async function main() {
   if (isCSV) {
     const content = fs.readFileSync(inputPath, 'utf-8');
     inputData = parseCSV(content);
-    console.log(`Input:    ${inputPath} (CSV)`);
+    log(`Input:    ${inputPath} (CSV)`);
   } else {
     inputData = JSON.parse(fs.readFileSync(inputPath, 'utf-8'));
-    console.log(`Input:    ${inputPath} (JSON)`);
+    log(`Input:    ${inputPath} (JSON)`);
   }
 
   // Detect format
   const format = isCSV ? InputFormat.CAMPERCONTACT_CSV : detectFormat(inputData, inputPath);
-  console.log(`Format:   ${format}`);
-  console.log(`Mappings: ${mappingsPath}`);
+  log(`Format:   ${format}`);
+  log(`Mappings: ${mappingsPath}`);
 
   if (format === InputFormat.UNKNOWN) {
-    console.error('\nError: Could not detect input format');
-    console.error('Ensure your data has title, lat, lng fields');
+    log('\nError: Could not detect input format');
+    log('Ensure your data has title, lat, lng fields');
     process.exit(1);
   }
 
   // Transform
-  console.log('\nTransforming...');
+  log('\nTransforming...');
   const results = transform(inputData, format, mappings, options);
 
   // Report
-  console.log('');
-  console.log(`Transformed: ${results.transformed.length}`);
-  console.log(`Skipped:     ${results.skipped.length}`);
-  console.log(`Errors:      ${results.errors.length}`);
+  log('');
+  log(`Transformed: ${results.transformed.length}`);
+  log(`Skipped:     ${results.skipped.length}`);
+  log(`Errors:      ${results.errors.length}`);
 
   if (results.skipped.length > 0) {
-    console.log('\nSkipped records:');
+    log('\nSkipped records:');
     results.skipped.slice(0, 5).forEach(s => {
-      console.log(`  - [${s.index}] ${s.record?.title || 'Unknown'}: ${s.reason}`);
+      log(`  - [${s.index}] ${s.record?.title || 'Unknown'}: ${s.reason}`);
     });
     if (results.skipped.length > 5) {
-      console.log(`  ... and ${results.skipped.length - 5} more`);
+      log(`  ... and ${results.skipped.length - 5} more`);
     }
   }
 
   if (results.errors.length > 0) {
-    console.log('\nErrors:');
+    log('\nErrors:');
     results.errors.slice(0, 5).forEach(e => {
-      console.log(`  - [${e.index}] ${e.error}`);
+      log(`  - [${e.index}] ${e.error}`);
     });
   }
 
@@ -640,29 +644,34 @@ async function main() {
     const outputPath = options.outputFile || inputPath.replace(/\.(csv|json)$/, '-transformed.json');
     const output = createOutput(results);
 
-    fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
-    console.log(`\nOutput: ${outputPath}`);
+    // If outputting to stdout (-o /dev/stdout or -o -), write to stdout
+    if (outputPath === '/dev/stdout' || outputPath === '-') {
+      console.log(JSON.stringify(output, null, 2));
+    } else {
+      fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
+      log(`\nOutput: ${outputPath}`);
 
-    // Write skipped to separate file if any
-    if (results.skipped.length > 0) {
-      const skippedPath = outputPath.replace('.json', '-skipped.json');
-      fs.writeFileSync(skippedPath, JSON.stringify(results.skipped, null, 2));
-      console.log(`Skipped: ${skippedPath}`);
+      // Write skipped to separate file if any
+      if (results.skipped.length > 0) {
+        const skippedPath = outputPath.replace('.json', '-skipped.json');
+        fs.writeFileSync(skippedPath, JSON.stringify(results.skipped, null, 2));
+        log(`Skipped: ${skippedPath}`);
+      }
     }
   }
 
-  console.log('');
-  console.log('═══════════════════════════════════════════════════════════');
+  log('');
+  log('═══════════════════════════════════════════════════════════');
 
   if (options.validateOnly) {
-    console.log('Validation complete. No output written.');
+    log('Validation complete. No output written.');
   } else {
-    console.log('Transformation complete.');
-    console.log('\nNext step:');
-    console.log(`  node scripts/import-sites.js <output-file> --dry-run`);
+    log('Transformation complete.');
+    log('\nNext step:');
+    log(`  node scripts/import-sites.js <output-file> --dry-run`);
   }
 
-  console.log('');
+  log('');
 }
 
 main().catch(err => {

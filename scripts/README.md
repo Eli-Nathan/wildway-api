@@ -164,19 +164,21 @@ python scripts/scraper.py --output my_pois.json
 | `--limit <n>` | Max POIs per category |
 | `--no-images` | Skip Wikimedia image lookup |
 | `--output <file>` | Output filename (default: scotland_pois.json) |
+| `--zapmap-key <key>` | Zap-Map API key for EV charger data |
 
 **Available categories:**
 | Category | Description |
 |----------|-------------|
 | `campsites` | Camp sites and caravan sites |
 | `parking` | Overnight-friendly parking |
-| `mountains` | Mountain peaks |
+| `mountains` | Mountain peaks (DoBIH data) |
 | `lochs` | Lochs and lakes |
 | `beaches` | Beaches |
 | `fuel` | Fuel stations |
-| `ev_charging` | EV charging stations |
+| `ev_charging` | EV charging stations (requires `--zapmap-key`) |
 | `historic` | Castles, monuments, ruins |
 | `viewpoints` | Scenic viewpoints |
+| `walks` | Hiking routes with distance, elevation, loop type, difficulty |
 
 ---
 
@@ -246,6 +248,42 @@ Maps string type/facility names to Strapi entity IDs:
 ```
 
 Run `fetch-mappings.js` to auto-populate from Strapi, then add any additional aliases as needed.
+
+---
+
+## Quick Commands
+
+### Full pipeline (single command)
+
+```bash
+# Scrape, transform, and import in one go (dry-run first!)
+python scripts/scraper.py --output scotland_pois.json && \
+  node scripts/transform-sites.js scotland_pois.json -o transformed.json && \
+  node scripts/import-sites.js transformed.json --dry-run
+
+# When dry-run looks good, run with API token:
+python scripts/scraper.py --output scotland_pois.json && \
+  node scripts/transform-sites.js scotland_pois.json -o transformed.json && \
+  node scripts/import-sites.js transformed.json --api-token YOUR_TOKEN
+```
+
+### Quick test pipeline
+
+```bash
+# Test with limited data first
+python scripts/scraper.py --lite --output test.json && \
+  node scripts/transform-sites.js test.json -o test-transformed.json && \
+  node scripts/import-sites.js test-transformed.json --dry-run
+```
+
+### Specific categories only
+
+```bash
+# Just walks and mountains
+python scripts/scraper.py --categories walks,mountains --output walks.json && \
+  node scripts/transform-sites.js walks.json -o walks-transformed.json && \
+  node scripts/import-sites.js walks-transformed.json --api-token YOUR_TOKEN
+```
 
 ---
 

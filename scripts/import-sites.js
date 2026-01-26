@@ -38,6 +38,7 @@ function parseArgs() {
     dryRun: false,
     skipDupes: false,
     typeId: 1,
+    addedBy: 2, // Default user ID for attribution
     delay: 200,
   };
 
@@ -56,6 +57,8 @@ function parseArgs() {
       options.skipDupes = true;
     } else if (arg === '--type-id' && args[i + 1]) {
       options.typeId = parseInt(args[++i], 10);
+    } else if (arg === '--added-by' && args[i + 1]) {
+      options.addedBy = parseInt(args[++i], 10);
     } else if (arg === '--delay' && args[i + 1]) {
       options.delay = parseInt(args[++i], 10);
     } else if (!arg.startsWith('--') && !options.inputFile) {
@@ -136,7 +139,7 @@ async function checkForDuplicates(site, apiUrl) {
 /**
  * Create a site via Strapi API
  */
-async function createSite(site, apiUrl, apiToken, typeId) {
+async function createSite(site, apiUrl, apiToken, typeId, addedBy) {
   const url = `${apiUrl}/api/sites`;
 
   const body = {
@@ -151,6 +154,8 @@ async function createSite(site, apiUrl, apiToken, typeId) {
       type: typeId,
       priority: site.priority || 0,
       pricerange: site.pricerange || '---',
+      // Attribute to user
+      added_by: addedBy,
       // Store original image URL in legacy field if not uploading
       ...(site.image && { image: site.image }),
     },
@@ -222,6 +227,7 @@ async function importSites(options) {
   console.log(`Sites:        ${sites.length}`);
   console.log(`API URL:      ${options.apiUrl}`);
   console.log(`Type ID:      ${options.typeId}`);
+  console.log(`Added by:     User ${options.addedBy}`);
   console.log(`Dry run:      ${options.dryRun ? 'Yes' : 'No'}`);
   console.log(`Skip dupes:   ${options.skipDupes ? 'Yes' : 'No'}`);
   console.log(`Delay:        ${options.delay}ms`);
@@ -273,7 +279,7 @@ async function importSites(options) {
 
       // Step 2: Create site (unless dry run)
       if (!options.dryRun) {
-        const createResponse = await createSite(site, options.apiUrl, options.apiToken, options.typeId);
+        const createResponse = await createSite(site, options.apiUrl, options.apiToken, options.typeId, options.addedBy);
 
         if (createResponse.status === 200 || createResponse.status === 201) {
           results.created.push({
@@ -360,6 +366,7 @@ Options:
   --dry-run             Check for duplicates only, don't create sites
   --skip-dupes          Skip duplicate check (faster, riskier)
   --type-id <id>        Site type ID for camping (default: 1)
+  --added-by <id>       User ID to attribute sites to (default: 2)
   --delay <ms>          Delay between requests in ms (default: 200)
 
 Environment variables:

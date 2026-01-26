@@ -26,6 +26,10 @@
     "icon": {
       "type": "string"
     },
+    "iconify": {
+      "type": "string",
+      "required": false
+    },
     "facilities": {
       "type": "relation",
       "relation": "manyToMany",
