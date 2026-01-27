@@ -688,6 +688,7 @@ export interface ApiFacilityFacility extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     icon: Schema.Attribute.String & Schema.Attribute.Required;
+    iconify: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -786,6 +787,7 @@ export interface ApiFilterFilter extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     filter: Schema.Attribute.Component<'filter.filter', false>;
     icon: Schema.Attribute.String;
+    iconify: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -882,6 +884,7 @@ export interface ApiHomeFilterlinkHomeFilterlink
       'api::filter-group.filter-group'
     >;
     icon: Schema.Attribute.String;
+    iconify: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1057,6 +1060,7 @@ export interface ApiSiteTypeSiteType extends Struct.CollectionTypeSchema {
       'api::facility.facility'
     >;
     icon: Schema.Attribute.String;
+    iconify: Schema.Attribute.String;
     key: Schema.Attribute.String & Schema.Attribute.DefaultTo<'siteType'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<

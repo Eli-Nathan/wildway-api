@@ -20,6 +20,10 @@
             "type": "string",
             "required": true
         },
+        "iconify": {
+            "type": "string",
+            "required": false
+        },
         "relevance": {
             "type": "relation",
             "relation": "manyToMany",

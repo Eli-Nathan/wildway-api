@@ -222,10 +222,18 @@ export default factories.createCoreController(
         populate: {
           profile_pic: true,
         },
-        select: ["id", "name", "avatar", "businessName", "score"],
       });
+      // Return only safe public fields
+      const safeUsers = users.map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        businessName: user.businessName,
+        score: user.score,
+        profile_pic: user.profile_pic,
+      }));
       // @ts-expect-error - Strapi core controller method
-      return await this.transformResponse(users);
+      return await this.transformResponse(safeUsers);
     },
 
     async editProfile(ctx: StrapiContext) {

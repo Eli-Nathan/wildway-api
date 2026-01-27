@@ -108,10 +108,14 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         };
     },
     async findOne(ctx) {
+        // Allow viewing routes that are owned by the current user OR are public
         const route = await strapi.db.query("api::user-route.user-route").findOne({
             where: {
                 id: ctx.params.id,
-                owner: ctx.state.user.id,
+                $or: [
+                    { owner: ctx.state.user.id },
+                    { public: true },
+                ],
             },
             populate: {
                 image: true,
