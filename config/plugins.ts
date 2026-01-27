@@ -20,12 +20,13 @@ export default ({ env }: { env: EnvFunction }) => {
       },
     },
     email: {
+      enabled: true,
       config: {
         provider: "nodemailer",
         providerOptions: {
           host: "smtp.gmail.com",
-          port: 465,
-          secure: true,
+          port: 587,
+          secure: false,
           auth: {
             user: "wildway.app@gmail.com",
             pass: env("WILDWAY_GMAIL_PASSWORD"),
