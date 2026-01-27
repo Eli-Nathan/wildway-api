@@ -15,7 +15,7 @@ const sendEmail = async ({
   text,
   html,
 }: SendEmailParams): Promise<void> => {
-  await strapi.plugins["email"].services.email.send({
+  await strapi.plugin("email").service("email").send({
     to: address,
     from: "wildway <wildway.app@gmail.com>",
     replyTo: "wildway.app@gmail.com",
