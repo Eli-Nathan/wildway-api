@@ -251,8 +251,9 @@ module.exports = ({ strapi }) => ({
       if (edit.data) {
         const allowedFields = [
           'title', 'description', 'lat', 'lng', 'latlng',
-          'tel', 'pricerange', 'category', 'region', 
-          'url', 'maplink', 'email', 'priority', 'image'
+          'tel', 'pricerange', 'category', 'region',
+          'url', 'maplink', 'email', 'priority', 'image',
+          'route_metadata'
         ];
         
         for (const field of allowedFields) {
