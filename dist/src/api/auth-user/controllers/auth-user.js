@@ -164,6 +164,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             name: user.name,
             avatar: user.avatar,
             businessName: user.businessName,
+            website: user.website,
             score: user.score,
             profile_pic: user.profile_pic,
         }));
@@ -182,6 +183,9 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         }
         if (requestData.businessName) {
             dataToUpdate.businessName = requestData.businessName;
+        }
+        if (requestData.website !== undefined) {
+            dataToUpdate.website = requestData.website;
         }
         // Strapi 5: Use db.query directly
         const user = await strapi.db.query("api::auth-user.auth-user").update({

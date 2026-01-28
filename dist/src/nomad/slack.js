@@ -34,7 +34,7 @@ const formSubmission = async (ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `*Form: ${lodash_1.default.startCase(((formSubmitted === null || formSubmitted === void 0 ? void 0 : formSubmitted.name) || "").replace("-", " "))}* \n <https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::form-submission.form-submission/${entry.id}|View submission>`,
+                text: `*Form: ${lodash_1.default.startCase(((formSubmitted === null || formSubmitted === void 0 ? void 0 : formSubmitted.name) || "").replace("-", " "))}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::form-submission.form-submission/${entry.id}|View submission>`,
             },
         },
         {
@@ -57,7 +57,7 @@ const additionRequest = async (_ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n <https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::addition-request.addition-request/${entry.id}|View addition request>`,
+                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::addition-request.addition-request/${entry.id}|View addition request>`,
             },
         },
     ];
@@ -76,7 +76,7 @@ const editRequest = async (_ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `<https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::edit-request.edit-request/${entry.id}|View edit request>`,
+                text: `<https://api.wildway.app/admin/content-manager/collectionType/api::edit-request.edit-request/${entry.id}|View edit request>`,
             },
         },
     ];
@@ -95,7 +95,7 @@ const comment = async (_ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n <https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::comment.comment/${entry.id}|View comment>`,
+                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::comment.comment/${entry.id}|View comment>`,
             },
         },
     ];

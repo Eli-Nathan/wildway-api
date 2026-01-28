@@ -453,6 +453,7 @@ export interface ApiAdditionRequestAdditionRequest
       'oneToMany',
       'api::facility.facility'
     >;
+    imageCaption: Schema.Attribute.String;
     images: Schema.Attribute.Media<'images', true>;
     lat: Schema.Attribute.Float & Schema.Attribute.Required;
     lng: Schema.Attribute.Float & Schema.Attribute.Required;
@@ -547,7 +548,15 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::user-route.user-route'
     >;
+    saved_site_lists: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::site-list.site-list'
+    >;
     score: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    site_lists: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::site-list.site-list'
+    >;
     sites: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
     sites_added: Schema.Attribute.Relation<'oneToMany', 'api::site.site'>;
     sites_contributed: Schema.Attribute.Relation<
@@ -562,6 +571,7 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::user-route.user-route'
     >;
+    website: Schema.Attribute.String;
   };
 }
 
@@ -1038,6 +1048,72 @@ export interface ApiQuicklinkQuicklink extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiSiteListSiteList extends Struct.CollectionTypeSchema {
+  collectionName: 'site_lists';
+  info: {
+    description: 'Curated lists of sites (e.g., Munros, Wild Swimming Spots)';
+    displayName: 'Site Lists';
+    pluralName: 'site-lists';
+    singularName: 'site-list';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.Enumeration<['Walks']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'Walks'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 500;
+      }>;
+    difficulty: Schema.Attribute.Enumeration<
+      ['Easy', 'Moderate', 'Difficult', 'Expert']
+    >;
+    icon: Schema.Attribute.String;
+    iconify: Schema.Attribute.String;
+    image: Schema.Attribute.Media<'images'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::site-list.site-list'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
+    owner_type: Schema.Attribute.Enumeration<['admin', 'user']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'admin'>;
+    priority: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 10;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    public: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    publishedAt: Schema.Attribute.DateTime;
+    saved_by: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::auth-user.auth-user'
+    >;
+    sites: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiSiteTypeSiteType extends Struct.CollectionTypeSchema {
   collectionName: 'site_types';
   info: {
@@ -1145,6 +1221,10 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     region: Schema.Attribute.String;
     route_metadata: Schema.Attribute.Component<'route.metadata', false>;
+    site_lists: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::site-list.site-list'
+    >;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
     sub_types: Schema.Attribute.Relation<
       'oneToMany',
@@ -1842,6 +1922,7 @@ declare module '@strapi/strapi' {
       'api::nomad-route.nomad-route': ApiNomadRouteNomadRoute;
       'api::post.post': ApiPostPost;
       'api::quicklink.quicklink': ApiQuicklinkQuicklink;
+      'api::site-list.site-list': ApiSiteListSiteList;
       'api::site-type.site-type': ApiSiteTypeSiteType;
       'api::site.site': ApiSiteSite;
       'api::subscription.subscription': ApiSubscriptionSubscription;

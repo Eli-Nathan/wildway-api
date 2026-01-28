@@ -85,6 +85,9 @@
             "type": "relation",
             "relation": "oneToMany",
             "target": "api::site.site"
+        },
+        "imageCaption": {
+            "type": "string"
         }
     }
 }

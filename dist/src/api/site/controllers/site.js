@@ -111,6 +111,9 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                     populate: { profile_pic: true },
                 },
                 route_metadata: true,
+                site_lists: {
+                    select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
+                },
             },
         });
         if (!siteData) {
@@ -140,6 +143,9 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 sub_types: true,
                 images: true,
                 route_metadata: true,
+                site_lists: {
+                    select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
+                },
             },
         });
         if (site) {

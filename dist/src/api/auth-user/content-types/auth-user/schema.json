@@ -131,6 +131,21 @@
         "isTest": {
             "type": "boolean",
             "default": false
+        },
+        "website": {
+            "type": "string"
+        },
+        "site_lists": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::site-list.site-list",
+            "mappedBy": "owner"
+        },
+        "saved_site_lists": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::site-list.site-list",
+            "mappedBy": "saved_by"
         }
     }
 }
