@@ -114,6 +114,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 site_lists: {
                     select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
                 },
+                tags: true,
             },
         });
         if (!siteData) {
@@ -146,6 +147,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 site_lists: {
                     select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
                 },
+                tags: true,
             },
         });
         if (site) {

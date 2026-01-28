@@ -209,6 +209,7 @@ export default factories.createCoreController(
           site_lists: {
             select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
           },
+          tags: true,
         },
       });
 
@@ -245,6 +246,7 @@ export default factories.createCoreController(
           site_lists: {
             select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
           },
+          tags: true,
         },
       });
       if (site) {
