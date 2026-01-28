@@ -295,10 +295,8 @@ module.exports = ({ strapi }) => ({
 
       console.log('approveEdit - updateData before save:', JSON.stringify(updateData, null, 2));
 
-      const approved = await strapi.db.query(`api::site.site`).update({
-        where: {
-          id: edit.site.id,
-        },
+      // Use entityService instead of db.query to properly handle component fields like route_metadata
+      const approved = await strapi.entityService.update('api::site.site', edit.site.id, {
         data: updateData,
       });
       
