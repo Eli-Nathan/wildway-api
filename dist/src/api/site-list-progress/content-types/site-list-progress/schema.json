@@ -1,0 +1,31 @@
+{
+    "kind": "collectionType",
+    "collectionName": "site_list_progress",
+    "info": {
+        "singularName": "site-list-progress",
+        "pluralName": "site-list-progresses",
+        "displayName": "Site List Progress",
+        "description": "Tracks user progress on completing sites in a list"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "user": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user"
+        },
+        "site_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::site-list.site-list"
+        },
+        "completed_sites": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::site.site"
+        }
+    }
+}
