@@ -48,7 +48,7 @@ const formSubmission: MessageHandler = async (ctx, entry) => {
         type: "mrkdwn",
         text: `*Form: ${_.startCase(
           (formSubmitted?.name || "").replace("-", " ")
-        )}* \n <https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::form-submission.form-submission/${
+        )}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::form-submission.form-submission/${
           entry.id
         }|View submission>`,
       },
@@ -76,7 +76,7 @@ const additionRequest: MessageHandler = async (_ctx, entry) => {
         type: "mrkdwn",
         text: `*Title: ${_.startCase(
           entry.title || ""
-        )}* \n <https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::addition-request.addition-request/${
+        )}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::addition-request.addition-request/${
           entry.id
         }|View addition request>`,
       },
@@ -98,7 +98,7 @@ const editRequest: MessageHandler = async (_ctx, entry) => {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `<https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::edit-request.edit-request/${entry.id}|View edit request>`,
+        text: `<https://api.wildway.app/admin/content-manager/collectionType/api::edit-request.edit-request/${entry.id}|View edit request>`,
       },
     },
   ];
@@ -120,7 +120,7 @@ const comment: MessageHandler = async (_ctx, entry) => {
         type: "mrkdwn",
         text: `*Title: ${_.startCase(
           entry.title || ""
-        )}* \n <https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::comment.comment/${
+        )}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::comment.comment/${
           entry.id
         }|View comment>`,
       },

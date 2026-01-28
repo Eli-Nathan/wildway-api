@@ -14,7 +14,7 @@ const getMainBody = (name: string, id: number): string => `
   <br>
 </p>
 <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
-  New user: <strong><b>${name}</b></strong> has registered a new account. <a target="_blank" style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#2D3142;font-size:18px;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif" href="https://nomadapp-api.herokuapp.com/admin/content-manager/collectionType/api::auth-user.auth-user/${id}">View user</a>..
+  New user: <strong><b>${name}</b></strong> has registered a new account. <a target="_blank" style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#2D3142;font-size:18px;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif" href="https://api.wildway.app/admin/content-manager/collectionType/api::auth-user.auth-user/${id}">View user</a>..
 </p>
 <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
   <br>
