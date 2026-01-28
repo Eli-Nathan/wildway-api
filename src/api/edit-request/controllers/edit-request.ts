@@ -29,6 +29,7 @@ interface SiteData {
   url?: string;
   sub_types?: unknown[];
   type?: unknown;
+  route_metadata?: unknown;
 }
 
 interface Site {
@@ -46,6 +47,7 @@ const getEditableFieldsFromSite = (siteData: SiteData): SiteData => {
     url,
     sub_types,
     type,
+    route_metadata,
   } = siteData;
   return {
     title,
@@ -57,6 +59,7 @@ const getEditableFieldsFromSite = (siteData: SiteData): SiteData => {
     sub_types,
     url,
     type,
+    route_metadata,
   };
 };
 
