@@ -206,9 +206,6 @@ export default factories.createCoreController(
             populate: { profile_pic: true },
           },
           route_metadata: true,
-          site_lists: {
-            select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
-          },
         },
       });
 
@@ -242,9 +239,6 @@ export default factories.createCoreController(
           sub_types: true,
           images: true,
           route_metadata: true,
-          site_lists: {
-            select: ["id", "name", "slug", "icon", "iconify", "difficulty", "category"],
-          },
         },
       });
       if (site) {

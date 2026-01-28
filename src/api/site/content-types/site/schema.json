@@ -159,12 +159,6 @@
       "type": "component",
       "repeatable": false,
       "component": "route.metadata"
-    },
-    "site_lists": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::site-list.site-list",
-      "mappedBy": "sites"
     }
   }
 }
