@@ -234,53 +234,61 @@ module.exports = ({ strapi }) => ({
             images: true,
           },
         });
-      
+
       if (!edit) {
         throw new Error(`Edit request with id ${id} not found`);
       }
-      
+
       if (!edit.site) {
         throw new Error(`Site not found for edit request ${id}`);
       }
-      
+
+      // Parse edit.data if it's a string (JSON fields can sometimes be stored as strings)
+      const editData = typeof edit.data === 'string' ? JSON.parse(edit.data) : edit.data;
+
+      console.log('approveEdit - editData:', JSON.stringify(editData, null, 2));
+      console.log('approveEdit - editData.route_metadata:', JSON.stringify(editData?.route_metadata, null, 2));
+
       // Update the site with the edit data
       // Filter out any relation fields or invalid fields from edit.data
       const updateData = {};
       
-      // Only include valid scalar fields from edit.data
-      if (edit.data) {
+      // Only include valid scalar fields from editData
+      if (editData) {
         const allowedFields = [
           'title', 'description', 'lat', 'lng', 'latlng',
           'tel', 'pricerange', 'category', 'region',
           'url', 'maplink', 'email', 'priority', 'image',
           'route_metadata'
         ];
-        
+
         for (const field of allowedFields) {
-          if (edit.data[field] !== undefined) {
-            updateData[field] = edit.data[field];
+          if (editData[field] !== undefined) {
+            updateData[field] = editData[field];
           }
         }
       }
-      
+
       // Add images if they exist
       if (edit.images) {
         updateData.images = edit.images;
       }
-      
-      // Handle relation fields separately if they exist in edit.data
-      if (edit.data?.type) {
-        updateData.type = edit.data.type;
+
+      // Handle relation fields separately if they exist in editData
+      if (editData?.type) {
+        updateData.type = editData.type;
       }
-      
-      if (edit.data?.facilities) {
-        updateData.facilities = edit.data.facilities;
+
+      if (editData?.facilities) {
+        updateData.facilities = editData.facilities;
       }
-      
-      if (edit.data?.sub_types) {
-        updateData.sub_types = edit.data.sub_types;
+
+      if (editData?.sub_types) {
+        updateData.sub_types = editData.sub_types;
       }
-      
+
+      console.log('approveEdit - updateData before save:', JSON.stringify(updateData, null, 2));
+
       const approved = await strapi.db.query(`api::site.site`).update({
         where: {
           id: edit.site.id,
