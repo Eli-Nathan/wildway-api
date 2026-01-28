@@ -131,6 +131,9 @@
     "isTest": {
       "type": "boolean",
       "default": false
+    },
+    "website": {
+      "type": "string"
     }
   }
 }

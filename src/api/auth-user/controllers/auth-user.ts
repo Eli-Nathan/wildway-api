@@ -22,6 +22,7 @@ interface StrapiContext {
         name?: string;
         profilePic?: number;
         businessName?: string;
+        website?: string;
         favourites?: unknown[];
         route?: number;
         isVerified?: boolean;
@@ -229,6 +230,7 @@ export default factories.createCoreController(
         name: user.name,
         avatar: user.avatar,
         businessName: user.businessName,
+        website: user.website,
         score: user.score,
         profile_pic: user.profile_pic,
       }));
@@ -248,6 +250,9 @@ export default factories.createCoreController(
       }
       if (requestData.businessName) {
         dataToUpdate.businessName = requestData.businessName;
+      }
+      if (requestData.website !== undefined) {
+        dataToUpdate.website = requestData.website;
       }
 
       // Strapi 5: Use db.query directly
