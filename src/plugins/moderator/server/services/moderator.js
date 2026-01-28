@@ -264,7 +264,13 @@ module.exports = ({ strapi }) => ({
 
         for (const field of allowedFields) {
           if (editData[field] !== undefined) {
-            updateData[field] = editData[field];
+            // For component fields like route_metadata, strip the id to allow proper update
+            if (field === 'route_metadata' && editData[field]) {
+              const { id, ...routeMetadataWithoutId } = editData[field];
+              updateData[field] = routeMetadataWithoutId;
+            } else {
+              updateData[field] = editData[field];
+            }
           }
         }
       }
