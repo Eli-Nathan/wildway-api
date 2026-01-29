@@ -129,5 +129,43 @@ export default factories.createCoreController(
         },
       };
     },
+
+    /**
+     * Get which lists a site is completed in for the current user
+     * Lite endpoint for site page badges
+     */
+    async getSiteProgress(ctx: StrapiContext) {
+      const siteId = parseInt(ctx.params.siteId!, 10);
+      const userId = ctx.state.user!.id;
+
+      // Find all progress records for this user where the site is in completed_sites
+      const allProgress = await strapi.db
+        .query("api::site-list-progress.site-list-progress")
+        .findMany({
+          where: {
+            user: userId,
+          },
+          populate: {
+            completed_sites: {
+              select: ["id"],
+            },
+            site_list: {
+              select: ["id"],
+            },
+          },
+        });
+
+      // Filter to lists where this site is completed
+      const completedListIds = allProgress
+        .filter((p: any) => p.completed_sites?.some((s: any) => s.id === siteId))
+        .map((p: any) => p.site_list?.id)
+        .filter(Boolean);
+
+      return {
+        data: {
+          completedListIds,
+        },
+      };
+    },
   })
 );

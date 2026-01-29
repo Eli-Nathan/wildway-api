@@ -35,6 +35,16 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "api::auth-user.is-user"],
       },
     },
+    // Get which lists a site is completed in (lite endpoint for site page badges)
+    {
+      method: "GET",
+      path: "/site-list-progress/site/:siteId",
+      handler: "site-list-progress.getSiteProgress",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "api::auth-user.is-user"],
+      },
+    },
   ],
 };
 
