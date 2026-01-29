@@ -78,6 +78,26 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "api::auth-user.is-user"],
       },
     },
+    // Get user's own lists
+    {
+      method: "GET",
+      path: "/site-lists/my-lists",
+      handler: "site-list.findMyLists",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "api::auth-user.is-user"],
+      },
+    },
+    // Get user's saved lists
+    {
+      method: "GET",
+      path: "/site-lists/saved",
+      handler: "site-list.findSavedLists",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "api::auth-user.is-user"],
+      },
+    },
   ],
 };
 

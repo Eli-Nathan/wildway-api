@@ -167,5 +167,45 @@ export default factories.createCoreController(
         },
       };
     },
+
+    /**
+     * Get all list progress counts for the current user
+     * Returns a map of listId -> completedCount
+     */
+    async getAllProgress(ctx: StrapiContext) {
+      const userId = ctx.state.user!.id;
+
+      const allProgress = await strapi.db
+        .query("api::site-list-progress.site-list-progress")
+        .findMany({
+          where: {
+            user: userId,
+          },
+          populate: {
+            completed_sites: {
+              select: ["id"],
+            },
+            site_list: {
+              select: ["id"],
+            },
+          },
+        });
+
+      // Build map of listId -> completed count
+      const progress: Record<number, number> = {};
+      for (const p of allProgress) {
+        const listId = (p as any).site_list?.id;
+        const count = (p as any).completed_sites?.length || 0;
+        if (listId && count > 0) {
+          progress[listId] = count;
+        }
+      }
+
+      return {
+        data: {
+          progress,
+        },
+      };
+    },
   })
 );

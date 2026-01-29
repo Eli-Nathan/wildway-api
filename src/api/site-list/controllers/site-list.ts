@@ -300,5 +300,66 @@ export default factories.createCoreController(
         meta: {},
       };
     },
+
+    /**
+     * Get lists created by the current user
+     */
+    async findMyLists(ctx: StrapiContext) {
+      const userId = ctx.state.user!.id;
+
+      const lists = await strapi.db.query("api::site-list.site-list").findMany({
+        where: {
+          owner: userId,
+          owner_type: "user",
+        },
+        populate: listPopulateConfig,
+        orderBy: [{ createdAt: "desc" }],
+      });
+
+      const listsWithCount = lists.map((list: any) => ({
+        ...list,
+        siteCount: list.sites?.length || 0,
+      }));
+
+      return {
+        data: listsWithCount.map((list: any) => ({
+          id: list.id,
+          attributes: list,
+        })),
+        meta: {},
+      };
+    },
+
+    /**
+     * Get lists saved by the current user
+     */
+    async findSavedLists(ctx: StrapiContext) {
+      const userId = ctx.state.user!.id;
+
+      // Get user with saved lists
+      const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: userId },
+        populate: {
+          saved_site_lists: {
+            populate: listPopulateConfig,
+          },
+        },
+      });
+
+      const lists = user.saved_site_lists || [];
+
+      const listsWithCount = lists.map((list: any) => ({
+        ...list,
+        siteCount: list.sites?.length || 0,
+      }));
+
+      return {
+        data: listsWithCount.map((list: any) => ({
+          id: list.id,
+          attributes: list,
+        })),
+        meta: {},
+      };
+    },
   })
 );

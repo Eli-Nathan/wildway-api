@@ -45,6 +45,16 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "api::auth-user.is-user"],
       },
     },
+    // Get all list progress counts for the user (for browse lists screen)
+    {
+      method: "GET",
+      path: "/site-list-progress/all",
+      handler: "site-list-progress.getAllProgress",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "api::auth-user.is-user"],
+      },
+    },
   ],
 };
 
