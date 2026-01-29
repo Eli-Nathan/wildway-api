@@ -24,12 +24,23 @@ const config: RoutesConfig = {
         auth: false,
       },
     },
+    // Static paths MUST come before parameterized paths
     {
       method: "GET",
-      path: "/site-lists/:id",
-      handler: "site-list.findOne",
+      path: "/site-lists/my-lists",
+      handler: "site-list.findMyLists",
       config: {
         auth: false,
+        policies: ["global::firebase-authed", "api::auth-user.is-user"],
+      },
+    },
+    {
+      method: "GET",
+      path: "/site-lists/saved",
+      handler: "site-list.findSavedLists",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "api::auth-user.is-user"],
       },
     },
     {
@@ -40,7 +51,16 @@ const config: RoutesConfig = {
         auth: false,
       },
     },
-    // Future: User list CRUD (requires auth)
+    // Parameterized paths come after static paths
+    {
+      method: "GET",
+      path: "/site-lists/:id",
+      handler: "site-list.findOne",
+      config: {
+        auth: false,
+      },
+    },
+    // User list CRUD (requires auth)
     {
       method: "POST",
       path: "/site-lists",
@@ -48,6 +68,15 @@ const config: RoutesConfig = {
       config: {
         auth: false,
         policies: ["global::firebase-authed", "global::set-owner"],
+      },
+    },
+    {
+      method: "PUT",
+      path: "/site-lists/:id/save",
+      handler: "site-list.toggleSave",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "api::auth-user.is-user"],
       },
     },
     {
@@ -66,36 +95,6 @@ const config: RoutesConfig = {
       config: {
         auth: false,
         policies: ["global::firebase-authed", "global::is-owner"],
-      },
-    },
-    // Save/unsave a list
-    {
-      method: "PUT",
-      path: "/site-lists/:id/save",
-      handler: "site-list.toggleSave",
-      config: {
-        auth: false,
-        policies: ["global::firebase-authed", "api::auth-user.is-user"],
-      },
-    },
-    // Get user's own lists
-    {
-      method: "GET",
-      path: "/site-lists/my-lists",
-      handler: "site-list.findMyLists",
-      config: {
-        auth: false,
-        policies: ["global::firebase-authed", "api::auth-user.is-user"],
-      },
-    },
-    // Get user's saved lists
-    {
-      method: "GET",
-      path: "/site-lists/saved",
-      handler: "site-list.findSavedLists",
-      config: {
-        auth: false,
-        policies: ["global::firebase-authed", "api::auth-user.is-user"],
       },
     },
   ],
