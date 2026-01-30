@@ -3,6 +3,7 @@ interface RouteConfig {
   path: string;
   handler: string;
   config?: {
+    auth?: boolean;
     middlewares?: string[];
     policies?: string[];
   };
@@ -19,6 +20,7 @@ const config: RoutesConfig = {
       path: "/sites",
       handler: "site.find",
       config: {
+        auth: false, // Disable Strapi JWT auth - Firebase auth handled by middleware
         middlewares: ["api::site.populate-sites"],
       },
     },
@@ -27,6 +29,7 @@ const config: RoutesConfig = {
       path: "/sites/search",
       handler: "site.search",
       config: {
+        auth: false,
         middlewares: ["api::site.populate-sites"],
       },
     },
@@ -35,6 +38,7 @@ const config: RoutesConfig = {
       path: "/sites/recent",
       handler: "site.findRecent",
       config: {
+        auth: false,
         middlewares: ["api::site.populate-sites"],
       },
     },
@@ -43,6 +47,7 @@ const config: RoutesConfig = {
       path: "/sites/:id",
       handler: "site.findOne",
       config: {
+        auth: false,
         middlewares: ["api::site.populate-site"],
       },
     },
@@ -51,6 +56,7 @@ const config: RoutesConfig = {
       path: "/sites/uid/:uid",
       handler: "site.findOneByUID",
       config: {
+        auth: false,
         middlewares: ["api::site.populate-site"],
       },
     },
