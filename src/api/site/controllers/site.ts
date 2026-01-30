@@ -226,23 +226,22 @@ export default factories.createCoreController(
       }
 
       // Build the combined query
-      // If we have list site IDs, we need to do a union query
       let whereClause: any;
 
       if (listIds.length > 0 && listSiteIds.length > 0) {
-        // Union: sites matching base filters OR sites in filtered lists
-        if (Object.keys(baseFilters).length > 0) {
-          whereClause = {
-            $or: [baseFilters, { id: { $in: listSiteIds } }],
-          };
-        } else {
-          // Only list filters, no base filters
-          whereClause = { id: { $in: listSiteIds } };
-        }
+        // List filters are active - return only sites from filtered lists, within bounds
+        // baseFilters contains bounds like { $and: [lat/lng conditions] }
+        const boundsFilters = (baseFilters as any)?.$and || [];
+        whereClause = {
+          $and: [
+            ...boundsFilters,
+            { id: { $in: listSiteIds } }
+          ]
+        };
       } else if (listIds.length > 0 && listSiteIds.length === 0) {
         // Lists selected but no sites match (e.g., all filtered out by completion mode)
-        // If there are base filters, still apply them; otherwise return empty
-        whereClause = Object.keys(baseFilters).length > 0 ? baseFilters : { id: -1 };
+        // Return empty result
+        whereClause = { id: -1 };
       } else {
         // No list filters, just use base filters
         whereClause = baseFilters;
