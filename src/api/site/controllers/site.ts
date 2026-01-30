@@ -121,7 +121,20 @@ export default factories.createCoreController(
     async find(ctx: StrapiContext) {
       const baseFilters = qs.parse(ctx.query.filters as unknown as string);
       const listIdsParam = ctx.query.listIds;
-      const listModes = ctx.query.listModes || {};
+      // listModes is sent as JSON string to preserve numeric keys
+      let listModes: Record<string, string> = {};
+      if (ctx.query.listModes) {
+        try {
+          if (typeof ctx.query.listModes === 'string') {
+            listModes = JSON.parse(ctx.query.listModes);
+          } else {
+            listModes = ctx.query.listModes as Record<string, string>;
+          }
+        } catch (e) {
+          // Fall back to empty object if parsing fails
+          listModes = {};
+        }
+      }
       const userId = ctx.state?.user?.id;
 
       // Parse list IDs from comma-separated string
@@ -175,7 +188,8 @@ export default factories.createCoreController(
 
         // Filter sites based on completion mode for each list
         listsWithSites.forEach((list: any) => {
-          const mode = listModes[String(list.id)] || "all";
+          // Try both string and number keys for listModes lookup
+          const mode = listModes[String(list.id)] || listModes[list.id] || "all";
           const completedIds = completedSiteIdsByList[list.id] || [];
           const completedSet = new Set(completedIds);
 
