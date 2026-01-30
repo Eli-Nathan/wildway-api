@@ -187,7 +187,8 @@ export default factories.createCoreController(
 
         // Filter sites based on completion mode for each list
         listsWithSites.forEach((list: any) => {
-          const mode = listModes[String(list.id)] || "all";
+          // Try both string and number keys for listModes lookup
+          const mode = listModes[String(list.id)] || listModes[list.id] || "all";
           const completedIds = completedSiteIdsByList[list.id] || [];
           const completedSet = new Set(completedIds);
 
