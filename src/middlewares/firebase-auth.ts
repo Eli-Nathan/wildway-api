@@ -95,6 +95,12 @@ export default (_config: unknown, { strapi }: { strapi: Core.Strapi }) => {
       // Don't block request - let it continue without user
     }
 
+    // Remove the Authorization header after processing to prevent
+    // Strapi's users-permissions plugin from trying to validate it as a Strapi JWT
+    if (ctx.state.user && authHeader) {
+      delete ctx.request.header.authorization;
+    }
+
     await next();
   };
 };
