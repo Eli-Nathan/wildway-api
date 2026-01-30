@@ -93,6 +93,23 @@ export default factories.createCoreController(
           });
         completedSiteIds = [siteId];
         isNowCompleted = true;
+
+        // Auto-save the list when user marks their first site complete
+        const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+          where: { id: userId },
+          populate: { saved_site_lists: { select: ["id"] } },
+        });
+
+        const savedListIds =
+          user.saved_site_lists?.map((l: any) => l.id) || [];
+        const isAlreadySaved = savedListIds.includes(listId);
+
+        if (!isAlreadySaved) {
+          await strapi.db.query("api::auth-user.auth-user").update({
+            where: { id: userId },
+            data: { saved_site_lists: [...savedListIds, listId] },
+          });
+        }
       } else {
         // Toggle the site in completed_sites
         const currentCompletedIds =

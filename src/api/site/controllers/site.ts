@@ -11,6 +11,8 @@ interface StrapiContext {
     pagination?: {
       limit?: number;
     };
+    listIds?: string; // Comma-separated list IDs
+    listModes?: Record<string, "completed" | "incomplete" | "all">;
   };
   params: {
     id?: string;
@@ -21,6 +23,11 @@ interface StrapiContext {
       query?: string;
       start?: number;
       limit?: number;
+    };
+  };
+  state: {
+    user?: {
+      id: number;
     };
   };
 }
@@ -112,6 +119,112 @@ export default factories.createCoreController(
     },
 
     async find(ctx: StrapiContext) {
+      const baseFilters = qs.parse(ctx.query.filters as unknown as string);
+      const listIdsParam = ctx.query.listIds;
+      const listModes = ctx.query.listModes || {};
+      const userId = ctx.state?.user?.id;
+
+      // Parse list IDs from comma-separated string
+      const listIds = listIdsParam
+        ? listIdsParam.split(",").map((id) => parseInt(id.trim(), 10)).filter((id) => !isNaN(id))
+        : [];
+
+      let listSiteIds: number[] = [];
+      let completedSiteIdsByList: Record<number, number[]> = {};
+
+      // If list filters are provided, fetch sites from those lists
+      if (listIds.length > 0) {
+        // Get all sites that belong to the requested lists
+        const listsWithSites = await strapi.db
+          .query("api::site-list.site-list")
+          .findMany({
+            where: { id: { $in: listIds } },
+            populate: { sites: { select: ["id"] } },
+          });
+
+        // Collect all site IDs from the lists
+        const allListSiteIds = new Set<number>();
+        listsWithSites.forEach((list: any) => {
+          list.sites?.forEach((site: any) => allListSiteIds.add(site.id));
+        });
+
+        // If user is authenticated, get their completion progress
+        if (userId) {
+          const progressRecords = await strapi.db
+            .query("api::site-list-progress.site-list-progress")
+            .findMany({
+              where: {
+                user: userId,
+                site_list: { id: { $in: listIds } },
+              },
+              populate: {
+                site_list: { select: ["id"] },
+                completed_sites: { select: ["id"] },
+              },
+            });
+
+          // Build map of completed site IDs per list
+          progressRecords.forEach((record: any) => {
+            const listId = record.site_list?.id;
+            if (listId) {
+              completedSiteIdsByList[listId] =
+                record.completed_sites?.map((s: any) => s.id) || [];
+            }
+          });
+        }
+
+        // Filter sites based on completion mode for each list
+        listsWithSites.forEach((list: any) => {
+          const mode = listModes[String(list.id)] || "all";
+          const completedIds = completedSiteIdsByList[list.id] || [];
+          const completedSet = new Set(completedIds);
+
+          list.sites?.forEach((site: any) => {
+            const isCompleted = completedSet.has(site.id);
+
+            if (mode === "all") {
+              listSiteIds.push(site.id);
+            } else if (mode === "completed" && isCompleted) {
+              listSiteIds.push(site.id);
+            } else if (mode === "incomplete" && !isCompleted) {
+              listSiteIds.push(site.id);
+            }
+          });
+        });
+
+        // Remove duplicates
+        listSiteIds = [...new Set(listSiteIds)];
+      }
+
+      // Build the combined query
+      // If we have list site IDs, we need to do a union query
+      let whereClause: any;
+
+      if (listIds.length > 0 && listSiteIds.length > 0) {
+        // Union: sites matching base filters OR sites in filtered lists
+        if (Object.keys(baseFilters).length > 0) {
+          whereClause = {
+            $or: [baseFilters, { id: { $in: listSiteIds } }],
+          };
+        } else {
+          // Only list filters, no base filters
+          whereClause = { id: { $in: listSiteIds } };
+        }
+      } else if (listIds.length > 0 && listSiteIds.length === 0) {
+        // Lists selected but no sites match (e.g., all filtered out by completion mode)
+        // If there are base filters, still apply them; otherwise return empty
+        whereClause = Object.keys(baseFilters).length > 0 ? baseFilters : { id: -1 };
+      } else {
+        // No list filters, just use base filters
+        whereClause = baseFilters;
+      }
+
+      // Determine limit: no limit if filtering by lists, otherwise use provided limit
+      const limit =
+        listIds.length > 0
+          ? undefined // No limit when filtering by lists
+          : ctx.query.limit || ctx.query.pagination?.limit;
+
       const sites = await strapi.db.query("api::site.site").findMany({
         select: [
           "id",
@@ -123,7 +236,7 @@ export default factories.createCoreController(
           "lng",
           "slug",
         ],
-        where: qs.parse(ctx.query.filters as unknown as string),
+        where: whereClause,
         orderBy: ctx.query.sort || { priority: "DESC" },
         populate: {
           type: {
@@ -138,8 +251,9 @@ export default factories.createCoreController(
           owners: true,
           route_metadata: true,
         },
-        limit: ctx.query.limit || ctx.query.pagination?.limit,
+        limit,
       });
+
       return {
         data: (sites as Site[]).map((site) => {
           return {
