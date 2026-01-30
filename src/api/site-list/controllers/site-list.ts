@@ -8,7 +8,7 @@ interface StrapiContext {
   };
   params: {
     id?: string;
-    slug?: string;
+    uid?: string;
   };
   state: {
     user?: {
@@ -125,11 +125,11 @@ export default factories.createCoreController(
     },
 
     /**
-     * Find one site list by slug
+     * Find one site list by slug (uid)
      */
     async findOneBySlug(ctx: StrapiContext) {
       const list = await strapi.db.query("api::site-list.site-list").findOne({
-        where: { slug: ctx.params.slug },
+        where: { slug: ctx.params.uid },
         populate: populateConfig,
       });
 

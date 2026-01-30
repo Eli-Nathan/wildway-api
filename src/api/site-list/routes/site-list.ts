@@ -45,7 +45,7 @@ const config: RoutesConfig = {
     },
     {
       method: "GET",
-      path: "/site-lists/slug/:slug",
+      path: "/site-lists/uid/:uid",
       handler: "site-list.findOneBySlug",
       config: {
         auth: false,
