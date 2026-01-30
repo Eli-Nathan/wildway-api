@@ -141,7 +141,6 @@ export default factories.createCoreController(
         }
       }
       const userId = ctx.state?.user?.id;
-      strapi.log.info(`List filter: userId=${userId} listIdsParam=${listIdsParam} listModes=${JSON.stringify(listModes)}`);
 
       // Parse list IDs from comma-separated string
       const listIds = listIdsParam
@@ -160,8 +159,6 @@ export default factories.createCoreController(
             where: { id: { $in: listIds } },
             populate: { sites: { select: ["id"] } },
           });
-
-        strapi.log.info(`List filter: found ${listsWithSites.length} lists: ${JSON.stringify(listsWithSites.map((l: any) => ({ id: l.id, siteCount: l.sites?.length })))}`);
 
         // Collect all site IDs from the lists
         const allListSiteIds = new Set<number>();
@@ -184,8 +181,6 @@ export default factories.createCoreController(
               },
             });
 
-          strapi.log.info(`List filter: found ${progressRecords.length} progress records`);
-
           // Build map of completed site IDs per list
           progressRecords.forEach((record: any) => {
             const listId = record.site_list?.id;
@@ -195,7 +190,6 @@ export default factories.createCoreController(
             }
           });
 
-          strapi.log.info(`List filter: completedSiteIdsByList=${JSON.stringify(completedSiteIdsByList)}`);
         }
 
         // Filter sites based on completion mode for each list
@@ -204,8 +198,6 @@ export default factories.createCoreController(
           const mode = listModes[String(list.id)] || listModes[list.id] || "all";
           const completedIds = completedSiteIdsByList[list.id] || [];
           const completedSet = new Set(completedIds);
-
-          strapi.log.info(`List filter: list ${list.id} mode=${mode} completedIds=${JSON.stringify(completedIds)}`);
 
           list.sites?.forEach((site: any) => {
             const isCompleted = completedSet.has(site.id);
@@ -222,7 +214,6 @@ export default factories.createCoreController(
 
         // Remove duplicates
         listSiteIds = [...new Set(listSiteIds)];
-        strapi.log.info(`List filter: final listSiteIds=${JSON.stringify(listSiteIds)}`);
       }
 
       // Build the combined query
