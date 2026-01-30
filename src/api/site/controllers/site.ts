@@ -121,14 +121,20 @@ export default factories.createCoreController(
     async find(ctx: StrapiContext) {
       const baseFilters = qs.parse(ctx.query.filters as unknown as string);
       const listIdsParam = ctx.query.listIds;
-      // listModes is sent as URL-encoded JSON string to preserve numeric keys
+      // listModes is sent as JSON string to preserve numeric keys
       let listModes: Record<string, string> = {};
       if (ctx.query.listModes) {
         try {
-          const decoded = typeof ctx.query.listModes === 'string'
-            ? decodeURIComponent(ctx.query.listModes)
-            : ctx.query.listModes;
-          listModes = typeof decoded === 'string' ? JSON.parse(decoded) : decoded;
+          let modeStr = ctx.query.listModes;
+          if (typeof modeStr === 'string') {
+            // Handle URL-encoded values (axios may encode special chars)
+            if (modeStr.includes('%')) {
+              modeStr = decodeURIComponent(modeStr);
+            }
+            listModes = JSON.parse(modeStr);
+          } else {
+            listModes = ctx.query.listModes as Record<string, string>;
+          }
         } catch (e) {
           // Fall back to empty object if parsing fails
           listModes = {};
