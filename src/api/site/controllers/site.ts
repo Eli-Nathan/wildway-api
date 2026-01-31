@@ -220,15 +220,51 @@ export default factories.createCoreController(
       let whereClause: any;
 
       if (listIds.length > 0 && listSiteIds.length > 0) {
-        // List filters are active - return only sites from filtered lists, within bounds
-        // baseFilters contains bounds like { $and: [lat/lng conditions] }
-        const boundsFilters = (baseFilters as any)?.$and || [];
-        whereClause = {
-          $and: [
-            ...boundsFilters,
-            { id: { $in: listSiteIds } }
-          ]
-        };
+        // List filters are active - use UNION logic with standard filters
+        // baseFilters.$and contains: [bounds..., standardFilters?]
+        // We want: (bounds AND standardFilters) UNION (bounds AND listFilter)
+        // Which is: bounds AND (standardFilters OR listFilter)
+        const allFilters = (baseFilters as any)?.$and || [];
+
+        // Separate bounds (lat/lng conditions) from standard filters
+        const boundsFilters: any[] = [];
+        const standardFilters: any[] = [];
+
+        allFilters.forEach((filter: any) => {
+          // Check if this filter is a bounds condition (has lat or lng key)
+          const keys = Object.keys(filter);
+          if (keys.length === 1 && (keys[0] === 'lat' || keys[0] === 'lng')) {
+            boundsFilters.push(filter);
+          } else {
+            standardFilters.push(filter);
+          }
+        });
+
+        // Build UNION query: bounds AND (standardFilters OR listFilter)
+        const listFilter = { id: { $in: listSiteIds } };
+
+        if (standardFilters.length > 0) {
+          // Have both standard filters and list filters - use OR between them
+          whereClause = {
+            $and: [
+              ...boundsFilters,
+              {
+                $or: [
+                  { $and: standardFilters },
+                  listFilter,
+                ]
+              }
+            ]
+          };
+        } else {
+          // Only list filters, no standard filters
+          whereClause = {
+            $and: [
+              ...boundsFilters,
+              listFilter,
+            ]
+          };
+        }
       } else if (listIds.length > 0 && listSiteIds.length === 0) {
         // Lists selected but no sites match (e.g., all filtered out by completion mode)
         // Return empty result
