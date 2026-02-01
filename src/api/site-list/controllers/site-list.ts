@@ -5,6 +5,9 @@ interface StrapiContext {
   query: {
     populate?: any;
     filters?: any;
+    search?: string;
+    sort?: string;
+    order?: "asc" | "desc";
   };
   params: {
     id?: string;
@@ -35,9 +38,119 @@ const populateConfig = {
       type: true,
       images: true,
       route_metadata: true,
+      likes: { select: ["id"] },
     },
   },
+  sortable_fields: true,
 };
+
+// Helper: Get nested field value from object using dot notation
+function getNestedValue(obj: any, path: string): any {
+  return path.split(".").reduce((current, key) => current?.[key], obj);
+}
+
+// Helper: Get sort value (handles special cases like likes_count)
+function getSortValue(site: any, fieldPath: string): any {
+  if (fieldPath === "likes_count") {
+    return site.likes?.length || 0;
+  }
+  return getNestedValue(site, fieldPath);
+}
+
+// Helper: Sort sites with null/undefined values at end
+function sortSites(
+  sites: any[],
+  fieldPath: string,
+  order: "asc" | "desc"
+): any[] {
+  return [...sites].sort((a, b) => {
+    const aVal = getSortValue(a, fieldPath);
+    const bVal = getSortValue(b, fieldPath);
+
+    // Handle null/undefined - always put at end
+    if (aVal == null && bVal == null) {
+      // Secondary sort by title for stability
+      return (a.title || "").localeCompare(b.title || "");
+    }
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+
+    // Compare values
+    let comparison = 0;
+    if (typeof aVal === "string" && typeof bVal === "string") {
+      comparison = aVal.localeCompare(bVal);
+    } else {
+      comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+    }
+
+    return order === "asc" ? comparison : -comparison;
+  });
+}
+
+// Helper: Filter sites by search term (title only, case-insensitive)
+function filterSitesBySearch(sites: any[], searchTerm: string): any[] {
+  if (!searchTerm) return sites;
+
+  const term = searchTerm.toLowerCase().trim();
+  return sites.filter((site) => site.title?.toLowerCase().includes(term));
+}
+
+// Built-in sort fields available on all lists
+const BUILTIN_SORT_FIELDS = ["title", "likes_count"];
+
+// Helper: Validate sort field against allowed fields
+function isValidSortField(
+  sort: string,
+  sortableFields: any[] | undefined
+): boolean {
+  // Allow built-in sort fields
+  if (BUILTIN_SORT_FIELDS.includes(sort)) {
+    return true;
+  }
+  // Allow fields defined in sortable_fields
+  if (sortableFields?.some((f: any) => f.field_path === sort)) {
+    return true;
+  }
+  return false;
+}
+
+// Helper: Sanitize order parameter
+function sanitizeOrder(order: any): "asc" | "desc" {
+  return order === "desc" ? "desc" : "asc";
+}
+
+// Helper: Process sites with search and sort
+function processSites(
+  sites: any[],
+  search: string | undefined,
+  sort: string | undefined,
+  order: "asc" | "desc",
+  sortableFields: any[] | undefined
+): any[] {
+  let processed = sites || [];
+
+  // Apply search filter
+  if (search) {
+    processed = filterSitesBySearch(processed, search);
+  }
+
+  // Apply sorting (only if sort field is valid)
+  if (sort && isValidSortField(sort, sortableFields)) {
+    processed = sortSites(processed, sort, order);
+  } else if (sortableFields?.length > 0) {
+    // Use default sort if defined
+    const defaultSort = sortableFields.find((f: any) => f.is_default);
+    if (defaultSort) {
+      processed = sortSites(
+        processed,
+        defaultSort.field_path,
+        defaultSort.default_order || "asc"
+      );
+    }
+  }
+
+  return processed;
+}
 
 const listPopulateConfig = {
   image: true,
@@ -93,8 +206,12 @@ export default factories.createCoreController(
 
     /**
      * Find one site list by ID
+     * Supports query params: search, sort, order
      */
     async findOne(ctx: StrapiContext) {
+      const { search, sort } = ctx.query;
+      const order = sanitizeOrder(ctx.query.order);
+
       const list = await strapi.db.query("api::site-list.site-list").findOne({
         where: { id: ctx.params.id },
         populate: populateConfig,
@@ -112,12 +229,24 @@ export default factories.createCoreController(
         return { status: 403, message: "This list is private" };
       }
 
+      // Process sites: filter and sort
+      const totalSiteCount = list.sites?.length || 0;
+      const processedSites = processSites(
+        list.sites,
+        search,
+        sort,
+        order,
+        list.sortable_fields
+      );
+
       return {
         data: {
           id: list.id,
           attributes: {
             ...list,
-            siteCount: list.sites?.length || 0,
+            sites: processedSites,
+            siteCount: processedSites.length,
+            totalSiteCount,
           },
         },
         meta: {},
@@ -126,8 +255,12 @@ export default factories.createCoreController(
 
     /**
      * Find one site list by slug (uid)
+     * Supports query params: search, sort, order
      */
     async findOneBySlug(ctx: StrapiContext) {
+      const { search, sort } = ctx.query;
+      const order = sanitizeOrder(ctx.query.order);
+
       const list = await strapi.db.query("api::site-list.site-list").findOne({
         where: { slug: ctx.params.uid },
         populate: populateConfig,
@@ -145,12 +278,24 @@ export default factories.createCoreController(
         return { status: 403, message: "This list is private" };
       }
 
+      // Process sites: filter and sort
+      const totalSiteCount = list.sites?.length || 0;
+      const processedSites = processSites(
+        list.sites,
+        search,
+        sort,
+        order,
+        list.sortable_fields
+      );
+
       return {
         data: {
           id: list.id,
           attributes: {
             ...list,
-            siteCount: list.sites?.length || 0,
+            sites: processedSites,
+            siteCount: processedSites.length,
+            totalSiteCount,
           },
         },
         meta: {},
