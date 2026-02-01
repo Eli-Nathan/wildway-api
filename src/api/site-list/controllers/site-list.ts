@@ -6,7 +6,7 @@ interface StrapiContext {
     populate?: any;
     filters?: any;
     search?: string;
-    sort?: string;
+    sortBy?: string;
     order?: "asc" | "desc";
   };
   params: {
@@ -209,7 +209,7 @@ export default factories.createCoreController(
      * Supports query params: search, sort, order
      */
     async findOne(ctx: StrapiContext) {
-      const { search, sort } = ctx.query;
+      const { search, sortBy } = ctx.query;
       const order = sanitizeOrder(ctx.query.order);
 
       const list = await strapi.db.query("api::site-list.site-list").findOne({
@@ -234,7 +234,7 @@ export default factories.createCoreController(
       const processedSites = processSites(
         list.sites,
         search,
-        sort,
+        sortBy,
         order,
         list.sortable_fields
       );
@@ -258,7 +258,7 @@ export default factories.createCoreController(
      * Supports query params: search, sort, order
      */
     async findOneBySlug(ctx: StrapiContext) {
-      const { search, sort } = ctx.query;
+      const { search, sortBy } = ctx.query;
       const order = sanitizeOrder(ctx.query.order);
 
       const list = await strapi.db.query("api::site-list.site-list").findOne({
@@ -283,7 +283,7 @@ export default factories.createCoreController(
       const processedSites = processSites(
         list.sites,
         search,
-        sort,
+        sortBy,
         order,
         list.sortable_fields
       );
