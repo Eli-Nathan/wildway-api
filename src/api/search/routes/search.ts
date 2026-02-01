@@ -24,6 +24,11 @@ const config: RoutesConfig = {
       method: "GET",
       path: "/v2/search",
       handler: "search.globalSearchWithOSM",
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
     },
     {
       method: "GET",
