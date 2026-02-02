@@ -65,6 +65,11 @@ const config: RoutesConfig = {
       path: "/sites",
       handler: "site.create",
     },
+    {
+      method: "PUT",
+      path: "/sites/:id",
+      handler: "site.update",
+    },
   ],
 };
 
