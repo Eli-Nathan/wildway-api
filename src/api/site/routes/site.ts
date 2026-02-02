@@ -60,6 +60,11 @@ const config: RoutesConfig = {
         middlewares: ["api::site.populate-site"],
       },
     },
+    {
+      method: "POST",
+      path: "/sites",
+      handler: "site.create",
+    },
   ],
 };
 
