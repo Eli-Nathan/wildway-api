@@ -283,6 +283,7 @@ export default factories.createCoreController(
       const sites = await strapi.db.query("api::site.site").findMany({
         select: [
           "id",
+          "documentId",
           "title",
           "description",
           "category",
@@ -310,9 +311,10 @@ export default factories.createCoreController(
       });
 
       return {
-        data: (sites as Site[]).map((site) => {
+        data: (sites as Site[]).map((site: any) => {
           return {
             id: site.id,
+            documentId: site.documentId,
             attributes: { ...site, isOwned: !!site.owners?.length },
           };
         }),
