@@ -476,6 +476,42 @@ export default factories.createCoreController(
     },
 
     /**
+     * Admin update for admin-owned lists (bypasses owner check)
+     * Uses X-Admin-Secret header for authentication
+     */
+    async adminUpdate(ctx: StrapiContext) {
+      const existingList = await strapi.db
+        .query("api::site-list.site-list")
+        .findOne({
+          where: { id: ctx.params.id },
+        });
+
+      if (!existingList) {
+        ctx.status = 404;
+        return { status: 404, message: "List not found" };
+      }
+
+      const requestData = ctx.request.body?.data || {};
+
+      const updated = await strapi.db.query("api::site-list.site-list").update({
+        where: { id: ctx.params.id },
+        data: requestData,
+        populate: populateConfig,
+      });
+
+      return {
+        data: {
+          id: updated.id,
+          attributes: {
+            ...updated,
+            siteCount: updated.sites?.length || 0,
+          },
+        },
+        meta: {},
+      };
+    },
+
+    /**
      * Get lists saved by the current user
      */
     async findSavedLists(ctx: StrapiContext) {

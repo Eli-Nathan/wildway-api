@@ -151,7 +151,7 @@ async function createSite(site, apiUrl, apiToken, typeId, addedBy) {
       latlng: site.latlng,
       region: site.region,
       description: site.description || '',
-      type: typeId,
+      type: site.type || typeId,
       priority: site.priority || 0,
       pricerange: site.pricerange || '---',
       // Attribute to user

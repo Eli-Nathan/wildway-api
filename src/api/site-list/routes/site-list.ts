@@ -88,6 +88,16 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
+    // Admin update for admin-owned lists (uses X-Admin-Secret header)
+    {
+      method: "PUT",
+      path: "/site-lists/:id/admin",
+      handler: "site-list.adminUpdate",
+      config: {
+        auth: false,
+        policies: ["global::is-admin"],
+      },
+    },
     {
       method: "DELETE",
       path: "/site-lists/:id",
