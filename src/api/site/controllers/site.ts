@@ -473,6 +473,36 @@ export default factories.createCoreController(
       );
     },
 
+    async delete(ctx: StrapiContext) {
+      const siteId = ctx.params.id;
+
+      // Check if site exists
+      const existingSite = await strapi.db.query("api::site.site").findOne({
+        where: { id: siteId },
+        select: ["id", "documentId", "title"],
+      });
+
+      if (!existingSite) {
+        ctx.status = 404;
+        return { error: { status: 404, message: "Site not found" } };
+      }
+
+      // Delete the site
+      await strapi.db.query("api::site.site").delete({
+        where: { id: siteId },
+      });
+
+      strapi.log.info(`Deleted site ${siteId}: ${existingSite.title}`);
+
+      return {
+        data: {
+          id: existingSite.id,
+          title: existingSite.title,
+        },
+        meta: { message: "Site deleted successfully" },
+      };
+    },
+
     async parseSingleSite(
       ctx: StrapiContext,
       site: SiteResponse,

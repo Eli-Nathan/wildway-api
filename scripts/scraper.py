@@ -51,88 +51,100 @@ class ScotlandPOIScraper:
         'east': -0.7
     }
 
-    # OSM query templates
+    # OSM query templates - use Scotland admin boundary to exclude Ireland/NI
+    # area[name="Scotland"] gets the exact administrative boundary
     OSM_QUERIES = {
         'campsites': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["tourism"="camp_site"]({s},{w},{n},{e});
-              way["tourism"="camp_site"]({s},{w},{n},{e});
-              node["tourism"="caravan_site"]({s},{w},{n},{e});
-              way["tourism"="caravan_site"]({s},{w},{n},{e});
+              node["tourism"="camp_site"](area.scotland);
+              way["tourism"="camp_site"](area.scotland);
+              node["tourism"="caravan_site"](area.scotland);
+              way["tourism"="caravan_site"](area.scotland);
             );
             out center;
         """,
         'parking': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["amenity"="parking"]({s},{w},{n},{e});
-              way["amenity"="parking"]({s},{w},{n},{e});
+              node["amenity"="parking"](area.scotland);
+              way["amenity"="parking"](area.scotland);
             );
             out center;
         """,
         'mountains': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["natural"="peak"]({s},{w},{n},{e});
+              node["natural"="peak"](area.scotland);
             );
             out;
         """,
         'lochs': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              way["natural"="water"]["water"="lake"]({s},{w},{n},{e});
-              way["natural"="water"]["water"="loch"]({s},{w},{n},{e});
+              way["natural"="water"]["water"="lake"](area.scotland);
+              way["natural"="water"]["water"="loch"](area.scotland);
             );
             out center;
         """,
         'beaches': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["natural"="beach"]({s},{w},{n},{e});
-              way["natural"="beach"]({s},{w},{n},{e});
+              node["natural"="beach"](area.scotland);
+              way["natural"="beach"](area.scotland);
             );
             out center;
         """,
         'fuel': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["amenity"="fuel"]({s},{w},{n},{e});
-              way["amenity"="fuel"]({s},{w},{n},{e});
+              node["amenity"="fuel"](area.scotland);
+              way["amenity"="fuel"](area.scotland);
             );
             out center;
         """,
         'ev_charging': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["amenity"="charging_station"]({s},{w},{n},{e});
-              way["amenity"="charging_station"]({s},{w},{n},{e});
+              node["amenity"="charging_station"](area.scotland);
+              way["amenity"="charging_station"](area.scotland);
             );
             out center;
         """,
         'historic': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["historic"~"castle|monument|ruins|archaeological_site"]({s},{w},{n},{e});
-              way["historic"~"castle|monument|ruins|archaeological_site"]({s},{w},{n},{e});
+              node["historic"~"castle|monument|ruins|archaeological_site"](area.scotland);
+              way["historic"~"castle|monument|ruins|archaeological_site"](area.scotland);
             );
             out center;
         """,
         'viewpoints': """
-            [out:json][timeout:60];
+            [out:json][timeout:120];
+            area["name"="Scotland"]["admin_level"="4"]->.scotland;
             (
-              node["tourism"="viewpoint"]({s},{w},{n},{e});
+              node["tourism"="viewpoint"](area.scotland);
             );
             out;
         """,
     }
 
     # Separate query for hiking routes (relations are more complex)
+    # Uses Scotland admin boundary to exclude Ireland/NI
     HIKING_ROUTES_QUERY = """
-        [out:json][timeout:120];
+        [out:json][timeout:180];
+        area["name"="Scotland"]["admin_level"="4"]->.scotland;
         (
-          relation["type"="route"]["route"="hiking"]({s},{w},{n},{e});
-          relation["type"="route"]["route"="foot"]({s},{w},{n},{e});
+          relation["type"="route"]["route"="hiking"](area.scotland);
+          relation["type"="route"]["route"="foot"](area.scotland);
         );
         out body;
         >;
@@ -221,15 +233,16 @@ class ScotlandPOIScraper:
 
     def query_overpass(self, query: str, category: str) -> List[POI]:
         """Query Overpass API and convert to POI objects"""
+        # New area-based queries don't need bbox formatting, but support legacy queries
         bbox = self.SCOTLAND_BBOX
         formatted_query = query.format(
             s=bbox['south'],
             n=bbox['north'],
             w=bbox['west'],
             e=bbox['east']
-        )
+        ) if '{s}' in query else query
 
-        print(f"Querying {category}...")
+        print(f"Querying {category} (Scotland boundary filter)...")
 
         try:
             response = self.session.post(
@@ -316,15 +329,10 @@ class ScotlandPOIScraper:
 
     def fetch_hiking_routes(self) -> List[POI]:
         """Fetch hiking routes from OpenStreetMap"""
-        print("\nFetching hiking routes from OpenStreetMap...")
+        print("\nFetching hiking routes from OpenStreetMap (Scotland boundary filter)...")
 
-        bbox = self.SCOTLAND_BBOX
-        formatted_query = self.HIKING_ROUTES_QUERY.format(
-            s=bbox['south'],
-            n=bbox['north'],
-            w=bbox['west'],
-            e=bbox['east']
-        )
+        # Area-based query doesn't need bbox formatting
+        formatted_query = self.HIKING_ROUTES_QUERY
 
         try:
             response = self.session.post(

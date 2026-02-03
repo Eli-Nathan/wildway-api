@@ -70,6 +70,15 @@ const config: RoutesConfig = {
       path: "/sites/:id",
       handler: "site.update",
     },
+    {
+      method: "DELETE",
+      path: "/sites/:id",
+      handler: "site.delete",
+      config: {
+        auth: false,
+        policies: ["global::is-admin"],
+      },
+    },
   ],
 };
 
