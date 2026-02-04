@@ -44,6 +44,7 @@ const config: RoutesConfig = {
       path: "/nomad-routes/:id/admin",
       handler: "nomad-route.adminUpdate",
       config: {
+        auth: false,
         policies: ["global::is-admin"],
       },
     },
