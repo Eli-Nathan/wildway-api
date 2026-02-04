@@ -293,14 +293,41 @@ export default factories.createCoreController(
     },
 
     async updateFavourites(ctx: StrapiContext) {
-      const favourites = ctx.request.body?.data?.favourites || [];
+      const newFavourites = ctx.request.body?.data?.favourites || [];
+
+      // Get current favourites to detect changes
+      const currentUser = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: ctx.params.id },
+        populate: { favourites: { select: ["id"] } },
+      });
+      const oldFavourites = (currentUser?.favourites || []).map((f: any) => f.id);
 
       // Strapi 5: Use db.query directly (accepts array of IDs for relations)
       const user = await strapi.db.query("api::auth-user.auth-user").update({
         where: { id: ctx.params.id },
-        data: { favourites },
+        data: { favourites: newFavourites },
         populate: populateConfig,
       });
+
+      // Find sites that were added or removed from favourites
+      const addedSites = newFavourites.filter((id: number) => !oldFavourites.includes(id));
+      const removedSites = oldFavourites.filter((id: number) => !newFavourites.includes(id));
+      const changedSites = [...addedSites, ...removedSites];
+
+      // Update priority for affected sites (async, don't block response)
+      if (changedSites.length > 0) {
+        const moderatorService = strapi.plugin("moderator")?.service("moderator");
+        if (moderatorService?.updateSitePriority) {
+          // Run priority updates in background
+          Promise.all(
+            changedSites.map((siteId: number) =>
+              moderatorService.updateSitePriority(siteId).catch((err: Error) =>
+                strapi.log.error(`Failed to update priority for site ${siteId}:`, err)
+              )
+            )
+          );
+        }
+      }
 
       return {
         data: {

@@ -7,6 +7,106 @@ const {
 } = require("../../../../../dist/src/nomad/emails");
 const slugify = require("slugify");
 
+/**
+ * Calculate priority adjustments for a site based on content quality.
+ *
+ * Priority scoring:
+ * - Has description (50+ chars): +1
+ * - Has images: +2
+ * - On a site-list: +2
+ * - Likes: 1-10 = +5, 11-20 = +10, 20+ = +20
+ * - Future: business tier adds 50+ (to always rank above organic)
+ *
+ * @param {object} site - Current site data
+ * @param {object} newData - New data being applied (optional)
+ * @returns {number} - New priority value
+ */
+async function calculateSitePriority(strapi, site, newData = {}) {
+  // Merge current site with new data to get effective values
+  const effectiveData = { ...site, ...newData };
+
+  let priority = 0;
+
+  // Has meaningful description (50+ chars)
+  const description = effectiveData.description || '';
+  if (description.trim().length >= 50) {
+    priority += 1;
+  }
+
+  // Has images
+  const images = effectiveData.images || [];
+  if (images.length > 0) {
+    priority += 2;
+  }
+
+  // Check if on any site-lists (need to query if not provided)
+  let siteLists = effectiveData.site_lists;
+  if (!siteLists && site.id) {
+    const siteWithLists = await strapi.db.query("api::site.site").findOne({
+      where: { id: site.id },
+      populate: { site_lists: { select: ["id"] } },
+    });
+    siteLists = siteWithLists?.site_lists || [];
+  }
+  if (siteLists && siteLists.length > 0) {
+    priority += 2;
+  }
+
+  // Likes - tiered scoring
+  let likes = effectiveData.likes;
+  if (!likes && site.id) {
+    const siteWithLikes = await strapi.db.query("api::site.site").findOne({
+      where: { id: site.id },
+      populate: { likes: { select: ["id"] } },
+    });
+    likes = siteWithLikes?.likes || [];
+  }
+  const likeCount = likes?.length || 0;
+  if (likeCount > 20) {
+    priority += 20;
+  } else if (likeCount >= 11) {
+    priority += 10;
+  } else if (likeCount >= 1) {
+    priority += 5;
+  }
+
+  // Future: business tier scoring (50+ to always rank above organic)
+  // if (effectiveData.business_tier) {
+  //   priority += 50 + (effectiveData.business_tier * 10);
+  // }
+
+  return priority;
+}
+
+/**
+ * Update a site's priority based on its current content
+ */
+async function updateSitePriority(strapi, siteId) {
+  const site = await strapi.db.query("api::site.site").findOne({
+    where: { id: siteId },
+    populate: {
+      images: true,
+      site_lists: { select: ["id"] },
+      likes: { select: ["id"] },
+    },
+  });
+
+  if (!site) return null;
+
+  const newPriority = await calculateSitePriority(strapi, site);
+
+  // Only update if priority changed
+  if (newPriority !== site.priority) {
+    await strapi.db.query("api::site.site").update({
+      where: { id: siteId },
+      data: { priority: newPriority },
+    });
+    console.log(`Updated site ${siteId} priority: ${site.priority || 0} -> ${newPriority}`);
+  }
+
+  return newPriority;
+}
+
 module.exports = ({ strapi }) => ({
   async getAdditions() {
     const additions = await strapi.db
@@ -129,13 +229,19 @@ module.exports = ({ strapi }) => ({
         },
       });
     const { owner, status, id: _id, ...safeAddition } = addition;
+
+    // Calculate initial priority based on content
+    const initialPriority = await calculateSitePriority(strapi, safeAddition);
+
     const approved = await strapi.db.query(`api::site.site`).create({
       data: {
         ...safeAddition,
         added_by: addition.owner.id,
         slug: slugify(addition.title),
+        priority: initialPriority,
       },
     });
+    console.log(`New site ${approved.id} created with priority: ${initialPriority}`);
     if (addition.owner) {
       const currentUser = await strapi.db
         .query(`api::auth-user.auth-user`)
@@ -299,7 +405,10 @@ module.exports = ({ strapi }) => ({
       const approved = await strapi.entityService.update('api::site.site', edit.site.id, {
         data: updateData,
       });
-      
+
+      // Recalculate and update site priority after edit is applied
+      await updateSitePriority(strapi, edit.site.id);
+
       // Update the edit request status to complete first, before email/scoring
       await strapi.db.query(`api::edit-request.edit-request`).update({
         where: { id: edit.id },
@@ -350,5 +459,13 @@ module.exports = ({ strapi }) => ({
       console.error('Error in approveEdit:', error);
       throw error;
     }
+  },
+
+  /**
+   * Recalculate and update a site's priority.
+   * Call this when site content changes (images, likes, etc.)
+   */
+  async updateSitePriority(siteId) {
+    return updateSitePriority(strapi, siteId);
   },
 });

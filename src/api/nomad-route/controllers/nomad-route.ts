@@ -26,35 +26,19 @@ const STAY_LIMIT = 100;
  * Calculate priority score for a site.
  * Higher score = more prominent in the list.
  *
- * Scoring:
- * - Base priority field (0-5): up to 5 points
- * - Has description: +3 points
- * - Has images: +2 points
- * - On a site-list: +2 points
- * - Future: business tier would add more points
+ * Uses the pre-calculated priority field from the moderator plugin.
+ * That field accounts for: description, images, site-lists, likes, business tier.
+ *
+ * We also add a small boost for images here since they improve visual appeal in lists.
  */
 function calculatePriority(site: any): number {
+  // Use the pre-calculated priority from the moderator plugin
   let score = site.priority || 0;
 
-  // Has description (non-empty)
-  if (site.description && site.description.trim().length > 0) {
-    score += 3;
-  }
-
-  // Has images
+  // Small visual boost for sites with images (they look better in horizontal lists)
   if (site.images && site.images.length > 0) {
-    score += 2;
+    score += 1;
   }
-
-  // Is on a site-list
-  if (site.site_lists && site.site_lists.length > 0) {
-    score += 2;
-  }
-
-  // Future: Add business tier scoring here
-  // if (site.business_tier) {
-  //   score += site.business_tier * 5;
-  // }
 
   return score;
 }
