@@ -30,6 +30,9 @@ export default {
       }
 
       strapi.log.info("custom-upload: User verified:", nomadUser.email);
+
+      // Store user info for later use in file upload
+      ctx.state.nomadUser = nomadUser;
     } catch (error) {
       strapi.log.error("custom-upload: Auth error:", error);
       return ctx.unauthorized("Invalid token");
@@ -55,6 +58,12 @@ export default {
       parsedFileInfo = typeof fileInfo === "string" ? JSON.parse(fileInfo) : fileInfo;
     } catch {
       parsedFileInfo = {};
+    }
+
+    // Set the uploader's name as the caption
+    const uploaderName = ctx.state.nomadUser?.name || ctx.state.nomadUser?.email;
+    if (uploaderName) {
+      parsedFileInfo = { ...parsedFileInfo, caption: uploaderName };
     }
 
     // Upload the files

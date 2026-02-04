@@ -51,12 +51,14 @@ class ScotlandPOIScraper:
         'east': -0.7
     }
 
-    # OSM query templates - use Scotland admin boundary to exclude Ireland/NI
-    # area[name="Scotland"] gets the exact administrative boundary
+    # OSM query templates - use Scotland admin boundary to exclude Ireland/NI/England
+    # Scotland's OSM relation ID is 58446, area ID is 3600058446
+    SCOTLAND_AREA_ID = 3600058446
+
     OSM_QUERIES = {
         'campsites': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["tourism"="camp_site"](area.scotland);
               way["tourism"="camp_site"](area.scotland);
@@ -67,7 +69,7 @@ class ScotlandPOIScraper:
         """,
         'parking': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["amenity"="parking"](area.scotland);
               way["amenity"="parking"](area.scotland);
@@ -76,7 +78,7 @@ class ScotlandPOIScraper:
         """,
         'mountains': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["natural"="peak"](area.scotland);
             );
@@ -84,7 +86,7 @@ class ScotlandPOIScraper:
         """,
         'lochs': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               way["natural"="water"]["water"="lake"](area.scotland);
               way["natural"="water"]["water"="loch"](area.scotland);
@@ -93,7 +95,7 @@ class ScotlandPOIScraper:
         """,
         'beaches': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["natural"="beach"](area.scotland);
               way["natural"="beach"](area.scotland);
@@ -102,7 +104,7 @@ class ScotlandPOIScraper:
         """,
         'fuel': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["amenity"="fuel"](area.scotland);
               way["amenity"="fuel"](area.scotland);
@@ -111,7 +113,7 @@ class ScotlandPOIScraper:
         """,
         'ev_charging': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["amenity"="charging_station"](area.scotland);
               way["amenity"="charging_station"](area.scotland);
@@ -120,7 +122,7 @@ class ScotlandPOIScraper:
         """,
         'historic': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["historic"~"castle|monument|ruins|archaeological_site"](area.scotland);
               way["historic"~"castle|monument|ruins|archaeological_site"](area.scotland);
@@ -129,7 +131,7 @@ class ScotlandPOIScraper:
         """,
         'viewpoints': """
             [out:json][timeout:120];
-            area["name"="Scotland"]["admin_level"="4"]->.scotland;
+            area(3600058446)->.scotland;
             (
               node["tourism"="viewpoint"](area.scotland);
             );
@@ -138,10 +140,10 @@ class ScotlandPOIScraper:
     }
 
     # Separate query for hiking routes (relations are more complex)
-    # Uses Scotland admin boundary to exclude Ireland/NI
+    # Uses Scotland admin boundary (relation 58446) to exclude Ireland/NI/England
     HIKING_ROUTES_QUERY = """
         [out:json][timeout:180];
-        area["name"="Scotland"]["admin_level"="4"]->.scotland;
+        area(3600058446)->.scotland;
         (
           relation["type"="route"]["route"="hiking"](area.scotland);
           relation["type"="route"]["route"="foot"](area.scotland);
