@@ -7,6 +7,11 @@ interface StrapiContext {
     id?: string;
     slug?: string;
   };
+  request: {
+    body?: {
+      data?: any;
+    };
+  };
   status?: number;
 }
 
@@ -98,6 +103,48 @@ export default factories.createCoreController(
       }
       // @ts-expect-error - Strapi core controller method
       return this.transformResponse(route, ctx);
+    },
+
+    /**
+     * Admin update for nomad routes (bypasses auth)
+     * Uses X-Admin-Secret header for authentication
+     */
+    async adminUpdate(ctx: StrapiContext) {
+      const existingRoute = await strapi.db
+        .query("api::nomad-route.nomad-route")
+        .findOne({
+          where: { id: ctx.params.id },
+        });
+
+      if (!existingRoute) {
+        ctx.status = 404;
+        return { status: 404, message: "Route not found" };
+      }
+
+      const requestData = ctx.request.body?.data || {};
+
+      const updated = await strapi.db
+        .query("api::nomad-route.nomad-route")
+        .update({
+          where: { id: ctx.params.id },
+          data: requestData,
+          populate: {
+            pois: { select: ["id"] },
+            stay: { select: ["id"] },
+          },
+        });
+
+      return {
+        data: {
+          id: updated.id,
+          attributes: {
+            ...updated,
+            poisCount: updated.pois?.length || 0,
+            stayCount: updated.stay?.length || 0,
+          },
+        },
+        meta: {},
+      };
     },
   })
 );

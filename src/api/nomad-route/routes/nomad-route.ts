@@ -38,6 +38,15 @@ const config: RoutesConfig = {
         middlewares: ["api::nomad-route.populate-nomad-routes"],
       },
     },
+    // Admin update for nomad routes (uses X-Admin-Secret header)
+    {
+      method: "PUT",
+      path: "/nomad-routes/:id/admin",
+      handler: "nomad-route.adminUpdate",
+      config: {
+        policies: ["global::is-admin"],
+      },
+    },
   ],
 };
 
