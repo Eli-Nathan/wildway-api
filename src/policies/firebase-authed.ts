@@ -20,7 +20,5 @@ export default (
   _config: Record<string, unknown>,
   { strapi }: { strapi: Core.Strapi }
 ): boolean => {
-  const isAuthed = !!ctx.state.user;
-  strapi.log.info("firebase-authed policy: user exists =", isAuthed, "user =", JSON.stringify(ctx.state.user));
-  return isAuthed;
+  return !!ctx.state.user;
 };

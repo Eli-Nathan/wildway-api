@@ -48,10 +48,18 @@ interface UserWithRoutes {
 }
 
 /**
- * Strapi 5 populate format - object notation required
- * Converting from nested dot-notation arrays to object format
+ * Lightweight populate for auth/session - only essential data
  */
-const populateConfig = {
+const lightPopulateConfig = {
+  role: true,
+  profile_pic: true,
+};
+
+/**
+ * Full populate config - for when complete user data is needed
+ * Strapi 5 populate format - object notation required
+ */
+const fullPopulateConfig = {
   addition_requests: true,
   edit_requests: {
     populate: {
@@ -89,6 +97,9 @@ const populateConfig = {
   },
 };
 
+// Keep backward compat alias
+const populateConfig = fullPopulateConfig;
+
 const enrichCtx = (ctx: StrapiContext): StrapiContext => {
   if (!ctx.query) {
     ctx.query = {};
@@ -106,22 +117,39 @@ export default factories.createCoreController(
   "api::auth-user.auth-user",
   ({ strapi }) => ({
     async findMe(ctx: StrapiContext) {
-      strapi.log.info("findMe: Looking up user with id:", ctx.params.id);
-
-      // Use db.query directly for Strapi 5 compatibility with nested object populate
+      // Use lightweight populate for fast auth - only essential data
       const user = await strapi.db.query("api::auth-user.auth-user").findOne({
         where: { id: ctx.params.id },
-        populate: populateConfig,
+        populate: lightPopulateConfig,
       });
 
       if (!user) {
-        strapi.log.warn("findMe: User not found");
         return ctx.notFound("User not found");
       }
 
-      strapi.log.info("findMe: Found user:", user.id);
-
       // Return in Strapi 4 format for frontend compatibility
+      return {
+        data: {
+          id: user.id,
+          attributes: user,
+        },
+        meta: {},
+      };
+    },
+
+    /**
+     * Get full user data including all relations - use sparingly
+     */
+    async findMeFull(ctx: StrapiContext) {
+      const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: ctx.params.id },
+        populate: fullPopulateConfig,
+      });
+
+      if (!user) {
+        return ctx.notFound("User not found");
+      }
+
       return {
         data: {
           id: user.id,
