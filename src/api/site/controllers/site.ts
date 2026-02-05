@@ -645,6 +645,46 @@ export default factories.createCoreController(
           })
         )
       ).filter(Boolean);
+
+      // Fetch guides related to this site's type, sub_types, and facilities
+      const siteAttributes = site?.data?.attributes as any;
+      const typeId = siteAttributes?.type?.id;
+      const subTypeIds = siteAttributes?.sub_types?.map((st: any) => st.id) || [];
+      const facilityIds = siteAttributes?.facilities?.map((f: any) => f.id) || [];
+
+      const allTypeIds = [typeId, ...subTypeIds].filter(Boolean);
+
+      let guides: any[] = [];
+      if (allTypeIds.length > 0 || facilityIds.length > 0) {
+        const guideConditions: any[] = [];
+
+        if (allTypeIds.length > 0) {
+          guideConditions.push({ site_types: { id: { $in: allTypeIds } } });
+        }
+        if (facilityIds.length > 0) {
+          guideConditions.push({ facilities: { id: { $in: facilityIds } } });
+        }
+
+        guides = await strapi.db.query("api::guide.guide").findMany({
+          where: {
+            publishedAt: { $notNull: true },
+            $or: guideConditions,
+          },
+          select: ["id", "title", "slug", "link_message"],
+          populate: {
+            feature_image: true,
+          },
+        });
+
+        // Deduplicate guides (in case a guide matches both type and facility)
+        const seenIds = new Set();
+        guides = guides.filter((guide) => {
+          if (seenIds.has(guide.id)) return false;
+          seenIds.add(guide.id);
+          return true;
+        });
+      }
+
       // @ts-expect-error - Strapi core controller method
       const output = await this.sanitizeOutput(site, ctx);
       return {
@@ -659,6 +699,7 @@ export default factories.createCoreController(
             addedBy: parsedSiteAddedBy,
             contributors: parsedSiteContributors,
             likes: parsedSiteLikes,
+            guides,
           },
         },
       };
