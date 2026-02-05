@@ -48,11 +48,42 @@ interface UserWithRoutes {
 }
 
 /**
- * Lightweight populate for auth/session - only essential data
+ * Lightweight populate for auth/session - essential data + IDs only for lists
  */
 const lightPopulateConfig = {
   role: true,
   profile_pic: true,
+  favourites: {
+    select: ["id"],
+    populate: {
+      type: true,
+    },
+  },
+  saved_public_routes: {
+    select: ["id"],
+  },
+  addition_requests: {
+    select: ["id", "title", "status", "createdAt"],
+  },
+  edit_requests: {
+    select: ["id", "status", "createdAt"],
+    populate: {
+      site: {
+        select: ["id", "title"],
+      },
+    },
+  },
+  comments: {
+    select: ["id", "createdAt"],
+    populate: {
+      site: {
+        select: ["id", "title"],
+      },
+    },
+  },
+  sites: {
+    select: ["id"],
+  },
 };
 
 /**
