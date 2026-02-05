@@ -275,12 +275,18 @@ export default factories.createCoreController(
       }
 
       // Determine limit: no limit if filtering by lists, otherwise use provided limit
-      const limit =
+      const requestedLimit =
         listIds.length > 0
           ? undefined // No limit when filtering by lists
           : ctx.query.limit || ctx.query.pagination?.limit;
 
-      const sites = await strapi.db.query("api::site.site").findMany({
+      // Check if type filters are applied (user selected specific types)
+      const hasTypeFilters = baseFilters?.$and?.some((filter: any) =>
+        filter.type || filter.siteType
+      );
+
+      // Common query options
+      const baseQueryOptions = {
         select: [
           "id",
           "documentId",
@@ -292,8 +298,7 @@ export default factories.createCoreController(
           "lng",
           "slug",
         ],
-        where: whereClause,
-        orderBy: ctx.query.sort || { priority: "DESC" },
+        orderBy: ctx.query.sort || [{ priority: "DESC" }, { id: "DESC" }],
         populate: {
           type: {
             populate: {
@@ -307,11 +312,66 @@ export default factories.createCoreController(
           owners: true,
           route_metadata: true,
         },
-        limit,
-      });
+      };
+
+      let sites: any[];
+
+      // If no type filters and we have a limit, fetch N per type for fair distribution
+      if (!hasTypeFilters && requestedLimit && listIds.length === 0) {
+        // Get all site types
+        const siteTypes = await strapi.db.query("api::site-type.site-type").findMany({
+          select: ["id", "name"],
+        });
+
+        // Fetch up to the full limit per type - ensures we hit the limit even if some types
+        // have few/no sites in the area. Queries run in parallel so latency is similar.
+        const perTypeLimit = requestedLimit;
+
+        const sitesByType = await Promise.all(
+          siteTypes.map(async (siteType) => {
+            const typeWhereClause = {
+              ...whereClause,
+              type: { id: siteType.id },
+            };
+
+            return strapi.db.query("api::site.site").findMany({
+              ...baseQueryOptions,
+              where: typeWhereClause,
+              limit: perTypeLimit,
+            });
+          })
+        );
+
+        // Round-robin interleave results from each type
+        const interleaved: any[] = [];
+        let hasMore = true;
+        const typeArrays = sitesByType.map(arr => [...arr]); // Clone arrays
+
+        while (hasMore && interleaved.length < requestedLimit) {
+          hasMore = false;
+          for (const typeArr of typeArrays) {
+            if (typeArr.length > 0) {
+              interleaved.push(typeArr.shift());
+              hasMore = true;
+              if (interleaved.length >= requestedLimit) {
+                break;
+              }
+            }
+          }
+        }
+
+        sites = interleaved;
+      } else {
+        // Type filters applied or no limit - use standard query
+        sites = await strapi.db.query("api::site.site").findMany({
+          ...baseQueryOptions,
+          where: whereClause,
+          limit: requestedLimit,
+        });
+      }
 
       return {
-        data: (sites as Site[]).map((site: any) => {
+        data: (sites as any[]).map((site: any) => {
           return {
             id: site.id,
             documentId: site.documentId,
