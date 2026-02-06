@@ -63,7 +63,7 @@ export default {
     // Set the uploader's name as the caption
     const uploaderName = ctx.state.nomadUser?.name || ctx.state.nomadUser?.email;
     if (uploaderName) {
-      parsedFileInfo = { ...parsedFileInfo, caption: uploaderName };
+      parsedFileInfo = { ...parsedFileInfo, caption: `Photo by ${uploaderName}` };
     }
 
     strapi.log.info("custom-upload: parsedFileInfo =", JSON.stringify(parsedFileInfo));
@@ -77,14 +77,15 @@ export default {
 
     // Update each uploaded file with the caption directly in case upload service didn't apply it
     if (uploadedFiles && uploadedFiles.length > 0 && uploaderName) {
+      const caption = `Photo by ${uploaderName}`;
       for (const file of uploadedFiles) {
         if (!file.caption) {
           strapi.log.info("custom-upload: Updating file caption for id:", file.id);
           await strapi.db.query("plugin::upload.file").update({
             where: { id: file.id },
-            data: { caption: uploaderName },
+            data: { caption },
           });
-          file.caption = uploaderName;
+          file.caption = caption;
         }
       }
     }
