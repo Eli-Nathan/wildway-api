@@ -66,11 +66,28 @@ export default {
       parsedFileInfo = { ...parsedFileInfo, caption: uploaderName };
     }
 
+    strapi.log.info("custom-upload: parsedFileInfo =", JSON.stringify(parsedFileInfo));
+    strapi.log.info("custom-upload: uploaderName =", uploaderName);
+
     // Upload the files
     const uploadedFiles = await uploadService.upload({
       data: parsedFileInfo,
       files: files.files,
     });
+
+    // Update each uploaded file with the caption directly in case upload service didn't apply it
+    if (uploadedFiles && uploadedFiles.length > 0 && uploaderName) {
+      for (const file of uploadedFiles) {
+        if (!file.caption) {
+          strapi.log.info("custom-upload: Updating file caption for id:", file.id);
+          await strapi.db.query("plugin::upload.file").update({
+            where: { id: file.id },
+            data: { caption: uploaderName },
+          });
+          file.caption = uploaderName;
+        }
+      }
+    }
 
     ctx.body = uploadedFiles;
   },
