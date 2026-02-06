@@ -434,7 +434,7 @@ export default factories.createCoreController(
         },
       });
 
-      // Get paginated sites
+      // Get paginated sites with full populate for card display
       const sites = await strapi.db.query("api::site.site").findMany({
         where: {
           added_by: {
@@ -443,8 +443,17 @@ export default factories.createCoreController(
         },
         orderBy: { createdAt: "DESC" },
         populate: {
-          type: true,
+          type: {
+            populate: {
+              remote_icon: true,
+              remote_marker: true,
+            },
+          },
           images: true,
+          facilities: true,
+          sub_types: true,
+          tags: true,
+          route_metadata: true,
         },
         limit: pageSize,
         offset,
