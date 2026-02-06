@@ -44,6 +44,15 @@ const config: RoutesConfig = {
     },
     {
       method: "GET",
+      path: "/sites/by-user/:userId",
+      handler: "site.findByUser",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed"],
+      },
+    },
+    {
+      method: "GET",
       path: "/sites/:id",
       handler: "site.findOne",
       config: {

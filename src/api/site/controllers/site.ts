@@ -17,12 +17,15 @@ interface StrapiContext {
   params: {
     id?: string;
     uid?: string;
+    userId?: string;
   };
   request: {
     query: {
       query?: string;
       start?: number;
       limit?: number;
+      page?: string;
+      pageSize?: string;
     };
   };
   state: {
@@ -413,6 +416,55 @@ export default factories.createCoreController(
             attributes: { ...site, isOwned: !!site.owners?.length },
           };
         }),
+      };
+    },
+
+    async findByUser(ctx: StrapiContext) {
+      const userId = ctx.params.userId;
+      const page = parseInt(ctx.request.query.page as string) || 1;
+      const pageSize = parseInt(ctx.request.query.pageSize as string) || 20;
+      const offset = (page - 1) * pageSize;
+
+      // Get total count
+      const total = await strapi.db.query("api::site.site").count({
+        where: {
+          added_by: {
+            id: userId,
+          },
+        },
+      });
+
+      // Get paginated sites
+      const sites = await strapi.db.query("api::site.site").findMany({
+        where: {
+          added_by: {
+            id: userId,
+          },
+        },
+        orderBy: { createdAt: "DESC" },
+        populate: {
+          type: true,
+          images: true,
+        },
+        limit: pageSize,
+        offset,
+      });
+
+      const pageCount = Math.ceil(total / pageSize);
+
+      return {
+        data: (sites as Site[]).map((site) => ({
+          id: site.id,
+          attributes: site,
+        })),
+        meta: {
+          pagination: {
+            page,
+            pageSize,
+            pageCount,
+            total,
+          },
+        },
       };
     },
 
