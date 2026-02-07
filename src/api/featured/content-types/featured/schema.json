@@ -3,7 +3,7 @@
   "collectionName": "featured_items",
   "info": {
     "singularName": "featured",
-    "pluralName": "featured",
+    "pluralName": "featured-items",
     "displayName": "Featured",
     "description": "Curated featured content for the explore page carousel"
   },

@@ -4,10 +4,48 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strapi_1 = require("@strapi/strapi");
 const emails_1 = require("../../../nomad/emails");
 /**
- * Strapi 5 populate format - object notation required
- * Converting from nested dot-notation arrays to object format
+ * Lightweight populate for auth/session - essential data + IDs only for lists
  */
-const populateConfig = {
+const lightPopulateConfig = {
+    role: true,
+    profile_pic: true,
+    favourites: {
+        select: ["id"],
+        populate: {
+            type: true,
+        },
+    },
+    saved_public_routes: {
+        select: ["id"],
+    },
+    addition_requests: {
+        select: ["id", "title", "status", "createdAt"],
+    },
+    edit_requests: {
+        select: ["id", "status", "createdAt"],
+        populate: {
+            site: {
+                select: ["id", "title"],
+            },
+        },
+    },
+    comments: {
+        select: ["id", "createdAt"],
+        populate: {
+            site: {
+                select: ["id", "title"],
+            },
+        },
+    },
+    sites: {
+        select: ["id"],
+    },
+};
+/**
+ * Full populate config - for when complete user data is needed
+ * Strapi 5 populate format - object notation required
+ */
+const fullPopulateConfig = {
     addition_requests: true,
     edit_requests: {
         populate: {
@@ -44,6 +82,8 @@ const populateConfig = {
         },
     },
 };
+// Keep backward compat alias
+const populateConfig = fullPopulateConfig;
 const enrichCtx = (ctx) => {
     if (!ctx.query) {
         ctx.query = {};
@@ -59,18 +99,34 @@ const enrichCtx = (ctx) => {
 };
 exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-user", ({ strapi }) => ({
     async findMe(ctx) {
-        strapi.log.info("findMe: Looking up user with id:", ctx.params.id);
-        // Use db.query directly for Strapi 5 compatibility with nested object populate
+        // Use lightweight populate for fast auth - only essential data
         const user = await strapi.db.query("api::auth-user.auth-user").findOne({
             where: { id: ctx.params.id },
-            populate: populateConfig,
+            populate: lightPopulateConfig,
         });
         if (!user) {
-            strapi.log.warn("findMe: User not found");
             return ctx.notFound("User not found");
         }
-        strapi.log.info("findMe: Found user:", user.id);
         // Return in Strapi 4 format for frontend compatibility
+        return {
+            data: {
+                id: user.id,
+                attributes: user,
+            },
+            meta: {},
+        };
+    },
+    /**
+     * Get full user data including all relations - use sparingly
+     */
+    async findMeFull(ctx) {
+        const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+            where: { id: ctx.params.id },
+            populate: fullPopulateConfig,
+        });
+        if (!user) {
+            return ctx.notFound("User not found");
+        }
         return {
             data: {
                 id: user.id,
@@ -219,14 +275,32 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         };
     },
     async updateFavourites(ctx) {
-        var _a, _b;
-        const favourites = ((_b = (_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.favourites) || [];
+        var _a, _b, _c;
+        const newFavourites = ((_b = (_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.favourites) || [];
+        // Get current favourites to detect changes
+        const currentUser = await strapi.db.query("api::auth-user.auth-user").findOne({
+            where: { id: ctx.params.id },
+            populate: { favourites: { select: ["id"] } },
+        });
+        const oldFavourites = ((currentUser === null || currentUser === void 0 ? void 0 : currentUser.favourites) || []).map((f) => f.id);
         // Strapi 5: Use db.query directly (accepts array of IDs for relations)
         const user = await strapi.db.query("api::auth-user.auth-user").update({
             where: { id: ctx.params.id },
-            data: { favourites },
+            data: { favourites: newFavourites },
             populate: populateConfig,
         });
+        // Find sites that were added or removed from favourites
+        const addedSites = newFavourites.filter((id) => !oldFavourites.includes(id));
+        const removedSites = oldFavourites.filter((id) => !newFavourites.includes(id));
+        const changedSites = [...addedSites, ...removedSites];
+        // Update priority for affected sites (async, don't block response)
+        if (changedSites.length > 0) {
+            const moderatorService = (_c = strapi.plugin("moderator")) === null || _c === void 0 ? void 0 : _c.service("moderator");
+            if (moderatorService === null || moderatorService === void 0 ? void 0 : moderatorService.updateSitePriority) {
+                // Run priority updates in background
+                Promise.all(changedSites.map((siteId) => moderatorService.updateSitePriority(siteId).catch((err) => strapi.log.error(`Failed to update priority for site ${siteId}:`, err))));
+            }
+        }
         return {
             data: {
                 id: user.id,

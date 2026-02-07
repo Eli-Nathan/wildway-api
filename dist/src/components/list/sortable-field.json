@@ -1,0 +1,28 @@
+{
+    "collectionName": "components_list_sortable_fields",
+    "info": {
+        "displayName": "Sortable Field",
+        "icon": "sort",
+        "description": "Defines a field that can be used to sort sites within a list"
+    },
+    "options": {},
+    "attributes": {
+        "field_path": {
+            "type": "string",
+            "required": true
+        },
+        "display_label": {
+            "type": "string",
+            "required": true
+        },
+        "is_default": {
+            "type": "boolean",
+            "default": false
+        },
+        "default_order": {
+            "type": "enumeration",
+            "enum": ["asc", "desc"],
+            "default": "asc"
+        }
+    }
+}

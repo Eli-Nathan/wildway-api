@@ -1,0 +1,57 @@
+{
+    "kind": "collectionType",
+    "collectionName": "featured_items",
+    "info": {
+        "singularName": "featured",
+        "pluralName": "featured-items",
+        "displayName": "Featured",
+        "description": "Curated featured content for the explore page carousel"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "attributes": {
+        "title": {
+            "type": "string",
+            "required": true
+        },
+        "subtitle": {
+            "type": "string"
+        },
+        "image": {
+            "type": "media",
+            "multiple": false,
+            "allowedTypes": ["images"]
+        },
+        "content_type": {
+            "type": "enumeration",
+            "enum": ["site", "site_list", "route"],
+            "required": true
+        },
+        "site": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::site.site"
+        },
+        "site_list": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::site-list.site-list"
+        },
+        "route": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::nomad-route.nomad-route"
+        },
+        "priority": {
+            "type": "integer",
+            "default": 0,
+            "min": 0,
+            "max": 10
+        },
+        "active": {
+            "type": "boolean",
+            "default": true
+        }
+    }
+}

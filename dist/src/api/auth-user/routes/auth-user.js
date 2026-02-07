@@ -13,6 +13,15 @@ const config = {
         },
         {
             method: "GET",
+            path: "/auth-users/me/full",
+            handler: "auth-user.findMeFull",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "is-user"],
+            },
+        },
+        {
+            method: "GET",
             path: "/auth-users/profile/:id",
             handler: "auth-user.getProfile",
             config: {

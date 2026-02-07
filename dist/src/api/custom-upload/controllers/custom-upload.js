@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const auth_1 = require("firebase-admin/auth");
 exports.default = {
     async upload(ctx) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d, _e;
         // Verify Firebase token directly in controller
         const authHeader = (_b = (_a = ctx.request) === null || _a === void 0 ? void 0 : _a.header) === null || _b === void 0 ? void 0 : _b.authorization;
         strapi.log.info("custom-upload: authHeader exists =", !!authHeader);
@@ -26,6 +26,8 @@ exports.default = {
                 return ctx.unauthorized("User not found");
             }
             strapi.log.info("custom-upload: User verified:", nomadUser.email);
+            // Store user info for later use in file upload
+            ctx.state.nomadUser = nomadUser;
         }
         catch (error) {
             strapi.log.error("custom-upload: Auth error:", error);
@@ -48,11 +50,32 @@ exports.default = {
         catch {
             parsedFileInfo = {};
         }
+        // Set the uploader's name as the caption
+        const uploaderName = ((_d = ctx.state.nomadUser) === null || _d === void 0 ? void 0 : _d.name) || ((_e = ctx.state.nomadUser) === null || _e === void 0 ? void 0 : _e.email);
+        if (uploaderName) {
+            parsedFileInfo = { ...parsedFileInfo, caption: `Photo by ${uploaderName}` };
+        }
+        strapi.log.info("custom-upload: parsedFileInfo =", JSON.stringify(parsedFileInfo));
+        strapi.log.info("custom-upload: uploaderName =", uploaderName);
         // Upload the files
         const uploadedFiles = await uploadService.upload({
             data: parsedFileInfo,
             files: files.files,
         });
+        // Update each uploaded file with the caption directly in case upload service didn't apply it
+        if (uploadedFiles && uploadedFiles.length > 0 && uploaderName) {
+            const caption = `Photo by ${uploaderName}`;
+            for (const file of uploadedFiles) {
+                if (!file.caption) {
+                    strapi.log.info("custom-upload: Updating file caption for id:", file.id);
+                    await strapi.db.query("plugin::upload.file").update({
+                        where: { id: file.id },
+                        data: { caption },
+                    });
+                    file.caption = caption;
+                }
+            }
+        }
         ctx.body = uploadedFiles;
     },
 };

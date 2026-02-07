@@ -57,6 +57,12 @@
         },
         "applicable_metadata_fields": {
             "type": "json"
+        },
+        "guides": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::guide.guide",
+            "mappedBy": "site_types"
         }
     }
 }

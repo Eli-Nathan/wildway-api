@@ -11,6 +11,34 @@ const config = {
                 auth: false,
             },
         },
+        // Static paths MUST come before parameterized paths
+        {
+            method: "GET",
+            path: "/site-lists/my-lists",
+            handler: "site-list.findMyLists",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "api::auth-user.is-user"],
+            },
+        },
+        {
+            method: "GET",
+            path: "/site-lists/saved",
+            handler: "site-list.findSavedLists",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "api::auth-user.is-user"],
+            },
+        },
+        {
+            method: "GET",
+            path: "/site-lists/uid/:uid",
+            handler: "site-list.findOneBySlug",
+            config: {
+                auth: false,
+            },
+        },
+        // Parameterized paths come after static paths
         {
             method: "GET",
             path: "/site-lists/:id",
@@ -19,15 +47,7 @@ const config = {
                 auth: false,
             },
         },
-        {
-            method: "GET",
-            path: "/site-lists/slug/:slug",
-            handler: "site-list.findOneBySlug",
-            config: {
-                auth: false,
-            },
-        },
-        // Future: User list CRUD (requires auth)
+        // User list CRUD (requires auth)
         {
             method: "POST",
             path: "/site-lists",
@@ -39,11 +59,30 @@ const config = {
         },
         {
             method: "PUT",
+            path: "/site-lists/:id/save",
+            handler: "site-list.toggleSave",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "api::auth-user.is-user"],
+            },
+        },
+        {
+            method: "PUT",
             path: "/site-lists/:id",
             handler: "site-list.update",
             config: {
                 auth: false,
                 policies: ["global::firebase-authed", "global::is-owner"],
+            },
+        },
+        // Admin update for admin-owned lists (uses X-Admin-Secret header)
+        {
+            method: "PUT",
+            path: "/site-lists/:id/admin",
+            handler: "site-list.adminUpdate",
+            config: {
+                auth: false,
+                policies: ["global::is-admin"],
             },
         },
         {
@@ -53,16 +92,6 @@ const config = {
             config: {
                 auth: false,
                 policies: ["global::firebase-authed", "global::is-owner"],
-            },
-        },
-        // Save/unsave a list
-        {
-            method: "PUT",
-            path: "/site-lists/:id/save",
-            handler: "site-list.toggleSave",
-            config: {
-                auth: false,
-                policies: ["global::firebase-authed", "api::auth-user.is-user"],
             },
         },
     ],

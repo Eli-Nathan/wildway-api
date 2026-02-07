@@ -7,6 +7,7 @@ const config = {
             path: "/sites",
             handler: "site.find",
             config: {
+                auth: false, // Disable Strapi JWT auth - Firebase auth handled by middleware
                 middlewares: ["api::site.populate-sites"],
             },
         },
@@ -15,6 +16,7 @@ const config = {
             path: "/sites/search",
             handler: "site.search",
             config: {
+                auth: false,
                 middlewares: ["api::site.populate-sites"],
             },
         },
@@ -23,7 +25,17 @@ const config = {
             path: "/sites/recent",
             handler: "site.findRecent",
             config: {
+                auth: false,
                 middlewares: ["api::site.populate-sites"],
+            },
+        },
+        {
+            method: "GET",
+            path: "/sites/by-user/:userId",
+            handler: "site.findByUser",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed"],
             },
         },
         {
@@ -31,6 +43,7 @@ const config = {
             path: "/sites/:id",
             handler: "site.findOne",
             config: {
+                auth: false,
                 middlewares: ["api::site.populate-site"],
             },
         },
@@ -39,7 +52,27 @@ const config = {
             path: "/sites/uid/:uid",
             handler: "site.findOneByUID",
             config: {
+                auth: false,
                 middlewares: ["api::site.populate-site"],
+            },
+        },
+        {
+            method: "POST",
+            path: "/sites",
+            handler: "site.create",
+        },
+        {
+            method: "PUT",
+            path: "/sites/:id",
+            handler: "site.update",
+        },
+        {
+            method: "DELETE",
+            path: "/sites/:id",
+            handler: "site.delete",
+            config: {
+                auth: false,
+                policies: ["global::is-admin"],
             },
         },
     ],

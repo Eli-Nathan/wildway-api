@@ -42,6 +42,12 @@
             "type": "integer",
             "unique": false,
             "default": 10
+        },
+        "guides": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::guide.guide",
+            "mappedBy": "facilities"
         }
     }
 }

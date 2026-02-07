@@ -14,9 +14,93 @@ const populateConfig = {
             type: true,
             images: true,
             route_metadata: true,
+            likes: { select: ["id"] },
         },
     },
+    sortable_fields: true,
 };
+// Helper: Get nested field value from object using dot notation
+function getNestedValue(obj, path) {
+    return path.split(".").reduce((current, key) => current === null || current === void 0 ? void 0 : current[key], obj);
+}
+// Helper: Get sort value (handles special cases like likes_count)
+function getSortValue(site, fieldPath) {
+    var _a;
+    if (fieldPath === "likes_count") {
+        return ((_a = site.likes) === null || _a === void 0 ? void 0 : _a.length) || 0;
+    }
+    return getNestedValue(site, fieldPath);
+}
+// Helper: Sort sites with null/undefined values at end
+function sortSites(sites, fieldPath, order) {
+    return [...sites].sort((a, b) => {
+        const aVal = getSortValue(a, fieldPath);
+        const bVal = getSortValue(b, fieldPath);
+        // Handle null/undefined - always put at end
+        if (aVal == null && bVal == null) {
+            // Secondary sort by title for stability
+            return (a.title || "").localeCompare(b.title || "");
+        }
+        if (aVal == null)
+            return 1;
+        if (bVal == null)
+            return -1;
+        // Compare values
+        let comparison = 0;
+        if (typeof aVal === "string" && typeof bVal === "string") {
+            comparison = aVal.localeCompare(bVal);
+        }
+        else {
+            comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+        }
+        return order === "asc" ? comparison : -comparison;
+    });
+}
+// Helper: Filter sites by search term (title only, case-insensitive)
+function filterSitesBySearch(sites, searchTerm) {
+    if (!searchTerm)
+        return sites;
+    const term = searchTerm.toLowerCase().trim();
+    return sites.filter((site) => { var _a; return (_a = site.title) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(term); });
+}
+// Built-in sort fields available on all lists
+const BUILTIN_SORT_FIELDS = ["title", "likes_count"];
+// Helper: Validate sort field against allowed fields
+function isValidSortField(sort, sortableFields) {
+    // Allow built-in sort fields
+    if (BUILTIN_SORT_FIELDS.includes(sort)) {
+        return true;
+    }
+    // Allow fields defined in sortable_fields
+    if (sortableFields === null || sortableFields === void 0 ? void 0 : sortableFields.some((f) => f.field_path === sort)) {
+        return true;
+    }
+    return false;
+}
+// Helper: Sanitize order parameter
+function sanitizeOrder(order) {
+    return order === "desc" ? "desc" : "asc";
+}
+// Helper: Process sites with search and sort
+function processSites(sites, search, sort, order, sortableFields) {
+    let processed = sites || [];
+    // Apply search filter
+    if (search) {
+        processed = filterSitesBySearch(processed, search);
+    }
+    // Apply sorting (only if sort field is valid)
+    if (sort && isValidSortField(sort, sortableFields)) {
+        processed = sortSites(processed, sort, order);
+    }
+    else if ((sortableFields === null || sortableFields === void 0 ? void 0 : sortableFields.length) > 0) {
+        // Use default sort if defined
+        const defaultSort = sortableFields.find((f) => f.is_default);
+        if (defaultSort) {
+            processed = sortSites(processed, defaultSort.field_path, defaultSort.default_order || "asc");
+        }
+    }
+    return processed;
+}
 const listPopulateConfig = {
     image: true,
     sites: {
@@ -65,9 +149,12 @@ exports.default = strapi_1.factories.createCoreController("api::site-list.site-l
     },
     /**
      * Find one site list by ID
+     * Supports query params: search, sort, order
      */
     async findOne(ctx) {
         var _a, _b, _c;
+        const { search, sortBy } = ctx.query;
+        const order = sanitizeOrder(ctx.query.order);
         const list = await strapi.db.query("api::site-list.site-list").findOne({
             where: { id: ctx.params.id },
             populate: populateConfig,
@@ -82,24 +169,32 @@ exports.default = strapi_1.factories.createCoreController("api::site-list.site-l
             ctx.status = 403;
             return { status: 403, message: "This list is private" };
         }
+        // Process sites: filter and sort
+        const totalSiteCount = ((_c = list.sites) === null || _c === void 0 ? void 0 : _c.length) || 0;
+        const processedSites = processSites(list.sites, search, sortBy, order, list.sortable_fields);
         return {
             data: {
                 id: list.id,
                 attributes: {
                     ...list,
-                    siteCount: ((_c = list.sites) === null || _c === void 0 ? void 0 : _c.length) || 0,
+                    sites: processedSites,
+                    siteCount: processedSites.length,
+                    totalSiteCount,
                 },
             },
             meta: {},
         };
     },
     /**
-     * Find one site list by slug
+     * Find one site list by slug (uid)
+     * Supports query params: search, sort, order
      */
     async findOneBySlug(ctx) {
         var _a, _b, _c;
+        const { search, sortBy } = ctx.query;
+        const order = sanitizeOrder(ctx.query.order);
         const list = await strapi.db.query("api::site-list.site-list").findOne({
-            where: { slug: ctx.params.slug },
+            where: { slug: ctx.params.uid },
             populate: populateConfig,
         });
         if (!list) {
@@ -112,12 +207,17 @@ exports.default = strapi_1.factories.createCoreController("api::site-list.site-l
             ctx.status = 403;
             return { status: 403, message: "This list is private" };
         }
+        // Process sites: filter and sort
+        const totalSiteCount = ((_c = list.sites) === null || _c === void 0 ? void 0 : _c.length) || 0;
+        const processedSites = processSites(list.sites, search, sortBy, order, list.sortable_fields);
         return {
             data: {
                 id: list.id,
                 attributes: {
                     ...list,
-                    siteCount: ((_c = list.sites) === null || _c === void 0 ? void 0 : _c.length) || 0,
+                    sites: processedSites,
+                    siteCount: processedSites.length,
+                    totalSiteCount,
                 },
             },
             meta: {},
@@ -244,6 +344,96 @@ exports.default = strapi_1.factories.createCoreController("api::site-list.site-l
         });
         return {
             data: { saved: !isSaved },
+            meta: {},
+        };
+    },
+    /**
+     * Get lists created by the current user
+     */
+    async findMyLists(ctx) {
+        const userId = ctx.state.user.id;
+        const lists = await strapi.db.query("api::site-list.site-list").findMany({
+            where: {
+                owner: userId,
+                owner_type: "user",
+            },
+            populate: listPopulateConfig,
+            orderBy: [{ createdAt: "desc" }],
+        });
+        const listsWithCount = lists.map((list) => {
+            var _a;
+            return ({
+                ...list,
+                siteCount: ((_a = list.sites) === null || _a === void 0 ? void 0 : _a.length) || 0,
+            });
+        });
+        return {
+            data: listsWithCount.map((list) => ({
+                id: list.id,
+                attributes: list,
+            })),
+            meta: {},
+        };
+    },
+    /**
+     * Admin update for admin-owned lists (bypasses owner check)
+     * Uses X-Admin-Secret header for authentication
+     */
+    async adminUpdate(ctx) {
+        var _a, _b;
+        const existingList = await strapi.db
+            .query("api::site-list.site-list")
+            .findOne({
+            where: { id: ctx.params.id },
+        });
+        if (!existingList) {
+            ctx.status = 404;
+            return { status: 404, message: "List not found" };
+        }
+        const requestData = ((_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) || {};
+        const updated = await strapi.db.query("api::site-list.site-list").update({
+            where: { id: ctx.params.id },
+            data: requestData,
+            populate: populateConfig,
+        });
+        return {
+            data: {
+                id: updated.id,
+                attributes: {
+                    ...updated,
+                    siteCount: ((_b = updated.sites) === null || _b === void 0 ? void 0 : _b.length) || 0,
+                },
+            },
+            meta: {},
+        };
+    },
+    /**
+     * Get lists saved by the current user
+     */
+    async findSavedLists(ctx) {
+        const userId = ctx.state.user.id;
+        // Get user with saved lists
+        const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+            where: { id: userId },
+            populate: {
+                saved_site_lists: {
+                    populate: listPopulateConfig,
+                },
+            },
+        });
+        const lists = user.saved_site_lists || [];
+        const listsWithCount = lists.map((list) => {
+            var _a;
+            return ({
+                ...list,
+                siteCount: ((_a = list.sites) === null || _a === void 0 ? void 0 : _a.length) || 0,
+            });
+        });
+        return {
+            data: listsWithCount.map((list) => ({
+                id: list.id,
+                attributes: list,
+            })),
             meta: {},
         };
     },

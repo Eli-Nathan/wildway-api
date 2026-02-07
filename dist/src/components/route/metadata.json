@@ -11,6 +11,10 @@
             "type": "integer",
             "min": 0
         },
+        "height": {
+            "type": "integer",
+            "min": 0
+        },
         "distance": {
             "type": "decimal",
             "min": 0
