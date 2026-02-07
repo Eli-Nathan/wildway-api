@@ -1,5 +1,9 @@
 "use strict";
 const authAdmin = require("firebase-admin/auth");
+const {
+  getWelcomeMailContent,
+  sendEmail,
+} = require("../../../../nomad/emails");
 
 module.exports = ({ strapi }) => ({
   async getUnverifiedUsers() {
@@ -25,6 +29,25 @@ module.exports = ({ strapi }) => ({
           isVerified: true,
         },
       });
+
+    // Send welcome email
+    if (user.email) {
+      try {
+        const { subject, text, html } = getWelcomeMailContent(
+          user.displayName || ""
+        );
+        await sendEmail({
+          strapi,
+          subject,
+          address: user.email,
+          text,
+          html,
+        });
+      } catch (error) {
+        strapi.log.error(`Failed to send welcome email to ${user.email}:`, error);
+      }
+    }
+
     return updatedUser;
   },
 });
