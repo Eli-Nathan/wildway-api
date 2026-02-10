@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "content_reports",
+  "info": {
+    "singularName": "content-report",
+    "pluralName": "content-reports",
+    "displayName": "Content Reports",
+    "description": "User-submitted reports about problematic content"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "category": {
+      "type": "enumeration",
+      "enum": ["inappropriate", "misleading", "harmful", "other"],
+      "required": true
+    },
+    "description": {
+      "type": "text",
+      "required": true
+    },
+    "contentType": {
+      "type": "enumeration",
+      "enum": ["site", "user-route", "nomad-route", "profile", "site-list"],
+      "required": true
+    },
+    "contentId": {
+      "type": "integer",
+      "required": true
+    },
+    "contentTitle": {
+      "type": "string"
+    },
+    "reporter": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::auth-user.auth-user",
+      "inversedBy": "contentReports"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["submitted", "reviewing", "resolved", "dismissed"],
+      "default": "submitted"
+    }
+  }
+}

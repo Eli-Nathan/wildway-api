@@ -13,7 +13,7 @@ interface SlackEntry {
   [key: string]: unknown;
 }
 
-type SlackMessageType = "form" | "additionRequest" | "editRequest" | "comment";
+type SlackMessageType = "form" | "additionRequest" | "editRequest" | "comment" | "contentReport";
 
 type MessageHandler = (
   ctx: StrapiContext,
@@ -129,6 +129,68 @@ const comment: MessageHandler = async (_ctx, entry) => {
   return { blocks };
 };
 
+const contentReport: MessageHandler = async (_ctx, entry) => {
+  const contentTypeLabels: Record<string, string> = {
+    'site': 'Place',
+    'user-route': 'Community Route',
+    'nomad-route': 'Popular Route',
+    'profile': 'Profile',
+    'site-list': 'List'
+  };
+
+  const categoryLabels: Record<string, string> = {
+    'inappropriate': 'Content is inappropriate',
+    'misleading': 'Content is misleading',
+    'harmful': 'Content is harmful',
+    'other': 'Other'
+  };
+
+  const blocks: SlackBlock[] = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: ":warning: *Content Report Received* :warning:\n",
+      },
+    },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: `*Content Type*\n${contentTypeLabels[entry.contentType as string] || entry.contentType}`,
+        },
+        {
+          type: "mrkdwn",
+          text: `*Category*\n${categoryLabels[entry.category as string] || entry.category}`,
+        },
+      ],
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*Content*\n${entry.contentTitle || 'Unknown'} (ID: ${entry.contentId})`,
+      },
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*Description*\n${entry.description || 'No description provided'}`,
+      },
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `<https://api.wildway.app/admin/content-manager/collectionType/api::content-report.content-report/${entry.id}|View Report>`,
+      },
+    },
+  ];
+  return { blocks };
+};
+
 const getSlackMessageForDataType = (type: SlackMessageType): MessageHandler | undefined => {
   switch (type) {
     case "form":
@@ -139,6 +201,8 @@ const getSlackMessageForDataType = (type: SlackMessageType): MessageHandler | un
       return editRequest;
     case "comment":
       return comment;
+    case "contentReport":
+      return contentReport;
     default:
       return undefined;
   }

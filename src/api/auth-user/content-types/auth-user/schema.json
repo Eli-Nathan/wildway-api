@@ -146,6 +146,12 @@
       "relation": "manyToMany",
       "target": "api::site-list.site-list",
       "mappedBy": "saved_by"
+    },
+    "contentReports": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::content-report.content-report",
+      "mappedBy": "reporter"
     }
   }
 }
