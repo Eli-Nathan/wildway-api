@@ -3,8 +3,8 @@ import type { StrapiContext, MiddlewareFactory } from "../../../types/strapi";
 /**
  * Strapi 5 populate format - object notation required
  * Converting from:
- * ["type", "type.remote_icon", "type.remote_marker", "comments",
- *  "comments.owner", "comments.site", "owners", "facilities",
+ * ["type", "type.remote_icon", "type.remote_marker", "reviews",
+ *  "reviews.owner", "reviews.site", "reviews.image", "owners", "facilities",
  *  "sub_types", "images", "tags", "likes"]
  */
 const populateConfig = {
@@ -14,10 +14,11 @@ const populateConfig = {
       remote_marker: true,
     },
   },
-  comments: {
+  reviews: {
     populate: {
       owner: true,
       site: true,
+      image: true,
     },
   },
   owners: true,

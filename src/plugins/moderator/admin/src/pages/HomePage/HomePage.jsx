@@ -48,7 +48,7 @@ const HomePage = () => {
     requests.current = await fetchAllRequests();
     if (approveItem.collection === "edit-request") {
       setInitialSelectedTabIndex(1);
-    } else if (approveItem.collection === "comment") {
+    } else if (approveItem.collection === "review") {
       setInitialSelectedTabIndex(2);
     }
     setIsLoading(false);
@@ -61,7 +61,7 @@ const HomePage = () => {
     requests.current = await fetchAllRequests();
     if (rejectItem.collection === "edit-request") {
       setInitialSelectedTabIndex(1);
-    } else if (approveItem.collection === "comment") {
+    } else if (rejectItem.collection === "review") {
       setInitialSelectedTabIndex(2);
     }
     setIsLoading(false);

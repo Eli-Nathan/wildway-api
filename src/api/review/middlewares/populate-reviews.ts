@@ -6,6 +6,7 @@ import type { StrapiContext, MiddlewareFactory } from "../../../types/strapi";
 const populateConfig = {
   site: true,
   owner: true,
+  image: true,
 };
 
 const enrichCtx = (ctx: StrapiContext): StrapiContext => {
@@ -21,11 +22,11 @@ const enrichCtx = (ctx: StrapiContext): StrapiContext => {
   return ctx;
 };
 
-const populateComments: MiddlewareFactory = (_config, { strapi: _strapi }) => {
+const populateReviews: MiddlewareFactory = (_config, { strapi: _strapi }) => {
   return async (context, next) => {
     enrichCtx(context);
     await next();
   };
 };
 
-export default populateComments;
+export default populateReviews;

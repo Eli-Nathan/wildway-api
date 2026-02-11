@@ -1,26 +1,27 @@
+/**
+ * Backwards compatibility routes for deprecated comments API.
+ * These allow old app versions to continue working until they update.
+ * TODO: Remove after all users have updated to the new app version with reviews.
+ */
+
 interface RouteConfig {
   method: string;
   path: string;
   handler: string;
   config?: {
     auth?: boolean;
-    middlewares?: string[];
     policies?: string[];
   };
 }
 
-interface RoutesConfig {
-  routes: RouteConfig[];
-}
-
-const config: RoutesConfig = {
+const config: { routes: RouteConfig[] } = {
   routes: [
     {
       method: "GET",
       path: "/comments",
       handler: "comment.find",
       config: {
-        middlewares: ["api::comment.populate-comments"],
+        auth: false,
       },
     },
     {
@@ -29,8 +30,7 @@ const config: RoutesConfig = {
       handler: "comment.create",
       config: {
         auth: false,
-        middlewares: ["api::comment.populate-comments"],
-        policies: ["global::firebase-authed", "global::set-owner"],
+        policies: ["global::firebase-authed"],
       },
     },
     {
@@ -39,8 +39,7 @@ const config: RoutesConfig = {
       handler: "comment.delete",
       config: {
         auth: false,
-        middlewares: ["api::comment.populate-comments"],
-        policies: ["global::firebase-authed", "global::is-owner"],
+        policies: ["global::firebase-authed"],
       },
     },
   ],

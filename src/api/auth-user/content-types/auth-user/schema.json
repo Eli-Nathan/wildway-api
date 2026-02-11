@@ -76,10 +76,10 @@
       "target": "api::edit-request.edit-request",
       "mappedBy": "owner"
     },
-    "comments": {
+    "reviews": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::comment.comment",
+      "target": "api::review.review",
       "mappedBy": "owner"
     },
     "isVerified": {

@@ -29,8 +29,8 @@ const lightPopulateConfig = {
             },
         },
     },
-    comments: {
-        select: ["id", "createdAt"],
+    reviews: {
+        select: ["id", "title", "rating", "status", "createdAt"],
         populate: {
             site: {
                 select: ["id", "title"],
@@ -64,9 +64,10 @@ const fullPopulateConfig = {
         },
     },
     profile_pic: true,
-    comments: {
+    reviews: {
         populate: {
             site: true,
+            image: true,
         },
     },
     sites: {
@@ -111,7 +112,12 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         return {
             data: {
                 id: user.id,
-                attributes: user,
+                attributes: {
+                    ...user,
+                    // Backwards compatibility: old apps expect comments field
+                    // TODO: Remove after all users have updated to new app version
+                    comments: [],
+                },
             },
             meta: {},
         };
@@ -130,7 +136,12 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         return {
             data: {
                 id: user.id,
-                attributes: user,
+                attributes: {
+                    ...user,
+                    // Backwards compatibility: old apps expect comments field
+                    // TODO: Remove after all users have updated to new app version
+                    comments: [],
+                },
             },
             meta: {},
         };
@@ -419,6 +430,88 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 attributes: user,
             },
             meta: {},
+        };
+    },
+    /**
+     * Get paginated activity (edits, additions, reviews) for the current user
+     */
+    async getActivity(ctx) {
+        const userId = ctx.params.id;
+        const page = parseInt(ctx.query.page || "1", 10);
+        const pageSize = parseInt(ctx.query.pageSize || "20", 10);
+        // Fetch all activity types in parallel
+        const [editRequests, additionRequests, reviews] = await Promise.all([
+            strapi.db.query("api::edit-request.edit-request").findMany({
+                where: { owner: userId },
+                select: ["id", "status", "createdAt"],
+                populate: {
+                    site: {
+                        select: ["id", "title"],
+                    },
+                },
+            }),
+            strapi.db.query("api::addition-request.addition-request").findMany({
+                where: { owner: userId },
+                select: ["id", "title", "status", "createdAt"],
+            }),
+            strapi.db.query("api::review.review").findMany({
+                where: { owner: userId },
+                select: ["id", "title", "rating", "status", "createdAt"],
+                populate: {
+                    site: {
+                        select: ["id", "title"],
+                    },
+                },
+            }),
+        ]);
+        // Transform and merge all activity
+        const allActivity = [
+            ...editRequests.map((edit) => {
+                var _a;
+                return ({
+                    id: edit.id,
+                    createdAt: edit.createdAt,
+                    type: "edit",
+                    title: ((_a = edit.site) === null || _a === void 0 ? void 0 : _a.title) || "Unknown Site",
+                    status: edit.status,
+                    site: edit.site,
+                });
+            }),
+            ...additionRequests.map((addition) => ({
+                id: addition.id,
+                createdAt: addition.createdAt,
+                type: "addition",
+                title: addition.title,
+                status: addition.status,
+            })),
+            ...reviews.map((review) => ({
+                id: review.id,
+                createdAt: review.createdAt,
+                type: "review",
+                title: review.title,
+                status: review.status,
+                rating: review.rating,
+                site: review.site,
+            })),
+        ];
+        // Sort by createdAt descending (newest first)
+        allActivity.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // Paginate
+        const total = allActivity.length;
+        const totalPages = Math.ceil(total / pageSize);
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedActivity = allActivity.slice(startIndex, endIndex);
+        return {
+            data: paginatedActivity,
+            meta: {
+                pagination: {
+                    page,
+                    pageSize,
+                    pageCount: totalPages,
+                    total,
+                },
+            },
         };
     },
 }));

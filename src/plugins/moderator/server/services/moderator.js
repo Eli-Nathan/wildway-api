@@ -159,8 +159,8 @@ module.exports = ({ strapi }) => ({
     return edits;
   },
 
-  async getComments() {
-    const comments = await strapi.db.query("api::comment.comment").findMany({
+  async getReviews() {
+    const reviews = await strapi.db.query("api::review.review").findMany({
       where: {
         $and: [
           {
@@ -178,9 +178,10 @@ module.exports = ({ strapi }) => ({
       populate: {
         owner: true,
         site: true,
+        image: true,
       },
     });
-    return comments;
+    return reviews;
   },
 
   async rejectRequest(collection, id) {
@@ -201,8 +202,8 @@ module.exports = ({ strapi }) => ({
     let title = rejected.title;
     if (collection === "edit-request") {
       title = rejected.data.title;
-    } else if (collection === "comment") {
-      title = rejected.site.title;
+    } else if (collection === "review") {
+      title = rejected.site?.title || rejected.title;
     }
     const { text, html, subject } = getRejectedMailContent(collection, title);
     await sendEmail({
@@ -279,50 +280,86 @@ module.exports = ({ strapi }) => ({
     return approved;
   },
 
-  async approveComment(id) {
-    const comment = await strapi.db.query(`api::comment.comment`).findOne({
+  async approveReview(id) {
+    const review = await strapi.db.query(`api::review.review`).findOne({
       where: { id },
       populate: {
         owner: true,
-        type: true,
         site: true,
+        image: true,
       },
     });
 
-    await strapi.db.query(`api::comment.comment`).update({
-      where: { id: comment.id },
+    await strapi.db.query(`api::review.review`).update({
+      where: { id: review.id },
       data: {
         status: "complete",
       },
     });
-    if (comment.owner) {
+
+    // Calculate and update site average rating
+    await this.updateSiteAverageRating(review.site.id);
+
+    if (review.owner) {
       const currentUser = await strapi.db
         .query(`api::auth-user.auth-user`)
         .findOne({
-          where: { id: comment.owner.id },
+          where: { id: review.owner.id },
         });
 
       await strapi.db.query(`api::auth-user.auth-user`).update({
         where: { id: currentUser.id },
         data: {
-          score: currentUser.score + 1,
+          score: currentUser.score + 5,
         },
       });
       const { text, html, subject } = getApprovedMailContent(
-        "comment",
-        comment.site.title,
-        comment.site.slug,
-        1
+        "review",
+        review.site.title,
+        review.site.slug,
+        5
       );
       await sendEmail({
         strapi,
         subject,
-        address: comment.owner.email,
+        address: review.owner.email,
         text,
         html,
       });
     }
-    return comment;
+    return review;
+  },
+
+  async updateSiteAverageRating(siteId) {
+    // Get all complete reviews for this site
+    const reviews = await strapi.db.query("api::review.review").findMany({
+      where: {
+        site: siteId,
+        status: "complete",
+      },
+    });
+
+    if (reviews.length === 0) {
+      await strapi.db.query("api::site.site").update({
+        where: { id: siteId },
+        data: { averageRating: null },
+      });
+      return null;
+    }
+
+    // Calculate average
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    const average = sum / reviews.length;
+    const roundedAverage = Math.round(average * 100) / 100; // Round to 2 decimals
+
+    // Update site
+    await strapi.db.query("api::site.site").update({
+      where: { id: siteId },
+      data: { averageRating: roundedAverage },
+    });
+
+    console.log(`Updated site ${siteId} average rating: ${roundedAverage}`);
+    return roundedAverage;
   },
 
   async approveEdit(id) {

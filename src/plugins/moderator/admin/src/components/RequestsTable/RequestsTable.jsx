@@ -105,7 +105,7 @@ const TabContent = ({
   );
 };
 
-const TAB_VALUES = ["addition-request", "edit-request", "comment"];
+const TAB_VALUES = ["addition-request", "edit-request", "review"];
 
 const RequestsTable = ({
   requests,
@@ -125,8 +125,8 @@ const RequestsTable = ({
           <Tabs.Trigger value="edit-request">
             <Typography variant="omega">Edit requests</Typography>
           </Tabs.Trigger>
-          <Tabs.Trigger value="comment">
-            <Typography variant="omega">Comments</Typography>
+          <Tabs.Trigger value="review">
+            <Typography variant="omega">Reviews</Typography>
           </Tabs.Trigger>
         </Tabs.List>
         <TabContent
@@ -142,8 +142,8 @@ const RequestsTable = ({
           approveRequest={approveRequest}
         />
         <TabContent
-          collection={requests.comments}
-          name="comment"
+          collection={requests.reviews}
+          name="review"
           rejectRequest={rejectRequest}
           approveRequest={approveRequest}
         />

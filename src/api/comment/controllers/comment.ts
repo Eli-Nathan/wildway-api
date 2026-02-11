@@ -1,51 +1,55 @@
-// @ts-nocheck
-import { factories } from "@strapi/strapi";
-import { sendEntryToSlack } from "../../../nomad/slack";
+/**
+ * Backwards compatibility controller for deprecated comments API.
+ * Returns empty data for GET requests and deprecation errors for mutations.
+ * TODO: Remove after all users have updated to the new app version with reviews.
+ */
 
-interface StrapiContext {
-  request: {
-    body: {
-      data?: {
-        title?: string;
-        comment?: string;
-        site?: number;
-        owner?: number;
-      };
-    };
-  };
-  params: {
-    id?: string;
-  };
-  state: {
-    user?: {
-      id: number;
-    };
-  };
-}
+import { factories } from "@strapi/strapi";
 
 export default factories.createCoreController(
   "api::comment.comment",
   ({ strapi }) => ({
-    async create(ctx: StrapiContext) {
-      const requestData = ctx.request.body?.data || {};
-
-      // Strapi 5: Use db.query directly (accepts simple IDs for relations)
-      const comment = await strapi.db.query("api::comment.comment").create({
-        data: {
-          title: requestData.title,
-          comment: requestData.comment,
-          site: requestData.site,
-          owner: ctx.state.user?.id || requestData.owner,
+    /**
+     * GET /comments - Return empty array for backwards compatibility
+     */
+    async find(ctx) {
+      return {
+        data: [],
+        meta: {
+          pagination: {
+            page: 1,
+            pageSize: 25,
+            pageCount: 0,
+            total: 0,
+          },
         },
-      });
+      };
+    },
 
-      await sendEntryToSlack({ data: comment }, "comment", ctx);
+    /**
+     * POST /comments - Return deprecation error
+     * Old app versions will see this as a failure and should update
+     */
+    async create(ctx) {
+      ctx.status = 410; // Gone
+      return {
+        error: {
+          status: 410,
+          name: "GoneError",
+          message: "Comments have been replaced by Reviews. Please update your app to leave a review.",
+        },
+      };
+    },
 
-      // Return in Strapi 4 format
+    /**
+     * DELETE /comments/:id - Return success (no-op)
+     * Old app versions trying to delete comments will think it succeeded
+     */
+    async delete(ctx) {
       return {
         data: {
-          id: comment.id,
-          attributes: comment,
+          id: ctx.params.id,
+          attributes: {},
         },
         meta: {},
       };

@@ -114,6 +114,15 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "is-user"],
       },
     },
+    {
+      method: "GET",
+      path: "/auth-users/me/activity",
+      handler: "auth-user.getActivity",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
   ],
 };
 

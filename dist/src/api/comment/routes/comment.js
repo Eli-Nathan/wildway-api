@@ -1,4 +1,9 @@
 "use strict";
+/**
+ * Backwards compatibility routes for deprecated comments API.
+ * These allow old app versions to continue working until they update.
+ * TODO: Remove after all users have updated to the new app version with reviews.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
 const config = {
     routes: [
@@ -7,7 +12,7 @@ const config = {
             path: "/comments",
             handler: "comment.find",
             config: {
-                middlewares: ["api::comment.populate-comments"],
+                auth: false,
             },
         },
         {
@@ -16,8 +21,7 @@ const config = {
             handler: "comment.create",
             config: {
                 auth: false,
-                middlewares: ["api::comment.populate-comments"],
-                policies: ["global::firebase-authed", "global::set-owner"],
+                policies: ["global::firebase-authed"],
             },
         },
         {
@@ -26,8 +30,7 @@ const config = {
             handler: "comment.delete",
             config: {
                 auth: false,
-                middlewares: ["api::comment.populate-comments"],
-                policies: ["global::firebase-authed", "global::is-owner"],
+                policies: ["global::firebase-authed"],
             },
         },
     ],

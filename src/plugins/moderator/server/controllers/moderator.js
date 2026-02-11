@@ -19,14 +19,14 @@ module.exports = {
       .plugin("moderator")
       .service("moderator")
       .getAdditions();
-    const comments = await strapi
+    const reviews = await strapi
       .plugin("moderator")
       .service("moderator")
-      .getComments();
+      .getReviews();
     ctx.body = {
       additions,
       edits,
-      comments,
+      reviews,
     };
   },
   async reject(ctx) {
@@ -45,12 +45,12 @@ module.exports = {
       .approveAddition(params.id);
     ctx.body = approved;
   },
-  async approveComment(ctx) {
+  async approveReview(ctx) {
     const { params } = ctx;
     const approved = await strapi
       .plugin("moderator")
       .service("moderator")
-      .approveComment(params.id);
+      .approveReview(params.id);
     ctx.body = approved;
   },
   async approveEdit(ctx) {

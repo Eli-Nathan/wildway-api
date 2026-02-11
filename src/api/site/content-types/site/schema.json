@@ -95,11 +95,17 @@
       "relation": "oneToOne",
       "target": "api::site-type.site-type"
     },
-    "comments": {
+    "reviews": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::comment.comment",
+      "target": "api::review.review",
       "mappedBy": "site"
+    },
+    "averageRating": {
+      "type": "float",
+      "default": null,
+      "min": 0,
+      "max": 5
     },
     "owners": {
       "type": "relation",

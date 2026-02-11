@@ -351,7 +351,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             where: { id: ctx.params.id },
             populate: {
                 type: true,
-                comments: true,
+                reviews: true,
                 owners: {
                     populate: { profile_pic: true },
                 },
@@ -391,7 +391,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             where: { slug: ctx.params.uid },
             populate: {
                 type: true,
-                comments: true,
+                reviews: true,
                 owners: {
                     populate: { profile_pic: true },
                 },
@@ -522,30 +522,33 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             }
             : null;
         const siteHasOwners = siteOwners ? siteOwners.length > 0 : false;
-        const comments = (_d = (_c = site === null || site === void 0 ? void 0 : site.data) === null || _c === void 0 ? void 0 : _c.attributes) === null || _d === void 0 ? void 0 : _d.comments;
-        const sanitizedComments = shouldSanitizeChildren
-            ? (0, sanitizeApiResponse_1.default)(comments)
-            : comments;
-        const enrichedComments = await (await Promise.all((sanitizedComments || []).map(async (comment) => {
+        const reviews = (_d = (_c = site === null || site === void 0 ? void 0 : site.data) === null || _c === void 0 ? void 0 : _c.attributes) === null || _d === void 0 ? void 0 : _d.reviews;
+        const sanitizedReviews = shouldSanitizeChildren
+            ? (0, sanitizeApiResponse_1.default)(reviews)
+            : reviews;
+        const enrichedReviews = await (await Promise.all((sanitizedReviews || []).map(async (review) => {
             var _a, _b;
-            const commentEntity = await strapi.db
-                .query("api::comment.comment")
+            const reviewEntity = await strapi.db
+                .query("api::review.review")
                 .findOne({
-                where: { id: comment.id, status: "complete" },
+                where: { id: review.id, status: "complete" },
                 populate: {
                     owner: {
                         populate: true,
                     },
+                    image: true,
                 },
             });
-            if (commentEntity) {
+            if (reviewEntity) {
                 return {
-                    ...comment,
+                    ...review,
+                    rating: reviewEntity.rating,
+                    image: reviewEntity.image,
                     owner: {
-                        id: commentEntity.owner.id,
-                        name: commentEntity.owner.businessName || commentEntity.owner.name,
-                        avatar: ((_b = (_a = commentEntity.owner) === null || _a === void 0 ? void 0 : _a.profile_pic) === null || _b === void 0 ? void 0 : _b.url) ||
-                            commentEntity.owner.avatar,
+                        id: reviewEntity.owner.id,
+                        name: reviewEntity.owner.businessName || reviewEntity.owner.name,
+                        avatar: ((_b = (_a = reviewEntity.owner) === null || _a === void 0 ? void 0 : _a.profile_pic) === null || _b === void 0 ? void 0 : _b.url) ||
+                            reviewEntity.owner.avatar,
                     },
                 };
             }
@@ -592,7 +595,10 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 id: output.data.id,
                 attributes: {
                     ...output.data.attributes,
-                    comments: enrichedComments,
+                    reviews: enrichedReviews,
+                    // Backwards compatibility: old apps expect comments field
+                    // TODO: Remove after all users have updated to new app version
+                    comments: [],
                     isOwned: siteHasOwners,
                     owner: parsedSiteOwner,
                     addedBy: parsedSiteAddedBy,

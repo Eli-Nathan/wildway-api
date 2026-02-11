@@ -13,7 +13,7 @@ interface SlackEntry {
   [key: string]: unknown;
 }
 
-type SlackMessageType = "form" | "additionRequest" | "editRequest" | "comment" | "contentReport";
+type SlackMessageType = "form" | "additionRequest" | "editRequest" | "review" | "contentReport";
 
 type MessageHandler = (
   ctx: StrapiContext,
@@ -105,13 +105,13 @@ const editRequest: MessageHandler = async (_ctx, entry) => {
   return { blocks };
 };
 
-const comment: MessageHandler = async (_ctx, entry) => {
+const review: MessageHandler = async (_ctx, entry) => {
   const blocks: SlackBlock[] = [
     {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: ":speech_balloon: *Comment posted* :speech_balloon: \n",
+        text: ":star: *Review posted* :star: \n",
       },
     },
     {
@@ -120,9 +120,9 @@ const comment: MessageHandler = async (_ctx, entry) => {
         type: "mrkdwn",
         text: `*Title: ${_.startCase(
           entry.title || ""
-        )}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::comment.comment/${
+        )}* \n*Rating: ${"⭐".repeat(entry.rating as number || 0)}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::review.review/${
           entry.id
-        }|View comment>`,
+        }|View review>`,
       },
     },
   ];
@@ -199,8 +199,8 @@ const getSlackMessageForDataType = (type: SlackMessageType): MessageHandler | un
       return additionRequest;
     case "editRequest":
       return editRequest;
-    case "comment":
-      return comment;
+    case "review":
+      return review;
     case "contentReport":
       return contentReport;
     default:

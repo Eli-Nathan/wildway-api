@@ -49,7 +49,7 @@ interface Site {
   images?: unknown[];
   facilities?: unknown[];
   sub_types?: unknown[];
-  comments?: unknown[];
+  reviews?: unknown[];
 }
 
 interface SiteWithUsers {
@@ -99,9 +99,13 @@ interface SiteResponse {
   };
 }
 
-interface Comment {
+interface Review {
   id: number;
+  title?: string;
+  review?: string;
+  rating?: number;
   status?: string;
+  image?: { url: string };
   owner?: {
     id: number;
     name: string;
@@ -483,7 +487,7 @@ export default factories.createCoreController(
         where: { id: ctx.params.id },
         populate: {
           type: true,
-          comments: true,
+          reviews: true,
           owners: {
             populate: { profile_pic: true },
           },
@@ -527,7 +531,7 @@ export default factories.createCoreController(
         where: { slug: ctx.params.uid },
         populate: {
           type: true,
-          comments: true,
+          reviews: true,
           owners: {
             populate: { profile_pic: true },
           },
@@ -673,33 +677,36 @@ export default factories.createCoreController(
             }
           : null;
       const siteHasOwners = siteOwners ? siteOwners.length > 0 : false;
-      const comments = (site?.data?.attributes as Site & { comments?: Comment[] })?.comments;
-      const sanitizedComments = shouldSanitizeChildren
-        ? sanitizeApiResponse(comments)
-        : comments;
-      const enrichedComments = await (
+      const reviews = (site?.data?.attributes as Site & { reviews?: Review[] })?.reviews;
+      const sanitizedReviews = shouldSanitizeChildren
+        ? sanitizeApiResponse(reviews)
+        : reviews;
+      const enrichedReviews = await (
         await Promise.all(
-          (sanitizedComments || []).map(async (comment: Comment) => {
-            const commentEntity = await strapi.db
-              .query("api::comment.comment")
+          (sanitizedReviews || []).map(async (review: Review) => {
+            const reviewEntity = await strapi.db
+              .query("api::review.review")
               .findOne({
-                where: { id: comment.id, status: "complete" },
+                where: { id: review.id, status: "complete" },
                 populate: {
                   owner: {
                     populate: true,
                   },
+                  image: true,
                 },
               });
-            if (commentEntity) {
+            if (reviewEntity) {
               return {
-                ...comment,
+                ...review,
+                rating: reviewEntity.rating,
+                image: reviewEntity.image,
                 owner: {
-                  id: commentEntity.owner.id,
+                  id: reviewEntity.owner.id,
                   name:
-                    commentEntity.owner.businessName || commentEntity.owner.name,
+                    reviewEntity.owner.businessName || reviewEntity.owner.name,
                   avatar:
-                    commentEntity.owner?.profile_pic?.url ||
-                    commentEntity.owner.avatar,
+                    reviewEntity.owner?.profile_pic?.url ||
+                    reviewEntity.owner.avatar,
                 },
               };
             }
@@ -754,7 +761,10 @@ export default factories.createCoreController(
           id: output.data.id,
           attributes: {
             ...output.data.attributes,
-            comments: enrichedComments,
+            reviews: enrichedReviews,
+            // Backwards compatibility: old apps expect comments field
+            // TODO: Remove after all users have updated to new app version
+            comments: [],
             isOwned: siteHasOwners,
             owner: parsedSiteOwner,
             addedBy: parsedSiteAddedBy,

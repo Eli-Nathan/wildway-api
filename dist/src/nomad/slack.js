@@ -82,20 +82,79 @@ const editRequest = async (_ctx, entry) => {
     ];
     return { blocks };
 };
-const comment = async (_ctx, entry) => {
+const review = async (_ctx, entry) => {
     const blocks = [
         {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: ":speech_balloon: *Comment posted* :speech_balloon: \n",
+                text: ":star: *Review posted* :star: \n",
             },
         },
         {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::comment.comment/${entry.id}|View comment>`,
+                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n*Rating: ${"⭐".repeat(entry.rating || 0)}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::review.review/${entry.id}|View review>`,
+            },
+        },
+    ];
+    return { blocks };
+};
+const contentReport = async (_ctx, entry) => {
+    const contentTypeLabels = {
+        'site': 'Place',
+        'user-route': 'Community Route',
+        'nomad-route': 'Popular Route',
+        'profile': 'Profile',
+        'site-list': 'List'
+    };
+    const categoryLabels = {
+        'inappropriate': 'Content is inappropriate',
+        'misleading': 'Content is misleading',
+        'harmful': 'Content is harmful',
+        'other': 'Other'
+    };
+    const blocks = [
+        {
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: ":warning: *Content Report Received* :warning:\n",
+            },
+        },
+        {
+            type: "section",
+            fields: [
+                {
+                    type: "mrkdwn",
+                    text: `*Content Type*\n${contentTypeLabels[entry.contentType] || entry.contentType}`,
+                },
+                {
+                    type: "mrkdwn",
+                    text: `*Category*\n${categoryLabels[entry.category] || entry.category}`,
+                },
+            ],
+        },
+        {
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: `*Content*\n${entry.contentTitle || 'Unknown'} (ID: ${entry.contentId})`,
+            },
+        },
+        {
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: `*Description*\n${entry.description || 'No description provided'}`,
+            },
+        },
+        {
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: `<https://api.wildway.app/admin/content-manager/collectionType/api::content-report.content-report/${entry.id}|View Report>`,
             },
         },
     ];
@@ -109,8 +168,10 @@ const getSlackMessageForDataType = (type) => {
             return additionRequest;
         case "editRequest":
             return editRequest;
-        case "comment":
-            return comment;
+        case "review":
+            return review;
+        case "contentReport":
+            return contentReport;
         default:
             return undefined;
     }

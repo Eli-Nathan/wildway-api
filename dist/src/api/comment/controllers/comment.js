@@ -1,27 +1,51 @@
 "use strict";
+/**
+ * Backwards compatibility controller for deprecated comments API.
+ * Returns empty data for GET requests and deprecation errors for mutations.
+ * TODO: Remove after all users have updated to the new app version with reviews.
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
-// @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
-const slack_1 = require("../../../nomad/slack");
 exports.default = strapi_1.factories.createCoreController("api::comment.comment", ({ strapi }) => ({
-    async create(ctx) {
-        var _a, _b;
-        const requestData = ((_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) || {};
-        // Strapi 5: Use db.query directly (accepts simple IDs for relations)
-        const comment = await strapi.db.query("api::comment.comment").create({
-            data: {
-                title: requestData.title,
-                comment: requestData.comment,
-                site: requestData.site,
-                owner: ((_b = ctx.state.user) === null || _b === void 0 ? void 0 : _b.id) || requestData.owner,
+    /**
+     * GET /comments - Return empty array for backwards compatibility
+     */
+    async find(ctx) {
+        return {
+            data: [],
+            meta: {
+                pagination: {
+                    page: 1,
+                    pageSize: 25,
+                    pageCount: 0,
+                    total: 0,
+                },
             },
-        });
-        await (0, slack_1.sendEntryToSlack)({ data: comment }, "comment", ctx);
-        // Return in Strapi 4 format
+        };
+    },
+    /**
+     * POST /comments - Return deprecation error
+     * Old app versions will see this as a failure and should update
+     */
+    async create(ctx) {
+        ctx.status = 410; // Gone
+        return {
+            error: {
+                status: 410,
+                name: "GoneError",
+                message: "Comments have been replaced by Reviews. Please update your app to leave a review.",
+            },
+        };
+    },
+    /**
+     * DELETE /comments/:id - Return success (no-op)
+     * Old app versions trying to delete comments will think it succeeded
+     */
+    async delete(ctx) {
         return {
             data: {
-                id: comment.id,
-                attributes: comment,
+                id: ctx.params.id,
+                attributes: {},
             },
             meta: {},
         };

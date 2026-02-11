@@ -41,8 +41,8 @@ module.exports = [
   },
   {
     method: "GET",
-    path: "/approve-comment/:id",
-    handler: "moderator.approveComment",
+    path: "/approve-review/:id",
+    handler: "moderator.approveReview",
     config: {
       policies: [],
     },
