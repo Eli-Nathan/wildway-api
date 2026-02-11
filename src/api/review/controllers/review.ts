@@ -43,7 +43,10 @@ export default factories.createCoreController(
             site: siteId,
             status: "complete",
           },
-          populate: ["owner", "image"],
+          populate: {
+            owner: true,
+            image: true,
+          },
           orderBy: { createdAt: "desc" },
           limit: pageSizeNum,
           offset: (pageNum - 1) * pageSizeNum,
