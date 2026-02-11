@@ -90,7 +90,7 @@ export default factories.createCoreController(
           },
           populate: {
             site: {
-              select: ["id", "title", "uid"],
+              select: ["id", "title"],
             },
             image: true,
           },
