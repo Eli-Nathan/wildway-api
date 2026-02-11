@@ -17,6 +17,14 @@ const config: RoutesConfig = {
   routes: [
     {
       method: "GET",
+      path: "/reviews/site/:siteId",
+      handler: "review.findBySite",
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: "GET",
       path: "/reviews",
       handler: "review.find",
       config: {

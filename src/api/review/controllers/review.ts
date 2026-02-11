@@ -30,6 +30,45 @@ interface StrapiContext {
 export default factories.createCoreController(
   "api::review.review",
   ({ strapi }) => ({
+    async findBySite(ctx) {
+      const { siteId } = ctx.params;
+      const { page = 1, pageSize = 5 } = ctx.query;
+
+      const pageNum = parseInt(page as string, 10);
+      const pageSizeNum = parseInt(pageSize as string, 10);
+
+      const [reviews, total] = await Promise.all([
+        strapi.db.query("api::review.review").findMany({
+          where: {
+            site: siteId,
+            status: "complete",
+          },
+          populate: ["owner", "image"],
+          orderBy: { createdAt: "desc" },
+          limit: pageSizeNum,
+          offset: (pageNum - 1) * pageSizeNum,
+        }),
+        strapi.db.query("api::review.review").count({
+          where: {
+            site: siteId,
+            status: "complete",
+          },
+        }),
+      ]);
+
+      return {
+        data: reviews,
+        meta: {
+          pagination: {
+            page: pageNum,
+            pageSize: pageSizeNum,
+            pageCount: Math.ceil(total / pageSizeNum),
+            total,
+          },
+        },
+      };
+    },
+
     async create(ctx: StrapiContext) {
       const requestData = ctx.request.body?.data || {};
       const userId = ctx.state.user?.id || requestData.owner;
