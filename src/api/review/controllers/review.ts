@@ -44,7 +44,9 @@ export default factories.createCoreController(
             status: "complete",
           },
           populate: {
-            owner: true,
+            owner: {
+              populate: ['profilePic'],
+            },
             image: true,
           },
           orderBy: { createdAt: "desc" },
