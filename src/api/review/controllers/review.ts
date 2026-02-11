@@ -59,7 +59,8 @@ export default factories.createCoreController(
         }),
       ]);
 
-      return {
+      // Set body directly to avoid Strapi's response transformation
+      ctx.body = {
         data: reviews,
         meta: {
           pagination: {
