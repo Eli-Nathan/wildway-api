@@ -45,7 +45,7 @@ export default factories.createCoreController(
           },
           populate: {
             owner: {
-              populate: ['profilePic'],
+              populate: ['profile_pic'],
             },
             image: true,
           },
@@ -62,6 +62,50 @@ export default factories.createCoreController(
       ]);
 
       // Set body directly to avoid Strapi's response transformation
+      ctx.body = {
+        data: reviews,
+        meta: {
+          pagination: {
+            page: pageNum,
+            pageSize: pageSizeNum,
+            pageCount: Math.ceil(total / pageSizeNum),
+            total,
+          },
+        },
+      };
+    },
+
+    async findByUser(ctx) {
+      const { userId } = ctx.params;
+      const { page = 1, pageSize = 5 } = ctx.query;
+
+      const pageNum = parseInt(page as string, 10);
+      const pageSizeNum = parseInt(pageSize as string, 10);
+
+      const [reviews, total] = await Promise.all([
+        strapi.db.query("api::review.review").findMany({
+          where: {
+            owner: userId,
+            status: "complete",
+          },
+          populate: {
+            site: {
+              select: ["id", "title", "uid"],
+            },
+            image: true,
+          },
+          orderBy: { createdAt: "desc" },
+          limit: pageSizeNum,
+          offset: (pageNum - 1) * pageSizeNum,
+        }),
+        strapi.db.query("api::review.review").count({
+          where: {
+            owner: userId,
+            status: "complete",
+          },
+        }),
+      ]);
+
       ctx.body = {
         data: reviews,
         meta: {

@@ -21,6 +21,16 @@ const config: RoutesConfig = {
       handler: "review.findBySite",
       config: {
         auth: false,
+        policies: ["global::firebase-authed"],
+      },
+    },
+    {
+      method: "GET",
+      path: "/reviews/user/:userId",
+      handler: "review.findByUser",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed"],
       },
     },
     {
