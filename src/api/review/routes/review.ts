@@ -20,6 +20,7 @@ const config: RoutesConfig = {
       path: "/reviews",
       handler: "review.find",
       config: {
+        auth: false,
         middlewares: ["api::review.populate-reviews"],
       },
     },
