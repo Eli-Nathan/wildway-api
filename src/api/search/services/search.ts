@@ -213,10 +213,30 @@ const searchService = {
         radius,
       });
 
+      // Extract meaningful words from place name for filtering
+      // Filter out common short words that would match too broadly
+      const stopWords = new Set(["the", "a", "an", "of", "at", "in", "on", "to", "and", "or"]);
+      const searchWords = placeName
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((word) => word.length >= 2 && !stopWords.has(word));
+
+      // Build WHERE clause to match any word in the place name
+      // This ensures we get relevant candidates within the 1000 limit
+      const whereClause =
+        searchWords.length > 0
+          ? {
+              $or: searchWords.map((word) => ({
+                title: { $containsi: word },
+              })),
+            }
+          : {};
+
       // Get sites for similarity check using db.query (Strapi 5 compatible)
       let sites = (await strapi.db.query("api::site.site").findMany({
         limit: 1000, // Get a reasonable number for checking
         select: ["id", "title", "description", "lat", "lng", "slug", "image"],
+        where: whereClause,
         populate: {
           type: {
             select: ["name", "slug", "icon"],
@@ -227,7 +247,10 @@ const searchService = {
         },
       })) as Site[];
 
-      strapi.log.info("Found sites:", sites.length);
+      strapi.log.info("findSimilarSites query:", {
+        searchWords,
+        sitesFound: sites.length,
+      });
 
       // If coordinates are provided, filter by proximity first
       if (lat !== undefined && lng !== undefined) {
