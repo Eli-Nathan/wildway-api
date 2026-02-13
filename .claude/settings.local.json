@@ -2,7 +2,9 @@
   "permissions": {
     "additionalDirectories": [
       "/Users/eli.nathan/repos/nomad",
-      "/Users/eli.nathan/repos/wayfinder"
+      "/Users/eli.nathan/repos/nomad-api",
+      "/Users/eli.nathan/repos/wayfinder",
+      "/Users/eli.nathan/repos/nomad-web"
     ]
   }
 }
