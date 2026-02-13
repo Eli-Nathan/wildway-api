@@ -17,6 +17,8 @@ Image uploads use Cloudinary as the provider and should try to be cost effective
 
 ## Web
 The website is hosted at wildway.app. It's a simple NextJS site that has very light versions of some of the content from the app. Places and routes mostly just prompt users to go to the app. The website is more of an SEO tool than anything so sitemaps and server generated content are very important.
+**Deployment:** The site is hosted on Netlify. Pushing to `main` automatically triggers a deploy.
 
 ## wayfinder
 The scraper that gets data for places. Heroku too (-a wayfinder). Remember that `heroku run …` is ephemeral so anything created on the file system is short lived since the dyno gets destroyed immediately.
+**Deployment:** Pushing to `main` automatically deploys to Heroku.
