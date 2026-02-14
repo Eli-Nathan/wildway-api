@@ -75,6 +75,40 @@ export default factories.createCoreController(
       };
     },
 
+    // Public endpoint for web SEO - returns limited review data
+    async findBySitePublic(ctx) {
+      const { siteId } = ctx.params;
+      const { limit = 10 } = ctx.query;
+
+      const limitNum = Math.min(parseInt(limit as string, 10), 20);
+
+      const reviews = await strapi.db.query("api::review.review").findMany({
+        where: {
+          site: siteId,
+          status: "complete",
+        },
+        select: ["id", "title", "review", "rating", "createdAt"],
+        populate: {
+          owner: {
+            select: ["name"],
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        limit: limitNum,
+      });
+
+      ctx.body = {
+        data: reviews.map((r: any) => ({
+          id: r.id,
+          title: r.title,
+          review: r.review,
+          rating: r.rating,
+          createdAt: r.createdAt,
+          authorName: r.owner?.name || "Anonymous",
+        })),
+      };
+    },
+
     async findByUser(ctx) {
       const { userId } = ctx.params;
       const { page = 1, pageSize = 5 } = ctx.query;

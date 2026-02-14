@@ -26,6 +26,14 @@ const config: RoutesConfig = {
     },
     {
       method: "GET",
+      path: "/reviews/site/:siteId/public",
+      handler: "review.findBySitePublic",
+      config: {
+        auth: false,
+      },
+    },
+    {
+      method: "GET",
       path: "/reviews/user/:userId",
       handler: "review.findByUser",
       config: {
