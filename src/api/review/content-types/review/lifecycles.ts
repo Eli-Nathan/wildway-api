@@ -22,6 +22,17 @@ async function updateSiteReviewStats(siteId: number) {
       averageRating,
     },
   });
+
+  // Recalculate site priority (reviews affect priority scoring)
+  try {
+    const moderatorService = strapi.plugin("moderator")?.service("moderator");
+    if (moderatorService?.updateSitePriority) {
+      await moderatorService.updateSitePriority(siteId);
+    }
+  } catch (err) {
+    // Don't fail if moderator plugin isn't available
+    strapi.log.warn(`Could not update site priority: ${err}`);
+  }
 }
 
 export default {

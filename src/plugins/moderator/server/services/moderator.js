@@ -15,6 +15,7 @@ const slugify = require("slugify");
  * - Has images: +2
  * - On a site-list: +2
  * - Likes: 1-10 = +5, 11-20 = +10, 20+ = +20
+ * - Reviews: averageRating * 2 (so 5 stars = +10, 4 stars = +8, etc.)
  * - Future: business tier adds 50+ (to always rank above organic)
  *
  * @param {object} site - Current site data
@@ -68,6 +69,19 @@ async function calculateSitePriority(strapi, site, newData = {}) {
     priority += 10;
   } else if (likeCount >= 1) {
     priority += 5;
+  }
+
+  // Reviews - rating-based scoring (averageRating * 2, so 5 stars = +10)
+  let averageRating = effectiveData.averageRating;
+  if (averageRating === undefined && site.id) {
+    const siteWithRating = await strapi.db.query("api::site.site").findOne({
+      where: { id: site.id },
+      select: ["averageRating"],
+    });
+    averageRating = siteWithRating?.averageRating;
+  }
+  if (averageRating && averageRating > 0) {
+    priority += Math.round(averageRating * 2);
   }
 
   // Future: business tier scoring (50+ to always rank above organic)
@@ -299,6 +313,9 @@ module.exports = ({ strapi }) => ({
 
     // Calculate and update site average rating
     await this.updateSiteAverageRating(review.site.id);
+
+    // Recalculate site priority (reviews affect priority scoring)
+    await updateSitePriority(strapi, review.site.id);
 
     if (review.owner) {
       const currentUser = await strapi.db
