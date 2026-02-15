@@ -14,16 +14,23 @@ exports.default = async (ctx, _config, { strapi: _strapi }) => {
         }
         const userDetails = ctx.state.user;
         const requestData = ctx.request.body.data;
-        // Build name from various sources
+        // Build name from various sources (priority order)
         let name;
         if (userDetails.name) {
+            // From Firebase token (Google auth usually has this)
             name = userDetails.name;
         }
-        else if (requestData.firstName && requestData.lastName) {
-            name = `${requestData.firstName} ${requestData.lastName}`;
+        else if (requestData.name) {
+            // From client request (Apple auth with our fallback)
+            name = requestData.name;
         }
-        else if (userDetails.givenName && userDetails.familyName) {
-            name = `${userDetails.givenName} ${userDetails.familyName}`;
+        else if (requestData.firstName || requestData.lastName) {
+            // From client request (separate fields)
+            name = [requestData.firstName, requestData.lastName].filter(Boolean).join(' ');
+        }
+        else if (userDetails.givenName || userDetails.familyName) {
+            // From Firebase token (fallback)
+            name = [userDetails.givenName, userDetails.familyName].filter(Boolean).join(' ');
         }
         // Strapi 5 is strict about keys - only set valid auth-user fields
         ctx.request.body.data = {

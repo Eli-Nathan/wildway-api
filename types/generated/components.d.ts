@@ -25,6 +25,22 @@ export interface FilterFilters extends Struct.ComponentSchema {
   };
 }
 
+export interface ListSortableField extends Struct.ComponentSchema {
+  collectionName: 'components_list_sortable_fields';
+  info: {
+    description: 'Defines a field that can be used to sort sites within a list';
+    displayName: 'Sortable Field';
+    icon: 'sort';
+  };
+  attributes: {
+    default_order: Schema.Attribute.Enumeration<['asc', 'desc']> &
+      Schema.Attribute.DefaultTo<'asc'>;
+    display_label: Schema.Attribute.String & Schema.Attribute.Required;
+    field_path: Schema.Attribute.String & Schema.Attribute.Required;
+    is_default: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+  };
+}
+
 export interface OrderSites extends Struct.ComponentSchema {
   collectionName: 'components_order_sites';
   info: {
@@ -63,6 +79,13 @@ export interface RouteMetadata extends Struct.ComponentSchema {
         },
         number
       >;
+    height: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
     loop: Schema.Attribute.Enumeration<['Circular', 'Linear']>;
   };
 }
@@ -84,6 +107,7 @@ declare module '@strapi/strapi' {
     export interface ComponentSchemas {
       'filter.filter': FilterFilter;
       'filter.filters': FilterFilters;
+      'list.sortable-field': ListSortableField;
       'order.sites': OrderSites;
       'route.metadata': RouteMetadata;
       'seo.seo-block': SeoSeoBlock;

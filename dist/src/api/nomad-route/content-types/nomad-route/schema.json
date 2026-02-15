@@ -43,6 +43,14 @@
         "description": {
             "type": "text"
         },
+        "seo_title": {
+            "type": "string",
+            "maxLength": 70
+        },
+        "seo_description": {
+            "type": "text",
+            "maxLength": 160
+        },
         "tags": {
             "type": "relation",
             "relation": "manyToMany",

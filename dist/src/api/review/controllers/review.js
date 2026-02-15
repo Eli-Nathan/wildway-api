@@ -4,6 +4,122 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strapi_1 = require("@strapi/strapi");
 const slack_1 = require("../../../nomad/slack");
 exports.default = strapi_1.factories.createCoreController("api::review.review", ({ strapi }) => ({
+    async findBySite(ctx) {
+        const { siteId } = ctx.params;
+        const { page = 1, pageSize = 5 } = ctx.query;
+        const pageNum = parseInt(page, 10);
+        const pageSizeNum = parseInt(pageSize, 10);
+        const [reviews, total] = await Promise.all([
+            strapi.db.query("api::review.review").findMany({
+                where: {
+                    site: siteId,
+                    status: "complete",
+                },
+                populate: {
+                    owner: {
+                        populate: ['profile_pic'],
+                    },
+                    image: true,
+                },
+                orderBy: { createdAt: "desc" },
+                limit: pageSizeNum,
+                offset: (pageNum - 1) * pageSizeNum,
+            }),
+            strapi.db.query("api::review.review").count({
+                where: {
+                    site: siteId,
+                    status: "complete",
+                },
+            }),
+        ]);
+        // Set body directly to avoid Strapi's response transformation
+        // Add moderation_status alias for new app versions (status is the DB field)
+        ctx.body = {
+            data: reviews.map((r) => ({ ...r, moderation_status: r.status })),
+            meta: {
+                pagination: {
+                    page: pageNum,
+                    pageSize: pageSizeNum,
+                    pageCount: Math.ceil(total / pageSizeNum),
+                    total,
+                },
+            },
+        };
+    },
+    // Public endpoint for web SEO - returns limited review data
+    async findBySitePublic(ctx) {
+        const { siteId } = ctx.params;
+        const { limit = 10 } = ctx.query;
+        const limitNum = Math.min(parseInt(limit, 10), 20);
+        const reviews = await strapi.db.query("api::review.review").findMany({
+            where: {
+                site: siteId,
+                status: "complete",
+            },
+            select: ["id", "title", "review", "rating", "createdAt"],
+            populate: {
+                owner: {
+                    select: ["name"],
+                },
+            },
+            orderBy: { createdAt: "desc" },
+            limit: limitNum,
+        });
+        ctx.body = {
+            data: reviews.map((r) => {
+                var _a;
+                return ({
+                    id: r.id,
+                    title: r.title,
+                    review: r.review,
+                    rating: r.rating,
+                    createdAt: r.createdAt,
+                    authorName: ((_a = r.owner) === null || _a === void 0 ? void 0 : _a.name) || "Anonymous",
+                });
+            }),
+        };
+    },
+    async findByUser(ctx) {
+        const { userId } = ctx.params;
+        const { page = 1, pageSize = 5 } = ctx.query;
+        const pageNum = parseInt(page, 10);
+        const pageSizeNum = parseInt(pageSize, 10);
+        const [reviews, total] = await Promise.all([
+            strapi.db.query("api::review.review").findMany({
+                where: {
+                    owner: userId,
+                    status: "complete",
+                },
+                populate: {
+                    site: {
+                        select: ["id", "title"],
+                    },
+                    image: true,
+                },
+                orderBy: { createdAt: "desc" },
+                limit: pageSizeNum,
+                offset: (pageNum - 1) * pageSizeNum,
+            }),
+            strapi.db.query("api::review.review").count({
+                where: {
+                    owner: userId,
+                    status: "complete",
+                },
+            }),
+        ]);
+        // Add moderation_status alias for new app versions (status is the DB field)
+        ctx.body = {
+            data: reviews.map((r) => ({ ...r, moderation_status: r.status })),
+            meta: {
+                pagination: {
+                    page: pageNum,
+                    pageSize: pageSizeNum,
+                    pageCount: Math.ceil(total / pageSizeNum),
+                    total,
+                },
+            },
+        };
+    },
     async create(ctx) {
         var _a, _b, _c;
         const requestData = ((_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) || {};
@@ -44,11 +160,14 @@ exports.default = strapi_1.factories.createCoreController("api::review.review", 
             },
         });
         await (0, slack_1.sendEntryToSlack)({ data: review }, "review", ctx);
-        // Return in Strapi 4 format
+        // Return in Strapi 4 format with moderation_status alias
         return {
             data: {
                 id: review.id,
-                attributes: review,
+                attributes: {
+                    ...review,
+                    moderation_status: review.status, // Alias for new app versions
+                },
             },
             meta: {},
         };

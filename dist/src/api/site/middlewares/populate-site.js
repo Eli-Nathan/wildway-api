@@ -14,13 +14,8 @@ const populateConfig = {
             remote_marker: true,
         },
     },
-    reviews: {
-        populate: {
-            owner: true,
-            site: true,
-            image: true,
-        },
-    },
+    // Reviews are fetched separately via paginated /reviews endpoint
+    // Site only includes averageRating and reviewCount
     owners: true,
     facilities: true,
     sub_types: true,

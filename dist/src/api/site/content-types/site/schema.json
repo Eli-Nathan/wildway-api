@@ -107,6 +107,11 @@
             "min": 0,
             "max": 5
         },
+        "reviewCount": {
+            "type": "integer",
+            "default": 0,
+            "min": 0
+        },
         "owners": {
             "type": "relation",
             "relation": "manyToMany",

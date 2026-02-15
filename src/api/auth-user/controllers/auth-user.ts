@@ -39,9 +39,22 @@ interface ActivityItem {
   createdAt: string;
   type: "edit" | "addition" | "review";
   title: string;
-  status: string;
+  moderation_status: string;
+  status?: string; // Backwards compat
   rating?: number;
   site?: { id: number; title: string };
+}
+
+/**
+ * Add moderation_status alias by copying from status field
+ * This allows new app versions to use moderation_status while DB uses status
+ */
+function addModerationStatusAlias(items: any[] | undefined): any[] | undefined {
+  if (!items) return items;
+  return items.map((item) => ({
+    ...item,
+    moderation_status: item.status, // Alias for new app versions
+  }));
 }
 
 interface UserRoute {
@@ -177,6 +190,10 @@ export default factories.createCoreController(
           id: user.id,
           attributes: {
             ...user,
+            // Add moderation_status alias for new app versions
+            addition_requests: addModerationStatusAlias(user.addition_requests),
+            edit_requests: addModerationStatusAlias(user.edit_requests),
+            reviews: addModerationStatusAlias(user.reviews),
             // Backwards compatibility: old apps expect comments field
             // TODO: Remove after all users have updated to new app version
             comments: [],
@@ -576,7 +593,7 @@ export default factories.createCoreController(
         }),
       ]);
 
-      // Transform and merge all activity
+      // Transform and merge all activity (include both status and moderation_status alias)
       const allActivity: ActivityItem[] = [
         ...editRequests.map((edit: any) => ({
           id: edit.id,
@@ -584,6 +601,7 @@ export default factories.createCoreController(
           type: "edit" as const,
           title: edit.site?.title || "Unknown Site",
           status: edit.status,
+          moderation_status: edit.status, // Alias for new app versions
           site: edit.site,
         })),
         ...additionRequests.map((addition: any) => ({
@@ -592,6 +610,7 @@ export default factories.createCoreController(
           type: "addition" as const,
           title: addition.title,
           status: addition.status,
+          moderation_status: addition.status, // Alias for new app versions
         })),
         ...reviews.map((review: any) => ({
           id: review.id,
@@ -599,6 +618,7 @@ export default factories.createCoreController(
           type: "review" as const,
           title: review.title,
           status: review.status,
+          moderation_status: review.status, // Alias for new app versions
           rating: review.rating,
           site: review.site,
         })),

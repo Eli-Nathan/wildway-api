@@ -508,7 +508,10 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<false>;
     avatar: Schema.Attribute.Text;
     businessName: Schema.Attribute.String;
-    comments: Schema.Attribute.Relation<'oneToMany', 'api::comment.comment'>;
+    contentReports: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::content-report.content-report'
+    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -543,6 +546,7 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String;
     profile_pic: Schema.Attribute.Media<'images'>;
     publishedAt: Schema.Attribute.DateTime;
+    reviews: Schema.Attribute.Relation<'oneToMany', 'api::review.review'>;
     role: Schema.Attribute.Relation<'manyToOne', 'api::user-role.user-role'>;
     saved_public_routes: Schema.Attribute.Relation<
       'manyToMany',
@@ -576,10 +580,10 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
 }
 
 export interface ApiCommentComment extends Struct.CollectionTypeSchema {
-  collectionName: 'comments';
+  collectionName: 'comments_deprecated';
   info: {
-    description: '';
-    displayName: 'Comments';
+    description: 'Deprecated - use Reviews instead. Kept for backwards compatibility.';
+    displayName: 'Comments (Deprecated)';
     pluralName: 'comments';
     singularName: 'comment';
   };
@@ -597,14 +601,56 @@ export interface ApiCommentComment extends Struct.CollectionTypeSchema {
       'api::comment.comment'
     > &
       Schema.Attribute.Private;
-    owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
     publishedAt: Schema.Attribute.DateTime;
-    site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
+    title: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiContentReportContentReport
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'content_reports';
+  info: {
+    description: 'User-submitted reports about problematic content';
+    displayName: 'Content Reports';
+    pluralName: 'content-reports';
+    singularName: 'content-report';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    category: Schema.Attribute.Enumeration<
+      ['inappropriate', 'misleading', 'harmful', 'other']
+    > &
+      Schema.Attribute.Required;
+    contentId: Schema.Attribute.Integer & Schema.Attribute.Required;
+    contentTitle: Schema.Attribute.String;
+    contentType: Schema.Attribute.Enumeration<
+      ['site', 'user-route', 'nomad-route', 'profile', 'site-list']
+    > &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::content-report.content-report'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    reporter: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::auth-user.auth-user'
+    >;
     status: Schema.Attribute.Enumeration<
-      ['submitted', 'pending', 'moderating', 'rejected', 'complete']
+      ['submitted', 'reviewing', 'resolved', 'dismissed']
     > &
       Schema.Attribute.DefaultTo<'submitted'>;
-    title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -697,6 +743,7 @@ export interface ApiFacilityFacility extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    guides: Schema.Attribute.Relation<'manyToMany', 'api::guide.guide'>;
     icon: Schema.Attribute.String & Schema.Attribute.Required;
     iconify: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
@@ -740,6 +787,58 @@ export interface ApiFaqFaq extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     order: Schema.Attribute.Integer;
     publishedAt: Schema.Attribute.DateTime;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiFeaturedFeatured extends Struct.CollectionTypeSchema {
+  collectionName: 'featured_items';
+  info: {
+    description: 'Curated featured content for the explore page carousel';
+    displayName: 'Featured';
+    pluralName: 'featured-items';
+    singularName: 'featured';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    content_type: Schema.Attribute.Enumeration<['site', 'site_list', 'route']> &
+      Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    image: Schema.Attribute.Media<'images'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::featured.featured'
+    > &
+      Schema.Attribute.Private;
+    priority: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 10;
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    publishedAt: Schema.Attribute.DateTime;
+    route: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::nomad-route.nomad-route'
+    >;
+    site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
+    site_list: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::site-list.site-list'
+    >;
+    subtitle: Schema.Attribute.String;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -873,6 +972,45 @@ export interface ApiFormForm extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiGuideGuide extends Struct.CollectionTypeSchema {
+  collectionName: 'guides';
+  info: {
+    description: 'Safety and informational guides linked to site types and facilities';
+    displayName: 'Guides';
+    pluralName: 'guides';
+    singularName: 'guide';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    content: Schema.Attribute.RichText & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    facilities: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::facility.facility'
+    >;
+    feature_image: Schema.Attribute.Media<'images'>;
+    link_message: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::guide.guide'> &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    SEO: Schema.Attribute.Component<'seo.seo-block', false>;
+    site_types: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::site-type.site-type'
+    >;
+    slug: Schema.Attribute.UID<'title'>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiHomeFilterlinkHomeFilterlink
   extends Struct.CollectionTypeSchema {
   collectionName: 'home_filterlinks';
@@ -973,6 +1111,14 @@ export interface ApiNomadRouteNomadRoute extends Struct.CollectionTypeSchema {
     pois: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
     polyline: Schema.Attribute.JSON & Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    seo_description: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 160;
+      }>;
+    seo_title: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 70;
+      }>;
     slug: Schema.Attribute.UID<'name'>;
     stay: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
     tags: Schema.Attribute.Relation<'manyToMany', 'api::tag.tag'>;
@@ -1048,6 +1194,87 @@ export interface ApiQuicklinkQuicklink extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiReviewReview extends Struct.CollectionTypeSchema {
+  collectionName: 'reviews';
+  info: {
+    description: 'User reviews with ratings and images';
+    displayName: 'Reviews';
+    pluralName: 'reviews';
+    singularName: 'review';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    image: Schema.Attribute.Media<'images'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::review.review'
+    > &
+      Schema.Attribute.Private;
+    owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
+    publishedAt: Schema.Attribute.DateTime;
+    rating: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 5;
+          min: 1;
+        },
+        number
+      >;
+    review: Schema.Attribute.Text;
+    site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
+    status: Schema.Attribute.Enumeration<
+      ['submitted', 'pending', 'moderating', 'rejected', 'complete']
+    > &
+      Schema.Attribute.DefaultTo<'submitted'>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiSiteListProgressSiteListProgress
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'site_list_progress';
+  info: {
+    description: 'Tracks user progress on completing sites in a list';
+    displayName: 'Site List Progress';
+    pluralName: 'site-list-progresses';
+    singularName: 'site-list-progress';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    completed_sites: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::site-list-progress.site-list-progress'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    site_list: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::site-list.site-list'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
+  };
+}
+
 export interface ApiSiteListSiteList extends Struct.CollectionTypeSchema {
   collectionName: 'site_lists';
   info: {
@@ -1106,8 +1333,17 @@ export interface ApiSiteListSiteList extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::auth-user.auth-user'
     >;
+    seo_description: Schema.Attribute.Text &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 160;
+      }>;
+    seo_title: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 70;
+      }>;
     sites: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required;
+    sortable_fields: Schema.Attribute.Component<'list.sortable-field', true>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1135,6 +1371,7 @@ export interface ApiSiteTypeSiteType extends Struct.CollectionTypeSchema {
       'manyToMany',
       'api::facility.facility'
     >;
+    guides: Schema.Attribute.Relation<'manyToMany', 'api::guide.guide'>;
     icon: Schema.Attribute.String;
     iconify: Schema.Attribute.String;
     key: Schema.Attribute.String & Schema.Attribute.DefaultTo<'siteType'>;
@@ -1173,8 +1410,15 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::auth-user.auth-user'
     >;
+    averageRating: Schema.Attribute.Float &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 5;
+          min: 0;
+        },
+        number
+      >;
     category: Schema.Attribute.String;
-    comments: Schema.Attribute.Relation<'oneToMany', 'api::comment.comment'>;
     contributors: Schema.Attribute.Relation<
       'manyToMany',
       'api::auth-user.auth-user'
@@ -1220,6 +1464,15 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<0>;
     publishedAt: Schema.Attribute.DateTime;
     region: Schema.Attribute.String;
+    reviewCount: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>;
+    reviews: Schema.Attribute.Relation<'oneToMany', 'api::review.review'>;
     route_metadata: Schema.Attribute.Component<'route.metadata', false>;
     site_lists: Schema.Attribute.Relation<
       'manyToMany',
@@ -1659,6 +1912,7 @@ export interface PluginUploadFile extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     ext: Schema.Attribute.String;
+    focalPoint: Schema.Attribute.JSON;
     folder: Schema.Attribute.Relation<'manyToOne', 'plugin::upload.folder'> &
       Schema.Attribute.Private;
     folderPath: Schema.Attribute.String &
@@ -1909,19 +2163,24 @@ declare module '@strapi/strapi' {
       'api::addition-request.addition-request': ApiAdditionRequestAdditionRequest;
       'api::auth-user.auth-user': ApiAuthUserAuthUser;
       'api::comment.comment': ApiCommentComment;
+      'api::content-report.content-report': ApiContentReportContentReport;
       'api::directions-killswitch.directions-killswitch': ApiDirectionsKillswitchDirectionsKillswitch;
       'api::edit-request.edit-request': ApiEditRequestEditRequest;
       'api::facility.facility': ApiFacilityFacility;
       'api::faq.faq': ApiFaqFaq;
+      'api::featured.featured': ApiFeaturedFeatured;
       'api::filter-group.filter-group': ApiFilterGroupFilterGroup;
       'api::filter.filter': ApiFilterFilter;
       'api::form-submission.form-submission': ApiFormSubmissionFormSubmission;
       'api::form.form': ApiFormForm;
+      'api::guide.guide': ApiGuideGuide;
       'api::home-filterlink.home-filterlink': ApiHomeFilterlinkHomeFilterlink;
       'api::minimum-app-version.minimum-app-version': ApiMinimumAppVersionMinimumAppVersion;
       'api::nomad-route.nomad-route': ApiNomadRouteNomadRoute;
       'api::post.post': ApiPostPost;
       'api::quicklink.quicklink': ApiQuicklinkQuicklink;
+      'api::review.review': ApiReviewReview;
+      'api::site-list-progress.site-list-progress': ApiSiteListProgressSiteListProgress;
       'api::site-list.site-list': ApiSiteListSiteList;
       'api::site-type.site-type': ApiSiteTypeSiteType;
       'api::site.site': ApiSiteSite;

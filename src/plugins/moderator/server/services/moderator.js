@@ -356,26 +356,28 @@ module.exports = ({ strapi }) => ({
       },
     });
 
-    if (reviews.length === 0) {
+    const reviewCount = reviews.length;
+
+    if (reviewCount === 0) {
       await strapi.db.query("api::site.site").update({
         where: { id: siteId },
-        data: { averageRating: null },
+        data: { averageRating: null, reviewCount: 0 },
       });
       return null;
     }
 
     // Calculate average
     const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-    const average = sum / reviews.length;
+    const average = sum / reviewCount;
     const roundedAverage = Math.round(average * 100) / 100; // Round to 2 decimals
 
-    // Update site
+    // Update site with both average rating and review count
     await strapi.db.query("api::site.site").update({
       where: { id: siteId },
-      data: { averageRating: roundedAverage },
+      data: { averageRating: roundedAverage, reviewCount },
     });
 
-    console.log(`Updated site ${siteId} average rating: ${roundedAverage}`);
+    console.log(`Updated site ${siteId} average rating: ${roundedAverage}, review count: ${reviewCount}`);
     return roundedAverage;
   },
 

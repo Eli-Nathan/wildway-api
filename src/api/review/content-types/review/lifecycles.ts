@@ -35,25 +35,49 @@ async function updateSiteReviewStats(siteId: number) {
   }
 }
 
+// Helper to get site ID from result - handles both direct ID and object formats
+async function getSiteIdFromResult(result: any, reviewId?: number): Promise<number | null> {
+  // Direct ID
+  if (typeof result.site === "number") {
+    return result.site;
+  }
+  // Object with ID
+  if (result.site?.id) {
+    return result.site.id;
+  }
+  // If site not in result, fetch it from the review
+  if (reviewId) {
+    const review = await strapi.db.query("api::review.review").findOne({
+      where: { id: reviewId },
+      populate: { site: { select: ["id"] } },
+    });
+    return review?.site?.id || null;
+  }
+  return null;
+}
+
 export default {
   async afterCreate(event: any) {
     const { result } = event;
-    if (result.site) {
-      await updateSiteReviewStats(result.site);
+    const siteId = await getSiteIdFromResult(result, result.id);
+    if (siteId) {
+      await updateSiteReviewStats(siteId);
     }
   },
 
   async afterUpdate(event: any) {
     const { result } = event;
-    if (result.site) {
-      await updateSiteReviewStats(result.site);
+    const siteId = await getSiteIdFromResult(result, result.id);
+    if (siteId) {
+      await updateSiteReviewStats(siteId);
     }
   },
 
   async afterDelete(event: any) {
     const { result } = event;
-    if (result.site) {
-      await updateSiteReviewStats(result.site);
+    const siteId = await getSiteIdFromResult(result, result.id);
+    if (siteId) {
+      await updateSiteReviewStats(siteId);
     }
   },
 };

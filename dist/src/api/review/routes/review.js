@@ -4,9 +4,36 @@ const config = {
     routes: [
         {
             method: "GET",
+            path: "/reviews/site/:siteId",
+            handler: "review.findBySite",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed"],
+            },
+        },
+        {
+            method: "GET",
+            path: "/reviews/site/:siteId/public",
+            handler: "review.findBySitePublic",
+            config: {
+                auth: false,
+            },
+        },
+        {
+            method: "GET",
+            path: "/reviews/user/:userId",
+            handler: "review.findByUser",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed"],
+            },
+        },
+        {
+            method: "GET",
             path: "/reviews",
             handler: "review.find",
             config: {
+                auth: false,
                 middlewares: ["api::review.populate-reviews"],
             },
         },

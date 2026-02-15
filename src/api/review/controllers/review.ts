@@ -62,8 +62,9 @@ export default factories.createCoreController(
       ]);
 
       // Set body directly to avoid Strapi's response transformation
+      // Add moderation_status alias for new app versions (status is the DB field)
       ctx.body = {
-        data: reviews,
+        data: reviews.map((r: any) => ({ ...r, moderation_status: r.status })),
         meta: {
           pagination: {
             page: pageNum,
@@ -140,8 +141,9 @@ export default factories.createCoreController(
         }),
       ]);
 
+      // Add moderation_status alias for new app versions (status is the DB field)
       ctx.body = {
-        data: reviews,
+        data: reviews.map((r: any) => ({ ...r, moderation_status: r.status })),
         meta: {
           pagination: {
             page: pageNum,
@@ -198,11 +200,14 @@ export default factories.createCoreController(
 
       await sendEntryToSlack({ data: review }, "review", ctx);
 
-      // Return in Strapi 4 format
+      // Return in Strapi 4 format with moderation_status alias
       return {
         data: {
           id: review.id,
-          attributes: review,
+          attributes: {
+            ...review,
+            moderation_status: review.status, // Alias for new app versions
+          },
         },
         meta: {},
       };

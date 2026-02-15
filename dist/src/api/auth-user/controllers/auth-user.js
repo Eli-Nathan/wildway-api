@@ -4,6 +4,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strapi_1 = require("@strapi/strapi");
 const emails_1 = require("../../../nomad/emails");
 /**
+ * Add moderation_status alias by copying from status field
+ * This allows new app versions to use moderation_status while DB uses status
+ */
+function addModerationStatusAlias(items) {
+    if (!items)
+        return items;
+    return items.map((item) => ({
+        ...item,
+        moderation_status: item.status, // Alias for new app versions
+    }));
+}
+/**
  * Lightweight populate for auth/session - essential data + IDs only for lists
  */
 const lightPopulateConfig = {
@@ -114,6 +126,10 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 id: user.id,
                 attributes: {
                     ...user,
+                    // Add moderation_status alias for new app versions
+                    addition_requests: addModerationStatusAlias(user.addition_requests),
+                    edit_requests: addModerationStatusAlias(user.edit_requests),
+                    reviews: addModerationStatusAlias(user.reviews),
                     // Backwards compatibility: old apps expect comments field
                     // TODO: Remove after all users have updated to new app version
                     comments: [],
@@ -464,7 +480,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 },
             }),
         ]);
-        // Transform and merge all activity
+        // Transform and merge all activity (include both status and moderation_status alias)
         const allActivity = [
             ...editRequests.map((edit) => {
                 var _a;
@@ -474,6 +490,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                     type: "edit",
                     title: ((_a = edit.site) === null || _a === void 0 ? void 0 : _a.title) || "Unknown Site",
                     status: edit.status,
+                    moderation_status: edit.status, // Alias for new app versions
                     site: edit.site,
                 });
             }),
@@ -483,6 +500,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 type: "addition",
                 title: addition.title,
                 status: addition.status,
+                moderation_status: addition.status, // Alias for new app versions
             })),
             ...reviews.map((review) => ({
                 id: review.id,
@@ -490,6 +508,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 type: "review",
                 title: review.title,
                 status: review.status,
+                moderation_status: review.status, // Alias for new app versions
                 rating: review.rating,
                 site: review.site,
             })),
