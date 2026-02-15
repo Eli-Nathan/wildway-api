@@ -12,6 +12,15 @@ import type {
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const WAYPOINT_LIMIT = 10;
 
+// Map internal mode names to Google Maps API mode names
+// Schema uses "CYCLING" but Google API expects "BICYCLING"
+function toGoogleMapsMode(mode: string): string {
+  if (mode.toUpperCase() === "CYCLING") {
+    return "bicycling";
+  }
+  return mode.toLowerCase();
+}
+
 function decode(steps: GoogleMapsStep[]): LatLng[] {
   const points: LatLng[] = [];
 
@@ -77,7 +86,7 @@ async function fetchRoute(
   let url = directionsServiceBaseUrl;
 
   if (typeof directionsServiceBaseUrl === "string") {
-    url += `?origin=${origin}&waypoints=${waypoints}&destination=${destination}&key=${apikey}&mode=${mode.toLowerCase()}&language=${language}&region=${region}`;
+    url += `?origin=${origin}&waypoints=${waypoints}&destination=${destination}&key=${apikey}&mode=${toGoogleMapsMode(mode)}&language=${language}&region=${region}`;
     if (timePrecision) {
       url += `&departure_time=${timePrecision}`;
     }
