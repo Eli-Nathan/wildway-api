@@ -129,12 +129,12 @@ module.exports = ({ strapi }) => ({
         where: {
           $and: [
             {
-              status: {
+              moderation_status: {
                 $not: "rejected",
               },
             },
             {
-              status: {
+              moderation_status: {
                 $not: "complete",
               },
             },
@@ -154,12 +154,12 @@ module.exports = ({ strapi }) => ({
         where: {
           $and: [
             {
-              status: {
+              moderation_status: {
                 $not: "rejected",
               },
             },
             {
-              status: {
+              moderation_status: {
                 $not: "complete",
               },
             },
@@ -178,12 +178,12 @@ module.exports = ({ strapi }) => ({
       where: {
         $and: [
           {
-            status: {
+            moderation_status: {
               $not: "rejected",
             },
           },
           {
-            status: {
+            moderation_status: {
               $not: "complete",
             },
           },
@@ -206,7 +206,7 @@ module.exports = ({ strapi }) => ({
           id,
         },
         data: {
-          status: "rejected",
+          moderation_status: "rejected",
         },
         populate: {
           owner: true,
@@ -288,7 +288,7 @@ module.exports = ({ strapi }) => ({
     await strapi.db.query(`api::addition-request.addition-request`).update({
       where: { id: addition.id },
       data: {
-        status: "complete",
+        moderation_status: "complete",
       },
     });
     return approved;
@@ -307,7 +307,7 @@ module.exports = ({ strapi }) => ({
     await strapi.db.query(`api::review.review`).update({
       where: { id: review.id },
       data: {
-        status: "complete",
+        moderation_status: "complete",
       },
     });
 
@@ -352,7 +352,7 @@ module.exports = ({ strapi }) => ({
     const reviews = await strapi.db.query("api::review.review").findMany({
       where: {
         site: siteId,
-        status: "complete",
+        moderation_status: "complete",
       },
     });
 
@@ -469,7 +469,7 @@ module.exports = ({ strapi }) => ({
       await strapi.db.query(`api::edit-request.edit-request`).update({
         where: { id: edit.id },
         data: {
-          status: "complete",
+          moderation_status: "complete",
         },
       });
       

@@ -41,7 +41,7 @@ export default factories.createCoreController(
         strapi.db.query("api::review.review").findMany({
           where: {
             site: siteId,
-            status: "complete",
+            moderation_status: "complete",
           },
           populate: {
             owner: {
@@ -56,15 +56,15 @@ export default factories.createCoreController(
         strapi.db.query("api::review.review").count({
           where: {
             site: siteId,
-            status: "complete",
+            moderation_status: "complete",
           },
         }),
       ]);
 
       // Set body directly to avoid Strapi's response transformation
-      // Add moderation_status alias for new app versions (status is the DB field)
+      // Add status alias for backwards compat (moderation_status is the DB field)
       ctx.body = {
-        data: reviews.map((r: any) => ({ ...r, moderation_status: r.status })),
+        data: reviews.map((r: any) => ({ ...r, status: r.moderation_status })),
         meta: {
           pagination: {
             page: pageNum,
@@ -86,7 +86,7 @@ export default factories.createCoreController(
       const reviews = await strapi.db.query("api::review.review").findMany({
         where: {
           site: siteId,
-          status: "complete",
+          moderation_status: "complete",
         },
         select: ["id", "title", "review", "rating", "createdAt"],
         populate: {
@@ -121,7 +121,7 @@ export default factories.createCoreController(
         strapi.db.query("api::review.review").findMany({
           where: {
             owner: userId,
-            status: "complete",
+            moderation_status: "complete",
           },
           populate: {
             site: {
@@ -136,14 +136,14 @@ export default factories.createCoreController(
         strapi.db.query("api::review.review").count({
           where: {
             owner: userId,
-            status: "complete",
+            moderation_status: "complete",
           },
         }),
       ]);
 
-      // Add moderation_status alias for new app versions (status is the DB field)
+      // Add status alias for backwards compat (moderation_status is the DB field)
       ctx.body = {
-        data: reviews.map((r: any) => ({ ...r, moderation_status: r.status })),
+        data: reviews.map((r: any) => ({ ...r, status: r.moderation_status })),
         meta: {
           pagination: {
             page: pageNum,
@@ -174,7 +174,7 @@ export default factories.createCoreController(
         where: {
           owner: userId,
           site: siteId,
-          status: { $ne: "rejected" },
+          moderation_status: { $ne: "rejected" },
         },
       });
 
@@ -200,13 +200,13 @@ export default factories.createCoreController(
 
       await sendEntryToSlack({ data: review }, "review", ctx);
 
-      // Return in Strapi 4 format with moderation_status alias
+      // Return in Strapi 4 format with status alias for backwards compat
       return {
         data: {
           id: review.id,
           attributes: {
             ...review,
-            moderation_status: review.status, // Alias for new app versions
+            status: review.moderation_status, // Alias for old app versions
           },
         },
         meta: {},

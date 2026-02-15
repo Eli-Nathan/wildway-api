@@ -687,7 +687,7 @@ export default factories.createCoreController(
             const reviewEntity = await strapi.db
               .query("api::review.review")
               .findOne({
-                where: { id: review.id, status: "complete" },
+                where: { id: review.id, moderation_status: "complete" },
                 populate: {
                   owner: {
                     populate: true,

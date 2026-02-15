@@ -29,7 +29,7 @@
                 "images"
             ]
         },
-        "status": {
+        "moderation_status": {
             "type": "enumeration",
             "enum": [
                 "submitted",

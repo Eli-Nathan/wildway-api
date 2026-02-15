@@ -46,14 +46,14 @@ interface ActivityItem {
 }
 
 /**
- * Add moderation_status alias by copying from status field
- * This allows new app versions to use moderation_status while DB uses status
+ * Add status alias by copying from moderation_status field
+ * This allows old app versions to use status while DB uses moderation_status
  */
-function addModerationStatusAlias(items: any[] | undefined): any[] | undefined {
+function addStatusAlias(items: any[] | undefined): any[] | undefined {
   if (!items) return items;
   return items.map((item) => ({
     ...item,
-    moderation_status: item.status, // Alias for new app versions
+    status: item.moderation_status, // Alias for old app versions
   }));
 }
 
@@ -88,10 +88,10 @@ const lightPopulateConfig = {
     select: ["id"],
   },
   addition_requests: {
-    select: ["id", "title", "status", "createdAt"],
+    select: ["id", "title", "moderation_status", "createdAt"],
   },
   edit_requests: {
-    select: ["id", "status", "createdAt"],
+    select: ["id", "moderation_status", "createdAt"],
     populate: {
       site: {
         select: ["id", "title"],
@@ -99,7 +99,7 @@ const lightPopulateConfig = {
     },
   },
   reviews: {
-    select: ["id", "title", "rating", "status", "createdAt"],
+    select: ["id", "title", "rating", "moderation_status", "createdAt"],
     populate: {
       site: {
         select: ["id", "title"],
@@ -191,9 +191,9 @@ export default factories.createCoreController(
           attributes: {
             ...user,
             // Add moderation_status alias for new app versions
-            addition_requests: addModerationStatusAlias(user.addition_requests),
-            edit_requests: addModerationStatusAlias(user.edit_requests),
-            reviews: addModerationStatusAlias(user.reviews),
+            addition_requests: addStatusAlias(user.addition_requests),
+            edit_requests: addStatusAlias(user.edit_requests),
+            reviews: addStatusAlias(user.reviews),
             // Backwards compatibility: old apps expect comments field
             // TODO: Remove after all users have updated to new app version
             comments: [],
@@ -571,7 +571,7 @@ export default factories.createCoreController(
       const [editRequests, additionRequests, reviews] = await Promise.all([
         strapi.db.query("api::edit-request.edit-request").findMany({
           where: { owner: userId },
-          select: ["id", "status", "createdAt"],
+          select: ["id", "moderation_status", "createdAt"],
           populate: {
             site: {
               select: ["id", "title"],
@@ -580,11 +580,11 @@ export default factories.createCoreController(
         }),
         strapi.db.query("api::addition-request.addition-request").findMany({
           where: { owner: userId },
-          select: ["id", "title", "status", "createdAt"],
+          select: ["id", "title", "moderation_status", "createdAt"],
         }),
         strapi.db.query("api::review.review").findMany({
           where: { owner: userId },
-          select: ["id", "title", "rating", "status", "createdAt"],
+          select: ["id", "title", "rating", "moderation_status", "createdAt"],
           populate: {
             site: {
               select: ["id", "title"],
@@ -593,15 +593,15 @@ export default factories.createCoreController(
         }),
       ]);
 
-      // Transform and merge all activity (include both status and moderation_status alias)
+      // Transform and merge all activity (include both moderation_status and status alias)
       const allActivity: ActivityItem[] = [
         ...editRequests.map((edit: any) => ({
           id: edit.id,
           createdAt: edit.createdAt,
           type: "edit" as const,
           title: edit.site?.title || "Unknown Site",
-          status: edit.status,
-          moderation_status: edit.status, // Alias for new app versions
+          moderation_status: edit.moderation_status,
+          status: edit.moderation_status, // Alias for old app versions
           site: edit.site,
         })),
         ...additionRequests.map((addition: any) => ({
@@ -609,16 +609,16 @@ export default factories.createCoreController(
           createdAt: addition.createdAt,
           type: "addition" as const,
           title: addition.title,
-          status: addition.status,
-          moderation_status: addition.status, // Alias for new app versions
+          moderation_status: addition.moderation_status,
+          status: addition.moderation_status, // Alias for old app versions
         })),
         ...reviews.map((review: any) => ({
           id: review.id,
           createdAt: review.createdAt,
           type: "review" as const,
           title: review.title,
-          status: review.status,
-          moderation_status: review.status, // Alias for new app versions
+          moderation_status: review.moderation_status,
+          status: review.moderation_status, // Alias for old app versions
           rating: review.rating,
           site: review.site,
         })),

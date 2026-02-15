@@ -35,7 +35,7 @@ exports.default = strapi_1.factories.createCoreController("api::content-report.c
                 contentId: requestData.contentId,
                 contentTitle: requestData.contentTitle,
                 reporter: (_b = ctx.state.user) === null || _b === void 0 ? void 0 : _b.id,
-                status: "submitted",
+                moderation_status: "submitted",
             },
         });
         // Send Slack notification

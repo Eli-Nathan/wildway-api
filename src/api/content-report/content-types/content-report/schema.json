@@ -39,7 +39,7 @@
       "target": "api::auth-user.auth-user",
       "inversedBy": "contentReports"
     },
-    "status": {
+    "moderation_status": {
       "type": "enumeration",
       "enum": ["submitted", "reviewing", "resolved", "dismissed"],
       "default": "submitted"

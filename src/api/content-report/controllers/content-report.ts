@@ -64,7 +64,7 @@ export default factories.createCoreController(
           contentId: requestData.contentId,
           contentTitle: requestData.contentTitle,
           reporter: ctx.state.user?.id,
-          status: "submitted",
+          moderation_status: "submitted",
         },
       });
 

@@ -41,7 +41,7 @@
         "email": {
             "type": "email"
         },
-        "status": {
+        "moderation_status": {
             "type": "enumeration",
             "enum": [
                 "submitted",

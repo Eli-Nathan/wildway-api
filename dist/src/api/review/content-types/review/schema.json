@@ -38,7 +38,7 @@
             "target": "api::auth-user.auth-user",
             "inversedBy": "reviews"
         },
-        "status": {
+        "moderation_status": {
             "type": "enumeration",
             "enum": [
                 "submitted",

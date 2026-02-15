@@ -4,7 +4,7 @@ async function updateSiteReviewStats(siteId: number) {
   const reviews = await strapi.db.query("api::review.review").findMany({
     where: {
       site: siteId,
-      status: "complete",
+      moderation_status: "complete",
     },
     select: ["rating"],
   });
