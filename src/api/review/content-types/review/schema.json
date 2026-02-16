@@ -54,6 +54,14 @@
       "relation": "manyToOne",
       "target": "api::site.site",
       "inversedBy": "reviews"
+    },
+    "owner_reply": {
+      "type": "text",
+      "required": false
+    },
+    "owner_reply_at": {
+      "type": "datetime",
+      "required": false
     }
   }
 }
