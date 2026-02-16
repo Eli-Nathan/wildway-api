@@ -465,6 +465,38 @@ module.exports = ({ strapi }) => ({
       // Recalculate and update site priority after edit is applied
       await updateSitePriority(strapi, edit.site.id);
 
+      // Add the edit owner to the site's contributors if not already present
+      // (but not if they are the site owner/added_by - they're already shown separately)
+      if (edit.owner) {
+        try {
+          const siteWithContributors = await strapi.db.query('api::site.site').findOne({
+            where: { id: edit.site.id },
+            populate: {
+              contributors: true,
+              added_by: { select: ['id'] },
+            },
+          });
+
+          const existingContributorIds = (siteWithContributors?.contributors || []).map(c => c.id);
+          const isAddedBy = siteWithContributors?.added_by?.id === edit.owner.id;
+
+          if (!existingContributorIds.includes(edit.owner.id) && !isAddedBy) {
+            await strapi.db.query('api::site.site').update({
+              where: { id: edit.site.id },
+              data: {
+                contributors: {
+                  connect: [{ id: edit.owner.id }],
+                },
+              },
+            });
+            console.log(`Added user ${edit.owner.id} to contributors for site ${edit.site.id}`);
+          }
+        } catch (contributorError) {
+          console.error('Error adding contributor:', contributorError);
+          // Don't fail the whole operation if adding contributor fails
+        }
+      }
+
       // Update the edit request status to complete first, before email/scoring
       await strapi.db.query(`api::edit-request.edit-request`).update({
         where: { id: edit.id },
