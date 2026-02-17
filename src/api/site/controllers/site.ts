@@ -812,6 +812,16 @@ export default factories.createCoreController(
             }
           : null;
       const siteHasOwners = siteOwners ? siteOwners.length > 0 : false;
+
+      // Fetch owner's role features to determine what tier features are available
+      let ownerFeatures: Record<string, boolean> | null = null;
+      if (siteHasOwners && siteOwners[0]?.id) {
+        const ownerWithRole = await strapi.db.query("api::auth-user.auth-user").findOne({
+          where: { id: siteOwners[0].id },
+          populate: { role: true },
+        });
+        ownerFeatures = ownerWithRole?.role?.features || null;
+      }
       const reviews = (site?.data?.attributes as Site & { reviews?: Review[] })?.reviews;
       const sanitizedReviews = shouldSanitizeChildren
         ? sanitizeApiResponse(reviews)
@@ -890,12 +900,24 @@ export default factories.createCoreController(
 
       // @ts-expect-error - Strapi core controller method
       const output = await this.sanitizeOutput(site, ctx);
+
+      // Filter tier-gated features based on owner's subscription
+      const attributes = output.data.attributes;
+      const filteredAttributes = {
+        ...attributes,
+        // Only include CTA if owner has custom_cta feature
+        cta_label: ownerFeatures?.custom_cta ? attributes.cta_label : null,
+        cta_url: ownerFeatures?.custom_cta ? attributes.cta_url : null,
+        // Only include social links if owner has social_links feature
+        social_links: ownerFeatures?.social_links ? attributes.social_links : null,
+      };
+
       return {
         ...output,
         data: {
           id: output.data.id,
           attributes: {
-            ...output.data.attributes,
+            ...filteredAttributes,
             reviews: enrichedReviews,
             // Backwards compatibility: old apps expect comments field
             // TODO: Remove after all users have updated to new app version
@@ -906,6 +928,8 @@ export default factories.createCoreController(
             contributors: parsedSiteContributors,
             likes: parsedSiteLikes,
             guides,
+            // Include owner's features so frontend can check analytics_dashboard and reply_to_reviews
+            ownerFeatures: siteHasOwners ? ownerFeatures : null,
           },
         },
       };
