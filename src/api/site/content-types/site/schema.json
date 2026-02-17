@@ -175,6 +175,18 @@
       "relation": "manyToMany",
       "target": "api::site-list.site-list",
       "mappedBy": "sites"
+    },
+    "cta_label": {
+      "type": "string",
+      "pluginOptions": {}
+    },
+    "cta_url": {
+      "type": "string",
+      "pluginOptions": {}
+    },
+    "social_links": {
+      "type": "json",
+      "pluginOptions": {}
     }
   }
 }
