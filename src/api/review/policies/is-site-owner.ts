@@ -34,8 +34,8 @@ const isSiteOwner = async (
   });
 
   // Check if user's role has the reply_to_reviews feature
-  const features = user?.role?.features || [];
-  if (!features.includes("reply_to_reviews")) {
+  const features = user?.role?.features || {};
+  if (!features.reply_to_reviews) {
     strapi.log.info(
       `User ${policyContext.state.user.id} denied reply - role missing reply_to_reviews feature`
     );

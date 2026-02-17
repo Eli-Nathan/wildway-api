@@ -32,7 +32,13 @@
     },
     "features": {
       "type": "json",
-      "default": []
+      "default": {
+        "reply_to_reviews": false,
+        "unlimited_description": false,
+        "analytics_dashboard": false,
+        "custom_cta": false,
+        "social_links": false
+      }
     }
   }
 }
