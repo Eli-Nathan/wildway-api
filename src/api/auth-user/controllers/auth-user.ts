@@ -113,8 +113,7 @@ const lightPopulateConfig = {
       type: true,
       images: true,
       reviews: {
-        select: ["id", "rating"],
-        where: { moderation_status: "approved" },
+        select: ["id", "rating", "moderation_status"],
       },
       likes: {
         select: ["id"],
@@ -157,8 +156,7 @@ const fullPopulateConfig = {
       type: true,
       images: true,
       reviews: {
-        select: ["id", "rating"],
-        where: { moderation_status: "approved" },
+        select: ["id", "rating", "moderation_status"],
       },
       likes: {
         select: ["id"],
