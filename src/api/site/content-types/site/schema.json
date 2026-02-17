@@ -71,7 +71,6 @@
     "priority": {
       "type": "integer",
       "default": 0,
-      "max": 5,
       "min": 0,
       "pluginOptions": {}
     },
