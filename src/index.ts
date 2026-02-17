@@ -75,7 +75,6 @@ export default {
           name: "Free",
           level: 0,
           maxImages: 1,
-          maxDescriptionWords: 50,
         },
       });
       strapi.log.info("Base user role created");
