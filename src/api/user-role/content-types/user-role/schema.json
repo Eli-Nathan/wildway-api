@@ -30,10 +30,6 @@
       "type": "integer",
       "default": 1
     },
-    "maxDescriptionWords": {
-      "type": "integer",
-      "default": 50
-    },
     "features": {
       "type": "json",
       "default": []
