@@ -79,9 +79,10 @@ const lightPopulateConfig = {
   role: true,
   profile_pic: true,
   favourites: {
-    select: ["id"],
+    select: ["id", "title", "lat", "lng", "image", "imageCaption"],
     populate: {
       type: true,
+      images: true,
     },
   },
   saved_public_routes: {
