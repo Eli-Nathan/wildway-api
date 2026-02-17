@@ -657,80 +657,107 @@ export default factories.createCoreController(
       if (!propertyId) {
         strapi.log.warn("GA4_PROPERTY_ID not configured");
         return {
-          data: { viewCount: null, ctaClickCount: null },
+          data: {
+            views: null,
+            ctaClicks: null,
+            mapImpressions: null,
+            searchImpressions: null,
+          },
           meta: { error: "Analytics not configured" },
         };
       }
 
+      // Helper to create a report query with two date ranges and both metrics
+      const createReportQuery = (eventName: string, dimensionName: string, dimensionValue: string) => ({
+        property: `properties/${propertyId}`,
+        dateRanges: [
+          { startDate: "30daysAgo", endDate: "today", name: "current" },
+          { startDate: "60daysAgo", endDate: "31daysAgo", name: "previous" },
+        ],
+        dimensions: [{ name: dimensionName }],
+        metrics: [
+          { name: "eventCount" },
+          { name: "activeUsers" },
+        ],
+        dimensionFilter: {
+          andGroup: {
+            expressions: [
+              {
+                filter: {
+                  fieldName: "eventName",
+                  stringFilter: { value: eventName },
+                },
+              },
+              {
+                filter: {
+                  fieldName: dimensionName,
+                  stringFilter: { value: dimensionValue },
+                },
+              },
+            ],
+          },
+        },
+      });
+
+      // Helper to parse response with two date ranges
+      // GA4 returns metrics for each date range in sequence within the same row:
+      // metricValues[0] = eventCount for current period
+      // metricValues[1] = activeUsers for current period
+      // metricValues[2] = eventCount for previous period
+      // metricValues[3] = activeUsers for previous period
+      const parseResponse = (response: any) => {
+        const row = response.rows?.[0];
+
+        const currentCount = parseInt(row?.metricValues?.[0]?.value || "0", 10);
+        const currentUsers = parseInt(row?.metricValues?.[1]?.value || "0", 10);
+        const previousCount = parseInt(row?.metricValues?.[2]?.value || "0", 10);
+        const previousUsers = parseInt(row?.metricValues?.[3]?.value || "0", 10);
+
+        // Calculate percentage change (avoid division by zero)
+        const countChange = previousCount > 0
+          ? Math.round(((currentCount - previousCount) / previousCount) * 100)
+          : currentCount > 0 ? 100 : 0;
+        const usersChange = previousUsers > 0
+          ? Math.round(((currentUsers - previousUsers) / previousUsers) * 100)
+          : currentUsers > 0 ? 100 : 0;
+
+        return {
+          total: currentCount,
+          uniqueUsers: currentUsers,
+          previousTotal: previousCount,
+          previousUniqueUsers: previousUsers,
+          totalChange: countChange,
+          uniqueUsersChange: usersChange,
+        };
+      };
+
       try {
-        // Get page views for this site (last 30 days)
-        // Note: site_page_viewed event uses 'id' parameter
-        const [viewsResponse] = await analyticsClient.runReport({
-          property: `properties/${propertyId}`,
-          dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
-          dimensions: [{ name: "customEvent:id" }],
-          metrics: [{ name: "eventCount" }],
-          dimensionFilter: {
-            andGroup: {
-              expressions: [
-                {
-                  filter: {
-                    fieldName: "eventName",
-                    stringFilter: { value: "site_page_viewed" },
-                  },
-                },
-                {
-                  filter: {
-                    fieldName: "customEvent:id",
-                    stringFilter: { value: String(id) },
-                  },
-                },
-              ],
-            },
-          },
-        });
-
-        // Get CTA clicks for this site (last 30 days)
-        // Note: cta_clicked event uses 'site_id' parameter
-        const [ctaResponse] = await analyticsClient.runReport({
-          property: `properties/${propertyId}`,
-          dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
-          dimensions: [{ name: "customEvent:site_id" }],
-          metrics: [{ name: "eventCount" }],
-          dimensionFilter: {
-            andGroup: {
-              expressions: [
-                {
-                  filter: {
-                    fieldName: "eventName",
-                    stringFilter: { value: "cta_clicked" },
-                  },
-                },
-                {
-                  filter: {
-                    fieldName: "customEvent:site_id",
-                    stringFilter: { value: String(id) },
-                  },
-                },
-              ],
-            },
-          },
-        });
-
-        const viewCount = viewsResponse.rows?.[0]?.metricValues?.[0]?.value || "0";
-        const ctaClickCount = ctaResponse.rows?.[0]?.metricValues?.[0]?.value || "0";
+        // Run all queries in parallel
+        const [viewsResponse, ctaResponse, mapImpressionsResponse, searchImpressionsResponse] = await Promise.all([
+          analyticsClient.runReport(createReportQuery("site_page_viewed", "customEvent:id", String(id))),
+          analyticsClient.runReport(createReportQuery("cta_clicked", "customEvent:site_id", String(id))),
+          analyticsClient.runReport(createReportQuery("site_visible_on_map", "customEvent:id", String(id))),
+          analyticsClient.runReport(createReportQuery("searched", "customEvent:id", String(id))),
+        ]);
 
         return {
           data: {
-            viewCount: parseInt(viewCount, 10),
-            ctaClickCount: parseInt(ctaClickCount, 10),
+            views: parseResponse(viewsResponse[0]),
+            ctaClicks: parseResponse(ctaResponse[0]),
+            mapImpressions: parseResponse(mapImpressionsResponse[0]),
+            searchImpressions: parseResponse(searchImpressionsResponse[0]),
           },
-          meta: { period: "last_30_days" },
+          meta: { period: "last_30_days", comparedTo: "previous_30_days" },
         };
       } catch (error) {
         strapi.log.error("Analytics query failed:", error);
         return {
-          data: { viewCount: null, ctaClickCount: null },
+          data: {
+            views: null,
+            ctaClicks: null,
+            mapImpressions: null,
+            searchImpressions: null,
+          },
           meta: { error: "Failed to fetch analytics" },
         };
       }

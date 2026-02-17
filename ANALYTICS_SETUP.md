@@ -80,13 +80,19 @@ The API queries by `site_id` parameter, which must be registered as a custom dim
    - **Event parameter**: `site_id`
 5. Click **Save**
 
-Repeat for `id` parameter (used by `site_page_viewed` event):
+Repeat for `id` parameter (used by multiple events):
 1. Click **Create custom dimension**
 2. Fill in:
    - **Dimension name**: `id`
    - **Scope**: Event
    - **Event parameter**: `id`
 3. Click **Save**
+
+**Events using these parameters:**
+- `site_page_viewed` - uses `id` - fires when a user views a site's detail page
+- `cta_clicked` - uses `site_id` - fires when a user clicks a CTA button
+- `site_visible_on_map` - uses `id` - fires when a site's marker is visible on the map
+- `searched` - uses `id` - fires when a site appears in search results
 
 **Note:** Custom dimensions can take 24-48 hours to start collecting data after creation.
 
@@ -115,21 +121,62 @@ Expected response:
 ```json
 {
   "data": {
-    "viewCount": 42,
-    "ctaClickCount": 5
+    "views": {
+      "total": 42,
+      "uniqueUsers": 28,
+      "previousTotal": 35,
+      "previousUniqueUsers": 22,
+      "totalChange": 20,
+      "uniqueUsersChange": 27
+    },
+    "ctaClicks": {
+      "total": 5,
+      "uniqueUsers": 4,
+      "previousTotal": 3,
+      "previousUniqueUsers": 2,
+      "totalChange": 67,
+      "uniqueUsersChange": 100
+    },
+    "mapImpressions": {
+      "total": 1250,
+      "uniqueUsers": 340,
+      "previousTotal": 980,
+      "previousUniqueUsers": 290,
+      "totalChange": 28,
+      "uniqueUsersChange": 17
+    },
+    "searchImpressions": {
+      "total": 89,
+      "uniqueUsers": 45,
+      "previousTotal": 102,
+      "previousUniqueUsers": 51,
+      "totalChange": -13,
+      "uniqueUsersChange": -12
+    }
   },
   "meta": {
-    "period": "last_30_days"
+    "period": "last_30_days",
+    "comparedTo": "previous_30_days"
   }
 }
 ```
+
+Each metric includes:
+- `total`: Total event count for the period
+- `uniqueUsers`: Number of unique users who triggered the event
+- `previousTotal`: Total event count for the previous 30-day period
+- `previousUniqueUsers`: Unique users in the previous period
+- `totalChange`: Percentage change in total (positive = increase, negative = decrease)
+- `uniqueUsersChange`: Percentage change in unique users
 
 ### If analytics not configured:
 ```json
 {
   "data": {
-    "viewCount": null,
-    "ctaClickCount": null
+    "views": null,
+    "ctaClicks": null,
+    "mapImpressions": null,
+    "searchImpressions": null
   },
   "meta": {
     "error": "Analytics not configured"
@@ -159,6 +206,78 @@ Expected response:
 ## Notes
 
 - Analytics data has a 24-48 hour delay from when events are logged
-- The endpoint returns data for the last 30 days
+- The endpoint returns data for the last 30 days (compared against previous 30 days)
 - Only site owners can access analytics for their sites
 - If `GA4_PROPERTY_ID` is not set, the endpoint returns null values gracefully
+
+---
+
+## Testing Checklist (Post-Release)
+
+**Prerequisites before testing:**
+1. App release deployed with analytics events
+2. User traffic generating events (or test manually in the app)
+3. Wait 24-48 hours for GA4 to process the data
+
+**What was implemented:**
+
+### Mobile App Events (nomad)
+Four events are tracked and sent to Firebase Analytics:
+
+| Event | Location | Trigger | Parameters |
+|-------|----------|---------|------------|
+| `site_page_viewed` | `SiteContent.tsx` | User opens a site's detail page | `id`, `title` |
+| `cta_clicked` | Custom CTA button | User taps the CTA button on a business listing | `site_id`, `cta_type`, `cta_value` |
+| `site_visible_on_map` | `MapView.tsx:270` | Site marker appears on the map (fires each time markers load/refresh) | `id`, `title` |
+| `searched` | `searchResults.tsx:85` | Site appears in search results | `id`, `position`, `type`/`resource` |
+
+### API Endpoint (nomad-api)
+`GET /api/sites/:id/analytics` - Returns analytics for site owners
+
+### Mobile UI (nomad)
+`OwnerAnalytics.tsx` - Displays in business account section (`SitesContent.tsx`)
+
+Shows for each metric:
+- Total count (all events)
+- Unique users (distinct users who triggered the event)
+- Percentage change vs previous 30 days (green up arrow / red down arrow)
+
+**Testing steps:**
+
+1. **Verify GA4 custom dimensions exist:**
+   - Go to Google Analytics → Admin → Custom definitions
+   - Confirm `id` and `site_id` dimensions are registered
+
+2. **Verify events are flowing (before 48hr wait):**
+   - Firebase Console → Analytics → DebugView
+   - Open the app and trigger events (view a site, search, etc.)
+   - Events should appear in real-time in DebugView
+
+3. **Test API endpoint (after 48hr wait):**
+   ```bash
+   # Get a valid JWT token, then:
+   curl -H "Authorization: Bearer <token>" \
+        https://nomadapp-api.herokuapp.com/api/sites/<owned_site_id>/analytics
+   ```
+
+   Expected: Response with non-zero values for metrics that have data
+
+4. **Test mobile UI:**
+   - Log in as a business owner
+   - Go to Account → Business tab
+   - Scroll to owned site
+   - Verify "Your listing stats" section shows:
+     - Basic stats (Likes, Rating, Reviews) - always visible
+     - "Last 30 days" section with analytics cards (if data exists)
+     - Each card shows total, users, and % change
+
+5. **Edge cases to verify:**
+   - New site with no data → Should show 0s or not render analytics section
+   - Site with data only in current period → Should show 100% increase
+   - Site with decreasing traffic → Should show negative % in red
+
+**If data isn't appearing after 48 hours:**
+1. Check Firebase DebugView to confirm events are being sent
+2. Check GA4 → Reports → Realtime to see if events are arriving
+3. Check GA4 → Admin → Custom definitions to ensure dimensions are registered
+4. Check API logs: `heroku logs --tail -a nomadapp-api | grep -i analytics`
