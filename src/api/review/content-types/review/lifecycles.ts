@@ -1,3 +1,5 @@
+import { getNewReviewMailContent, sendEmail } from "../../../../nomad/emails";
+
 async function updateSiteReviewStats(siteId: number) {
   if (!siteId) return;
 
@@ -35,6 +37,69 @@ async function updateSiteReviewStats(siteId: number) {
   }
 }
 
+async function notifySiteOwnersOfNewReview(reviewId: number) {
+  try {
+    // Fetch the review with site, site owners, and reviewer info
+    const review = await strapi.db.query("api::review.review").findOne({
+      where: { id: reviewId },
+      populate: {
+        site: {
+          select: ["id", "title", "slug"],
+          populate: {
+            owners: {
+              select: ["id", "email", "name"],
+            },
+          },
+        },
+        owner: {
+          select: ["id", "name"],
+        },
+      },
+    });
+
+    if (!review?.site?.owners?.length) {
+      strapi.log.info(`No owners to notify for review ${reviewId}`);
+      return;
+    }
+
+    const emailData = {
+      reviewerName: review.owner?.name || "A user",
+      rating: review.rating,
+      title: review.title,
+      review: review.review || undefined,
+      siteTitle: review.site.title,
+      siteSlug: review.site.slug,
+    };
+
+    const emailContent = getNewReviewMailContent(emailData);
+
+    // Send email to each owner
+    for (const owner of review.site.owners) {
+      if (owner.email) {
+        try {
+          await sendEmail({
+            strapi,
+            subject: emailContent.subject,
+            address: owner.email,
+            text: emailContent.text,
+            html: emailContent.html,
+          });
+          strapi.log.info(
+            `Sent new review notification to ${owner.email} for site ${review.site.title}`
+          );
+        } catch (emailErr) {
+          strapi.log.error(
+            `Failed to send review notification to ${owner.email}:`,
+            emailErr
+          );
+        }
+      }
+    }
+  } catch (err) {
+    strapi.log.error(`Failed to notify site owners of review ${reviewId}:`, err);
+  }
+}
+
 // Helper to get site ID from result - handles both direct ID and object formats
 async function getSiteIdFromResult(result: any, reviewId?: number): Promise<number | null> {
   // Direct ID
@@ -66,10 +131,21 @@ export default {
   },
 
   async afterUpdate(event: any) {
-    const { result } = event;
+    const { result, params } = event;
     const siteId = await getSiteIdFromResult(result, result.id);
     if (siteId) {
       await updateSiteReviewStats(siteId);
+    }
+
+    // Check if review was just approved (moderation_status changed to "complete")
+    const newStatus = result.moderation_status;
+    const wasJustApproved = newStatus === "complete" && params?.data?.moderation_status === "complete";
+
+    if (wasJustApproved) {
+      // Don't block the response - send email asynchronously
+      notifySiteOwnersOfNewReview(result.id).catch((err) => {
+        strapi.log.error(`Error in async review notification:`, err);
+      });
     }
   },
 
