@@ -112,12 +112,8 @@ const lightPopulateConfig = {
     populate: {
       type: true,
       images: true,
-      reviews: {
-        select: ["id", "rating", "moderation_status"],
-      },
-      likes: {
-        select: ["id"],
-      },
+      reviews: true,
+      likes: true,
     },
   },
 };
@@ -155,12 +151,8 @@ const fullPopulateConfig = {
     populate: {
       type: true,
       images: true,
-      reviews: {
-        select: ["id", "rating", "moderation_status"],
-      },
-      likes: {
-        select: ["id"],
-      },
+      reviews: true,
+      likes: true,
     },
   },
   sites_added: {
