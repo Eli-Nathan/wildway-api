@@ -107,7 +107,11 @@ const lightPopulateConfig = {
     },
   },
   sites: {
-    select: ["id"],
+    select: ["id", "title", "lat", "lng", "image", "imageCaption"],
+    populate: {
+      type: true,
+      images: true,
+    },
   },
 };
 
