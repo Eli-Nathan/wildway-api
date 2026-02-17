@@ -664,10 +664,11 @@ export default factories.createCoreController(
 
       try {
         // Get page views for this site (last 30 days)
+        // Note: site_page_viewed event uses 'id' parameter
         const [viewsResponse] = await analyticsClient.runReport({
           property: `properties/${propertyId}`,
           dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
-          dimensions: [{ name: "customEvent:site_id" }],
+          dimensions: [{ name: "customEvent:id" }],
           metrics: [{ name: "eventCount" }],
           dimensionFilter: {
             andGroup: {
@@ -680,7 +681,7 @@ export default factories.createCoreController(
                 },
                 {
                   filter: {
-                    fieldName: "customEvent:site_id",
+                    fieldName: "customEvent:id",
                     stringFilter: { value: String(id) },
                   },
                 },
@@ -690,6 +691,7 @@ export default factories.createCoreController(
         });
 
         // Get CTA clicks for this site (last 30 days)
+        // Note: cta_clicked event uses 'site_id' parameter
         const [ctaResponse] = await analyticsClient.runReport({
           property: `properties/${propertyId}`,
           dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
