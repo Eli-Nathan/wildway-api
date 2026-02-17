@@ -628,6 +628,112 @@ export default factories.createCoreController(
       };
     },
 
+    async getAnalytics(ctx: StrapiContext) {
+      const { id } = ctx.params;
+      const userId = ctx.state.user?.id;
+
+      // Verify user owns this site
+      const site = await strapi.db.query("api::site.site").findOne({
+        where: { id },
+        populate: { owners: { select: ["id"] } },
+      });
+
+      if (!site) {
+        ctx.status = 404;
+        return { error: { status: 404, message: "Site not found" } };
+      }
+
+      const isOwner = site.owners?.some((owner: { id: number }) => owner.id === userId);
+      if (!isOwner) {
+        ctx.status = 403;
+        return { error: { status: 403, message: "You do not own this site" } };
+      }
+
+      // Query Google Analytics
+      const { BetaAnalyticsDataClient } = require("@google-analytics/data");
+      const analyticsClient = new BetaAnalyticsDataClient();
+      const propertyId = process.env.GA4_PROPERTY_ID;
+
+      if (!propertyId) {
+        strapi.log.warn("GA4_PROPERTY_ID not configured");
+        return {
+          data: { viewCount: null, ctaClickCount: null },
+          meta: { error: "Analytics not configured" },
+        };
+      }
+
+      try {
+        // Get page views for this site (last 30 days)
+        const [viewsResponse] = await analyticsClient.runReport({
+          property: `properties/${propertyId}`,
+          dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
+          dimensions: [{ name: "customEvent:site_id" }],
+          metrics: [{ name: "eventCount" }],
+          dimensionFilter: {
+            andGroup: {
+              expressions: [
+                {
+                  filter: {
+                    fieldName: "eventName",
+                    stringFilter: { value: "site_page_viewed" },
+                  },
+                },
+                {
+                  filter: {
+                    fieldName: "customEvent:site_id",
+                    stringFilter: { value: String(id) },
+                  },
+                },
+              ],
+            },
+          },
+        });
+
+        // Get CTA clicks for this site (last 30 days)
+        const [ctaResponse] = await analyticsClient.runReport({
+          property: `properties/${propertyId}`,
+          dateRanges: [{ startDate: "30daysAgo", endDate: "today" }],
+          dimensions: [{ name: "customEvent:site_id" }],
+          metrics: [{ name: "eventCount" }],
+          dimensionFilter: {
+            andGroup: {
+              expressions: [
+                {
+                  filter: {
+                    fieldName: "eventName",
+                    stringFilter: { value: "cta_clicked" },
+                  },
+                },
+                {
+                  filter: {
+                    fieldName: "customEvent:site_id",
+                    stringFilter: { value: String(id) },
+                  },
+                },
+              ],
+            },
+          },
+        });
+
+        const viewCount = viewsResponse.rows?.[0]?.metricValues?.[0]?.value || "0";
+        const ctaClickCount = ctaResponse.rows?.[0]?.metricValues?.[0]?.value || "0";
+
+        return {
+          data: {
+            viewCount: parseInt(viewCount, 10),
+            ctaClickCount: parseInt(ctaClickCount, 10),
+          },
+          meta: { period: "last_30_days" },
+        };
+      } catch (error) {
+        strapi.log.error("Analytics query failed:", error);
+        return {
+          data: { viewCount: null, ctaClickCount: null },
+          meta: { error: "Failed to fetch analytics" },
+        };
+      }
+    },
+
     async parseSingleSite(
       ctx: StrapiContext,
       site: SiteResponse,

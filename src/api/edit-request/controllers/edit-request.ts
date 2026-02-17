@@ -30,6 +30,9 @@ interface SiteData {
   sub_types?: unknown[];
   type?: unknown;
   route_metadata?: unknown;
+  cta_label?: string;
+  cta_url?: string;
+  social_links?: unknown;
 }
 
 interface Site {
@@ -48,6 +51,9 @@ const getEditableFieldsFromSite = (siteData: SiteData): SiteData => {
     sub_types,
     type,
     route_metadata,
+    cta_label,
+    cta_url,
+    social_links,
   } = siteData;
   return {
     title,
@@ -60,6 +66,9 @@ const getEditableFieldsFromSite = (siteData: SiteData): SiteData => {
     url,
     type,
     route_metadata,
+    cta_label,
+    cta_url,
+    social_links,
   };
 };
 

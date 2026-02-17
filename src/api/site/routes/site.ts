@@ -88,6 +88,15 @@ const config: RoutesConfig = {
         policies: ["global::is-admin"],
       },
     },
+    {
+      method: "GET",
+      path: "/sites/:id/analytics",
+      handler: "site.getAnalytics",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed"],
+      },
+    },
   ],
 };
 

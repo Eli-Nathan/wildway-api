@@ -21,6 +21,7 @@
     "typescript": "^5.7.0"
   },
   "dependencies": {
+    "@google-analytics/data": "^5.2.1",
     "@strapi/i18n": "^5.10.0",
     "@strapi/plugin-users-permissions": "^5.10.0",
     "@strapi/provider-email-nodemailer": "^5.10.0",
