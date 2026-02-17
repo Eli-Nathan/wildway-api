@@ -1,7 +1,8 @@
 import type { PolicyContext, StrapiInstance } from "../../../types/strapi";
 
 /**
- * Policy to check if the authenticated user owns the site that a review belongs to.
+ * Policy to check if the authenticated user owns the site that a review belongs to
+ * AND has the required feature enabled in their role.
  * Used for business owner reply functionality.
  *
  * On success, stores the review in ctx.state.review for use by controllers,
@@ -19,6 +20,25 @@ const isSiteOwner = async (
   const { id: reviewId } = policyContext.params;
 
   if (!reviewId) {
+    return false;
+  }
+
+  // Get the user's role with features
+  const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+    where: { id: policyContext.state.user.id },
+    populate: {
+      role: {
+        select: ["id", "features"],
+      },
+    },
+  });
+
+  // Check if user's role has the reply_to_reviews feature
+  const features = user?.role?.features || [];
+  if (!features.includes("reply_to_reviews")) {
+    strapi.log.info(
+      `User ${policyContext.state.user.id} denied reply - role missing reply_to_reviews feature`
+    );
     return false;
   }
 

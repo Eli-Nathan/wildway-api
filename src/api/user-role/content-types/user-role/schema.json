@@ -33,6 +33,10 @@
     "maxDescriptionWords": {
       "type": "integer",
       "default": 50
+    },
+    "features": {
+      "type": "json",
+      "default": []
     }
   }
 }
