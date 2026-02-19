@@ -7,6 +7,21 @@ const {
 } = require("../../../../../dist/src/nomad/emails");
 const slugify = require("slugify");
 
+// Helper to create notifications - wraps the notification service
+// Import will work after build since TypeScript compiles to CommonJS
+async function createStatusChangeNotification(strapi, data) {
+  try {
+    // Dynamic import to handle the compiled module
+    const notificationService = require("../../../../../dist/src/nomad/notifications");
+    if (notificationService && notificationService.createNotification) {
+      await notificationService.createNotification(strapi, data);
+    }
+  } catch (err) {
+    // Don't fail if notification service isn't available yet (during first build)
+    strapi.log.warn(`Could not create notification: ${err.message}`);
+  }
+}
+
 /**
  * Calculate priority adjustments for a site based on content quality.
  *
@@ -215,18 +230,36 @@ module.exports = ({ strapi }) => ({
       });
     let title = rejected.title;
     if (collection === "edit-request") {
-      title = rejected.data.title;
+      title = rejected.data?.title || rejected.site?.title || "Unknown";
     } else if (collection === "review") {
       title = rejected.site?.title || rejected.title;
     }
     const { text, html, subject } = getRejectedMailContent(collection, title);
-    await sendEmail({
-      strapi,
-      subject,
-      address: rejected.owner.email,
-      text,
-      html,
-    });
+
+    // Create in-app notification with email
+    if (rejected.owner?.id) {
+      const typeMap = {
+        "edit-request": "edit_request",
+        "addition-request": "addition_request",
+        review: "review",
+      };
+      await createStatusChangeNotification(strapi, {
+        recipientId: rejected.owner.id,
+        type: "status_change",
+        title: `Your ${collection.replace("-request", "")} was rejected`,
+        message: `Your ${collection.replace("-request", "")} for "${title}" was rejected by our moderation team.`,
+        relatedEntityType: typeMap[collection] || collection,
+        relatedEntityId: id,
+        metadata: {
+          status: "rejected",
+          entityTitle: title,
+        },
+        emailContent: rejected.owner.email
+          ? { subject, text, html }
+          : undefined,
+      });
+    }
+
     return rejected;
   },
 
@@ -277,12 +310,24 @@ module.exports = ({ strapi }) => ({
         approved.slug,
         10
       );
-      await sendEmail({
-        strapi,
-        subject,
-        address: addition.owner.email,
-        text,
-        html,
+
+      // Create in-app notification with email
+      await createStatusChangeNotification(strapi, {
+        recipientId: addition.owner.id,
+        type: "status_change",
+        title: "Your place was approved!",
+        message: `Your place "${approved.title}" has been approved and is now live on Wildway. You earned 10 points!`,
+        relatedEntityType: "site",
+        relatedEntityId: approved.id,
+        metadata: {
+          status: "complete",
+          entityTitle: approved.title,
+          siteSlug: approved.slug,
+          pointsEarned: 10,
+        },
+        emailContent: addition.owner.email
+          ? { subject, text, html }
+          : undefined,
       });
     }
     await strapi.db.query(`api::addition-request.addition-request`).update({
@@ -336,12 +381,25 @@ module.exports = ({ strapi }) => ({
         review.site.slug,
         5
       );
-      await sendEmail({
-        strapi,
-        subject,
-        address: review.owner.email,
-        text,
-        html,
+
+      // Create in-app notification with email
+      await createStatusChangeNotification(strapi, {
+        recipientId: review.owner.id,
+        type: "status_change",
+        title: "Your review was approved!",
+        message: `Your review for "${review.site.title}" has been approved. You earned 5 points!`,
+        relatedEntityType: "review",
+        relatedEntityId: review.id,
+        metadata: {
+          status: "complete",
+          entityTitle: review.site.title,
+          siteSlug: review.site.slug,
+          siteId: review.site.id,
+          pointsEarned: 5,
+        },
+        emailContent: review.owner.email
+          ? { subject, text, html }
+          : undefined,
       });
     }
     return review;
@@ -513,7 +571,7 @@ module.exports = ({ strapi }) => ({
             .findOne({
               where: { id: edit.owner.id },
             });
-            
+
           if (currentUser) {
             await strapi.db.query(`api::auth-user.auth-user`).update({
               where: { id: currentUser.id },
@@ -528,20 +586,32 @@ module.exports = ({ strapi }) => ({
               approved.slug || slugify(approved.title),
               5
             );
-            await sendEmail({
-              strapi,
-              subject,
-              address: edit.owner.email,
-              text,
-              html,
+
+            // Create in-app notification with email
+            await createStatusChangeNotification(strapi, {
+              recipientId: edit.owner.id,
+              type: "status_change",
+              title: "Your edit was approved!",
+              message: `Your edit for "${approved.title}" has been approved. You earned 5 points!`,
+              relatedEntityType: "site",
+              relatedEntityId: approved.id,
+              metadata: {
+                status: "complete",
+                entityTitle: approved.title,
+                siteSlug: approved.slug || slugify(approved.title),
+                pointsEarned: 5,
+              },
+              emailContent: edit.owner.email
+                ? { subject, text, html }
+                : undefined,
             });
           }
         } catch (emailError) {
           // Log email error but don't fail the whole operation
-          console.error('Error sending approval email:', emailError);
+          console.error('Error sending approval notification:', emailError);
         }
       }
-      
+
       return approved;
     } catch (error) {
       console.error('Error in approveEdit:', error);

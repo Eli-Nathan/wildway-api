@@ -1,0 +1,77 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notification_preferences",
+  "info": {
+    "singularName": "notification-preference",
+    "pluralName": "notification-preferences",
+    "displayName": "Notification Preferences",
+    "description": "User preferences for notifications"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::auth-user.auth-user"
+    },
+    "email_status_changes": {
+      "type": "boolean",
+      "default": true
+    },
+    "email_review_replies": {
+      "type": "boolean",
+      "default": true
+    },
+    "email_new_reviews": {
+      "type": "boolean",
+      "default": true
+    },
+    "email_likes": {
+      "type": "boolean",
+      "default": true
+    },
+    "email_route_favourites": {
+      "type": "boolean",
+      "default": true
+    },
+    "push_status_changes": {
+      "type": "boolean",
+      "default": true
+    },
+    "push_review_replies": {
+      "type": "boolean",
+      "default": true
+    },
+    "push_new_reviews": {
+      "type": "boolean",
+      "default": true
+    },
+    "push_likes": {
+      "type": "boolean",
+      "default": true
+    },
+    "push_route_favourites": {
+      "type": "boolean",
+      "default": true
+    },
+    "mute_all": {
+      "type": "boolean",
+      "default": false
+    },
+    "quiet_hours_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "quiet_hours_start": {
+      "type": "string",
+      "default": "22:00"
+    },
+    "quiet_hours_end": {
+      "type": "string",
+      "default": "08:00"
+    }
+  }
+}

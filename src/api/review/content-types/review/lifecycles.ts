@@ -1,4 +1,8 @@
 import { getNewReviewMailContent, sendEmail } from "../../../../nomad/emails";
+import {
+  createNotification,
+  shouldSendNotification,
+} from "../../../../nomad/notifications";
 
 async function updateSiteReviewStats(siteId: number) {
   if (!siteId) return;
@@ -73,30 +77,84 @@ async function notifySiteOwnersOfNewReview(reviewId: number) {
 
     const emailContent = getNewReviewMailContent(emailData);
 
-    // Send email to each owner
+    // Send notification to each owner using notification service
     for (const owner of review.site.owners) {
-      if (owner.email) {
-        try {
-          await sendEmail({
-            strapi,
-            subject: emailContent.subject,
-            address: owner.email,
-            text: emailContent.text,
-            html: emailContent.html,
-          });
-          strapi.log.info(
-            `Sent new review notification to ${owner.email} for site ${review.site.title}`
-          );
-        } catch (emailErr) {
-          strapi.log.error(
-            `Failed to send review notification to ${owner.email}:`,
-            emailErr
-          );
-        }
-      }
+      await createNotification(strapi, {
+        recipientId: owner.id,
+        type: "new_review",
+        title: "New review on your listing",
+        message: `${emailData.reviewerName} left a ${emailData.rating}-star review on ${emailData.siteTitle}`,
+        relatedEntityType: "review",
+        relatedEntityId: reviewId,
+        metadata: {
+          rating: emailData.rating,
+          reviewerName: emailData.reviewerName,
+          siteId: review.site.id,
+        },
+        emailContent: owner.email
+          ? {
+              subject: emailContent.subject,
+              text: emailContent.text,
+              html: emailContent.html,
+            }
+          : undefined,
+      });
     }
   } catch (err) {
     strapi.log.error(`Failed to notify site owners of review ${reviewId}:`, err);
+  }
+}
+
+async function notifyReviewOwnerOfReply(reviewId: number, replyText: string) {
+  try {
+    const review = await strapi.db.query("api::review.review").findOne({
+      where: { id: reviewId },
+      populate: {
+        owner: {
+          select: ["id", "email", "name"],
+        },
+        site: {
+          select: ["id", "title", "slug"],
+        },
+      },
+    });
+
+    if (!review?.owner?.id) {
+      strapi.log.info(`No owner to notify for review reply ${reviewId}`);
+      return;
+    }
+
+    // Create a simple email content for reply notification
+    const emailContent = {
+      subject: `Business replied to your review of ${review.site?.title}`,
+      text: `The owner of ${review.site?.title} replied to your review:\n\n"${replyText}"`,
+      html: `
+        <p>The owner of <strong>${review.site?.title}</strong> replied to your review:</p>
+        <blockquote style="border-left: 3px solid #ccc; padding-left: 10px; margin: 10px 0;">
+          ${replyText}
+        </blockquote>
+        <p>
+          <a href="https://wildway.app/places/${review.site?.slug}">View on Wildway</a>
+        </p>
+      `,
+    };
+
+    await createNotification(strapi, {
+      recipientId: review.owner.id,
+      type: "review_reply",
+      title: "Business replied to your review",
+      message: `The owner of ${review.site?.title} replied: "${replyText.substring(0, 100)}${replyText.length > 100 ? "..." : ""}"`,
+      relatedEntityType: "review",
+      relatedEntityId: reviewId,
+      metadata: {
+        siteId: review.site?.id,
+        siteTitle: review.site?.title,
+        replyPreview: replyText.substring(0, 200),
+      },
+      emailContent: review.owner.email ? emailContent : undefined,
+    });
+  } catch (err) {
+    strapi.log.error(`Failed to notify review owner of reply ${reviewId}:`, err);
   }
 }
 
@@ -139,13 +197,27 @@ export default {
 
     // Check if review was just approved (moderation_status changed to "complete")
     const newStatus = result.moderation_status;
-    const wasJustApproved = newStatus === "complete" && params?.data?.moderation_status === "complete";
+    const wasJustApproved =
+      newStatus === "complete" && params?.data?.moderation_status === "complete";
 
     if (wasJustApproved) {
-      // Don't block the response - send email asynchronously
+      // Don't block the response - send notification asynchronously
       notifySiteOwnersOfNewReview(result.id).catch((err) => {
         strapi.log.error(`Error in async review notification:`, err);
       });
+    }
+
+    // Check if owner reply was just added
+    const replyJustAdded =
+      params?.data?.owner_reply && params?.data?.owner_reply_at;
+
+    if (replyJustAdded) {
+      // Don't block the response - send notification asynchronously
+      notifyReviewOwnerOfReply(result.id, params.data.owner_reply).catch(
+        (err) => {
+          strapi.log.error(`Error in async reply notification:`, err);
+        }
+      );
     }
   },
 

@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "notifications",
+  "info": {
+    "singularName": "notification",
+    "pluralName": "notifications",
+    "displayName": "Notifications",
+    "description": "User notifications for activity on their content"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "recipient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::auth-user.auth-user",
+      "inversedBy": "notifications"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "status_change",
+        "review_reply",
+        "new_review",
+        "site_like",
+        "route_favourite",
+        "follower_new"
+      ],
+      "required": true
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "message": {
+      "type": "text",
+      "required": true
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "related_entity_type": {
+      "type": "enumeration",
+      "enum": [
+        "site",
+        "review",
+        "edit_request",
+        "addition_request",
+        "user_route",
+        "auth_user"
+      ],
+      "required": false
+    },
+    "related_entity_id": {
+      "type": "integer",
+      "required": false
+    },
+    "metadata": {
+      "type": "json",
+      "required": false
+    }
+  }
+}

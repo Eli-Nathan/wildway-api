@@ -123,6 +123,69 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "is-user"],
       },
     },
+    {
+      method: "GET",
+      path: "/auth-users/me/notifications",
+      handler: "auth-user.getNotifications",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "GET",
+      path: "/auth-users/me/notifications/badge-count",
+      handler: "auth-user.getNotificationBadgeCount",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "PUT",
+      path: "/auth-users/me/notifications/mark-all-read",
+      handler: "auth-user.markAllNotificationsRead",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "PUT",
+      path: "/auth-users/me/notifications/:id/read",
+      handler: "auth-user.markNotificationRead",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "GET",
+      path: "/auth-users/me/notification-preferences",
+      handler: "auth-user.getNotificationPreferences",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "PUT",
+      path: "/auth-users/me/notification-preferences",
+      handler: "auth-user.updateNotificationPreferences",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "PUT",
+      path: "/auth-users/me/fcm-token",
+      handler: "auth-user.updateFcmToken",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
   ],
 };
 
