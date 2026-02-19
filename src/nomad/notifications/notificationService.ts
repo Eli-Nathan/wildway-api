@@ -1,3 +1,4 @@
+import { getMessaging } from "firebase-admin/messaging";
 import type { StrapiInstance } from "../../types/strapi";
 import sendEmail from "../emails/sendEmail";
 
@@ -111,6 +112,56 @@ export function isInQuietHours(prefs: NotificationPreferences): boolean {
   return currentTime >= start && currentTime < end;
 }
 
+async function sendPushNotification(
+  fcmToken: string,
+  title: string,
+  body: string,
+  strapi: StrapiInstance
+): Promise<boolean> {
+  try {
+    const messaging = getMessaging();
+    await messaging.send({
+      token: fcmToken,
+      notification: {
+        title,
+        body,
+      },
+      data: {
+        // Data payload for handling notification tap
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+        screen: "notifications",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            badge: 1,
+          },
+        },
+      },
+      android: {
+        priority: "high",
+        notification: {
+          sound: "default",
+          channelId: "notifications",
+        },
+      },
+    });
+    return true;
+  } catch (err: any) {
+    // Handle invalid token - remove it from the user
+    if (
+      err.code === "messaging/invalid-registration-token" ||
+      err.code === "messaging/registration-token-not-registered"
+    ) {
+      strapi.log.warn(`Invalid FCM token, will be cleared on next login`);
+    } else {
+      strapi.log.error("Failed to send push notification:", err);
+    }
+    return false;
+  }
+}
+
 export async function createNotification(
   strapi: StrapiInstance,
   data: NotificationData
@@ -179,14 +230,32 @@ export async function createNotification(
       }
     }
 
-    // TODO: Push notification (Phase 2)
-    // if (recipient.fcm_token) {
-    //   const shouldPush = await shouldSendNotification(strapi, data.recipientId, data.type, "push");
-    //   const prefs = await getNotificationPreferences(strapi, data.recipientId);
-    //   if (shouldPush && (!prefs || !isInQuietHours(prefs))) {
-    //     await sendPushNotification(recipient.fcm_token, data.title, data.message);
-    //   }
-    // }
+    // Send push notification if user has FCM token
+    if (recipient.fcm_token) {
+      const shouldPush = await shouldSendNotification(
+        strapi,
+        data.recipientId,
+        data.type,
+        "push"
+      );
+      const prefs = await getNotificationPreferences(strapi, data.recipientId);
+
+      if (shouldPush && (!prefs || !isInQuietHours(prefs))) {
+        const sent = await sendPushNotification(
+          recipient.fcm_token,
+          data.title,
+          data.message,
+          strapi
+        );
+        if (sent) {
+          strapi.log.info(`Sent push notification to user ${data.recipientId}`);
+        }
+      } else {
+        strapi.log.info(
+          `Push notification skipped for user ${data.recipientId} due to preferences or quiet hours`
+        );
+      }
+    }
   } catch (err) {
     strapi.log.error("Failed to create notification:", err);
   }
