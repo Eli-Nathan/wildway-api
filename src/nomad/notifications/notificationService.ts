@@ -120,8 +120,15 @@ async function sendPushNotification(
 ): Promise<boolean> {
   try {
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
-    const messaging = getMessaging();
-    strapi.log.info(`Got messaging instance, sending...`);
+    let messaging;
+    try {
+      messaging = getMessaging();
+      strapi.log.info(`Got messaging instance`);
+    } catch (initErr: any) {
+      console.error("Failed to get messaging instance:", initErr);
+      return false;
+    }
+    strapi.log.info(`Sending message...`);
     await messaging.send({
       token: fcmToken,
       notification: {
@@ -158,8 +165,10 @@ async function sendPushNotification(
     ) {
       strapi.log.warn(`Invalid FCM token, will be cleared on next login`);
     } else {
-      strapi.log.error("Failed to send push notification:", err.message || err);
-      strapi.log.error("Full error object:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+      console.error("FCM ERROR FULL:", err);
+      console.error("FCM ERROR STACK:", err.stack);
+      console.error("FCM ERROR NAME:", err.name);
+      console.error("FCM ERROR MESSAGE:", err.message);
     }
     return false;
   }
