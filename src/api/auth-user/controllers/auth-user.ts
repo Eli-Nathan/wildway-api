@@ -742,8 +742,21 @@ export default factories.createCoreController(
         strapi.db.query("api::notification.notification").count({ where }),
       ]);
 
+      // Map to ensure consistent field names for frontend
+      const mappedNotifications = notifications.map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        is_read: n.is_read,
+        related_entity_type: n.related_entity_type,
+        related_entity_id: n.related_entity_id,
+        metadata: n.metadata,
+        createdAt: n.createdAt || n.created_at,
+      }));
+
       return {
-        data: notifications,
+        data: mappedNotifications,
         meta: {
           pagination: {
             page,
