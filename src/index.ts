@@ -33,6 +33,7 @@ const initializeFirebase = () => {
       console.log("[Firebase] Initializing from GOOGLE_CREDENTIALS env var, project:", serviceAccount.project_id);
       return initializeApp({
         credential: cert(serviceAccount),
+        projectId: serviceAccount.project_id,
       });
     } catch {
       console.error("[Firebase] Failed to parse GOOGLE_CREDENTIALS");
