@@ -1,36 +1,5 @@
-import { GoogleAuth } from "google-auth-library";
 import type { StrapiInstance } from "../../types/strapi";
 import sendEmail from "../emails/sendEmail";
-
-// Cache the auth client
-let authClient: GoogleAuth | null = null;
-
-function getAuthClient(): GoogleAuth {
-  if (authClient) return authClient;
-
-  const credentials = process.env.GOOGLE_CREDENTIALS;
-  if (!credentials) {
-    throw new Error('GOOGLE_CREDENTIALS not set');
-  }
-
-  const serviceAccount = JSON.parse(credentials);
-
-  authClient = new GoogleAuth({
-    credentials: serviceAccount,
-    scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
-  });
-
-  console.log('[FCM] Created GoogleAuth client for project:', serviceAccount.project_id);
-  return authClient;
-}
-
-function getProjectId(): string {
-  const credentials = process.env.GOOGLE_CREDENTIALS;
-  if (!credentials) {
-    throw new Error('GOOGLE_CREDENTIALS not set');
-  }
-  return JSON.parse(credentials).project_id;
-}
 
 export type NotificationType =
   | "status_change"
@@ -151,71 +120,47 @@ async function sendPushNotification(
   try {
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
 
-    const auth = getAuthClient();
-    const projectId = getProjectId();
-    strapi.log.info(`Using project: ${projectId}`);
-
-    // Get access token with proper scopes
-    const client = await auth.getClient();
-    const tokenResponse = await client.getAccessToken();
-    const accessToken = tokenResponse.token;
-
-    if (!accessToken) {
-      console.error("Failed to get access token");
+    const serverKey = process.env.FCM_SERVER_KEY;
+    if (!serverKey) {
+      console.error("FCM_SERVER_KEY not set");
       return false;
     }
-    strapi.log.info(`Got access token with FCM scope: ${accessToken.substring(0, 30)}... (length: ${accessToken.length})`);
 
-    // Make direct HTTP call to FCM API
-    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+    // Use legacy FCM API
+    const fcmUrl = 'https://fcm.googleapis.com/fcm/send';
 
     const message = {
-      message: {
-        token: fcmToken,
-        notification: {
-          title,
-          body,
-        },
-        data: {
-          click_action: "FLUTTER_NOTIFICATION_CLICK",
-          screen: "notifications",
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: "default",
-              badge: 1,
-            },
-          },
-        },
-        android: {
-          priority: "high",
-          notification: {
-            sound: "default",
-            channel_id: "notifications",
-          },
-        },
+      to: fcmToken,
+      notification: {
+        title,
+        body,
+        sound: "default",
       },
+      data: {
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+        screen: "notifications",
+      },
+      priority: "high",
     };
 
-    strapi.log.info(`Sending to FCM API: ${fcmUrl}`);
+    strapi.log.info(`Sending to legacy FCM API`);
 
     const response = await fetch(fcmUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': `key=${serverKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(message),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`FCM API error (${response.status}):`, errorText);
+    const result = await response.json();
+
+    if (!response.ok || result.failure) {
+      console.error(`FCM API error (${response.status}):`, JSON.stringify(result));
       return false;
     }
 
-    const result = await response.json();
     strapi.log.info(`FCM API success:`, JSON.stringify(result));
     return true;
   } catch (err: any) {
