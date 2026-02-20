@@ -141,17 +141,29 @@ async function sendPushNotification(
     };
 
     strapi.log.info(`Sending via Firebase Admin SDK...`);
+    strapi.log.info(`Full FCM token: ${fcmToken}`);
     const messaging = getMessaging();
     strapi.log.info(`Got messaging instance, app name: ${messaging.app.name}`);
+    strapi.log.info(`Message payload: ${JSON.stringify(message)}`);
+    strapi.log.info(`Calling messaging.send()...`);
     const response = await messaging.send(message);
     strapi.log.info(`FCM send success, message ID: ${response}`);
     return true;
-  } catch (err: any) {
-    strapi.log.error("FCM send error message:", err.message);
-    strapi.log.error("FCM send error code:", err.code);
-    strapi.log.error("FCM send error name:", err.name);
-    strapi.log.error("FCM send error stack:", err.stack?.substring(0, 500));
-    strapi.log.error("FCM send full error:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+  } catch (err: unknown) {
+    strapi.log.error("FCM send caught error type:", typeof err);
+    strapi.log.error("FCM send caught error:", String(err));
+    if (err instanceof Error) {
+      strapi.log.error("FCM Error.message:", err.message);
+      strapi.log.error("FCM Error.name:", err.name);
+      strapi.log.error("FCM Error.stack:", err.stack?.substring(0, 500));
+    }
+    if (err && typeof err === 'object') {
+      strapi.log.error("FCM error keys:", Object.keys(err));
+      strapi.log.error("FCM error own props:", Object.getOwnPropertyNames(err));
+      for (const key of Object.keys(err)) {
+        strapi.log.error(`FCM error[${key}]:`, (err as Record<string, unknown>)[key]);
+      }
+    }
     return false;
   }
 }
