@@ -1,7 +1,36 @@
-import { getMessaging } from "firebase-admin/messaging";
-import { getApp } from "firebase-admin/app";
+import { getMessaging, Messaging } from "firebase-admin/messaging";
+import { getApp, getApps, initializeApp, cert, App } from "firebase-admin/app";
 import type { StrapiInstance } from "../../types/strapi";
 import sendEmail from "../emails/sendEmail";
+
+// Cache the messaging app
+let messagingApp: App | null = null;
+
+function getMessagingApp(): App {
+  if (messagingApp) return messagingApp;
+
+  const existingApps = getApps();
+  const existing = existingApps.find(app => app.name === 'messaging');
+  if (existing) {
+    messagingApp = existing;
+    return existing;
+  }
+
+  // Initialize a dedicated app for messaging with explicit credentials
+  const credentials = process.env.GOOGLE_CREDENTIALS;
+  if (!credentials) {
+    throw new Error('GOOGLE_CREDENTIALS not set');
+  }
+
+  const serviceAccount = JSON.parse(credentials);
+  messagingApp = initializeApp({
+    credential: cert(serviceAccount),
+    projectId: serviceAccount.project_id,
+  }, 'messaging');
+
+  console.log('[FCM] Created dedicated messaging app for project:', serviceAccount.project_id);
+  return messagingApp;
+}
 
 export type NotificationType =
   | "status_change"
@@ -121,12 +150,11 @@ async function sendPushNotification(
 ): Promise<boolean> {
   try {
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
-    let messaging;
+    let messaging: Messaging;
     try {
-      const app = getApp();
-      strapi.log.info(`Got Firebase app: ${app.name}, project: ${app.options.projectId}`);
+      const app = getMessagingApp();
+      strapi.log.info(`Got messaging app: ${app.name}, project: ${app.options.projectId}`);
       messaging = getMessaging(app);
-      strapi.log.info(`Got messaging instance for app: ${app.name}`);
     } catch (initErr: any) {
       console.error("Failed to get messaging instance:", initErr);
       return false;
