@@ -147,9 +147,11 @@ async function sendPushNotification(
     strapi.log.info(`FCM send success, message ID: ${response}`);
     return true;
   } catch (err: any) {
-    strapi.log.error("FCM send error:", err.message);
-    strapi.log.error("FCM error code:", err.code);
-    strapi.log.error("FCM error details:", JSON.stringify(err.errorInfo || err, null, 2));
+    strapi.log.error("FCM send error message:", err.message);
+    strapi.log.error("FCM send error code:", err.code);
+    strapi.log.error("FCM send error name:", err.name);
+    strapi.log.error("FCM send error stack:", err.stack?.substring(0, 500));
+    strapi.log.error("FCM send full error:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
     return false;
   }
 }
