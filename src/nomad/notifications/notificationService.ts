@@ -159,8 +159,7 @@ async function sendPushNotification(
       strapi.log.warn(`Invalid FCM token, will be cleared on next login`);
     } else {
       strapi.log.error("Failed to send push notification:", err.message || err);
-      strapi.log.error("Error code:", err.code);
-      strapi.log.error("Error details:", JSON.stringify(err.errorInfo || {}, null, 2));
+      strapi.log.error("Full error object:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
     }
     return false;
   }
