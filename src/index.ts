@@ -1,4 +1,5 @@
-import { initializeApp, cert, applicationDefault } from "firebase-admin/app";
+import { initializeApp, cert, applicationDefault, getApp } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 import path from "path";
 import fs from "fs";
 
@@ -30,13 +31,25 @@ const initializeFirebase = () => {
   if (inlineCredentials) {
     try {
       const serviceAccount = JSON.parse(inlineCredentials);
-      console.log("[Firebase] Initializing from GOOGLE_CREDENTIALS env var, project:", serviceAccount.project_id);
-      return initializeApp({
+      console.log("[Firebase] Initializing from GOOGLE_CREDENTIALS env var");
+      console.log("[Firebase] Project ID:", serviceAccount.project_id);
+      console.log("[Firebase] Client email:", serviceAccount.client_email);
+      const app = initializeApp({
         credential: cert(serviceAccount),
         projectId: serviceAccount.project_id,
       });
-    } catch {
-      console.error("[Firebase] Failed to parse GOOGLE_CREDENTIALS");
+
+      // Test that messaging can be initialized
+      try {
+        const messaging = getMessaging(app);
+        console.log("[Firebase] Messaging initialized successfully");
+      } catch (msgErr) {
+        console.error("[Firebase] Failed to initialize messaging:", msgErr);
+      }
+
+      return app;
+    } catch (err) {
+      console.error("[Firebase] Failed to parse GOOGLE_CREDENTIALS:", err);
     }
   }
 
