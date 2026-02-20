@@ -14,11 +14,14 @@ const initializeFirebase = () => {
       : path.join(process.cwd(), credentialsPath);
 
     if (fs.existsSync(absolutePath)) {
+      console.log("[Firebase] Initializing from file:", absolutePath);
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const serviceAccount = require(absolutePath);
       return initializeApp({
         credential: cert(serviceAccount),
       });
+    } else {
+      console.log("[Firebase] File not found:", absolutePath);
     }
   }
 
@@ -27,15 +30,17 @@ const initializeFirebase = () => {
   if (inlineCredentials) {
     try {
       const serviceAccount = JSON.parse(inlineCredentials);
+      console.log("[Firebase] Initializing from GOOGLE_CREDENTIALS env var, project:", serviceAccount.project_id);
       return initializeApp({
         credential: cert(serviceAccount),
       });
     } catch {
-      console.error("Failed to parse GOOGLE_CREDENTIALS");
+      console.error("[Firebase] Failed to parse GOOGLE_CREDENTIALS");
     }
   }
 
   // Fall back to application default (works on GCP)
+  console.log("[Firebase] Falling back to applicationDefault()");
   return initializeApp({
     credential: applicationDefault(),
   });
