@@ -1,4 +1,5 @@
 import { getMessaging } from "firebase-admin/messaging";
+import { getApp } from "firebase-admin/app";
 import type { StrapiInstance } from "../../types/strapi";
 import sendEmail from "../emails/sendEmail";
 
@@ -122,8 +123,10 @@ async function sendPushNotification(
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
     let messaging;
     try {
-      messaging = getMessaging();
-      strapi.log.info(`Got messaging instance`);
+      const app = getApp();
+      strapi.log.info(`Got Firebase app: ${app.name}, project: ${app.options.projectId}`);
+      messaging = getMessaging(app);
+      strapi.log.info(`Got messaging instance for app: ${app.name}`);
     } catch (initErr: any) {
       console.error("Failed to get messaging instance:", initErr);
       return false;
