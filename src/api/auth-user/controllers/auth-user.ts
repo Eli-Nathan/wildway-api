@@ -944,5 +944,30 @@ export default factories.createCoreController(
 
       return { success: true };
     },
+
+    /**
+     * Test push notification - sends a test notification to yourself
+     */
+    async testPushNotification(ctx: StrapiContext) {
+      const userId = ctx.params.id;
+
+      try {
+        await createNotification(strapi, {
+          recipientId: parseInt(userId),
+          type: "status_change",
+          title: "Test notification",
+          message: "This is a test push notification from Wildway!",
+          relatedEntityType: undefined,
+          relatedEntityId: undefined,
+          metadata: { test: true },
+        });
+
+        return { success: true, message: "Test notification sent" };
+      } catch (err: any) {
+        strapi.log.error("Test push failed:", err);
+        ctx.status = 500;
+        return { error: err.message };
+      }
+    },
   })
 );

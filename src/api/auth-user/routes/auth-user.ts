@@ -186,6 +186,15 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "is-user"],
       },
     },
+    {
+      method: "POST",
+      path: "/auth-users/me/test-push",
+      handler: "auth-user.testPushNotification",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
   ],
 };
 
