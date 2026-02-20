@@ -1,5 +1,6 @@
 import type { StrapiInstance } from "../../types/strapi";
 import sendEmail from "../emails/sendEmail";
+import { getMessaging } from "firebase-admin/messaging";
 
 export type NotificationType =
   | "status_change"
@@ -120,52 +121,33 @@ async function sendPushNotification(
   try {
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
 
-    const serverKey = process.env.FCM_SERVER_KEY;
-    if (!serverKey) {
-      console.error("FCM_SERVER_KEY not set");
-      return false;
-    }
-
-    // Use legacy FCM API
-    const fcmUrl = 'https://fcm.googleapis.com/fcm/send';
-
     const message = {
-      to: fcmToken,
+      token: fcmToken,
       notification: {
         title,
         body,
-        sound: "default",
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            badge: 1,
+          },
+        },
       },
       data: {
-        click_action: "FLUTTER_NOTIFICATION_CLICK",
         screen: "notifications",
       },
-      priority: "high",
     };
 
-    strapi.log.info(`Sending to legacy FCM API`);
-
-    const response = await fetch(fcmUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `key=${serverKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(message),
-    });
-
-    const result = await response.json();
-
-    if (!response.ok || result.failure) {
-      console.error(`FCM API error (${response.status}):`, JSON.stringify(result));
-      return false;
-    }
-
-    strapi.log.info(`FCM API success:`, JSON.stringify(result));
+    const response = await getMessaging().send(message);
+    strapi.log.info(`FCM send success, message ID: ${response}`);
     return true;
   } catch (err: any) {
-    console.error("FCM ERROR:", err.message);
-    console.error("FCM ERROR STACK:", err.stack);
+    strapi.log.error("FCM send error:", err.message);
+    if (err.code) {
+      strapi.log.error("FCM error code:", err.code);
+    }
     return false;
   }
 }
