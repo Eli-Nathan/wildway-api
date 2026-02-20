@@ -1,6 +1,6 @@
 import type { StrapiInstance } from "../../types/strapi";
 import sendEmail from "../emails/sendEmail";
-import { GoogleAuth } from "google-auth-library";
+import { getMessaging } from "firebase-admin/messaging";
 
 export type NotificationType =
   | "status_change"
@@ -112,24 +112,6 @@ export function isInQuietHours(prefs: NotificationPreferences): boolean {
   return currentTime >= start && currentTime < end;
 }
 
-async function getAccessToken(): Promise<string> {
-  const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || "{}");
-
-  const auth = new GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-  });
-
-  const client = await auth.getClient();
-  const token = await client.getAccessToken();
-
-  if (!token.token) {
-    throw new Error("Failed to get access token");
-  }
-
-  return token.token;
-}
-
 async function sendPushNotification(
   fcmToken: string,
   title: string,
@@ -139,64 +121,35 @@ async function sendPushNotification(
   try {
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
 
-    const projectId = JSON.parse(process.env.GOOGLE_CREDENTIALS || "{}").project_id;
-    if (!projectId) {
-      strapi.log.error("No project_id in GOOGLE_CREDENTIALS");
-      return false;
-    }
-
-    strapi.log.info(`Getting OAuth2 access token...`);
-    const accessToken = await getAccessToken();
-    strapi.log.info(`Got access token: ${accessToken.substring(0, 20)}...`);
-
-    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
-
     const message = {
-      message: {
-        token: fcmToken,
-        notification: {
-          title,
-          body,
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: "default",
-              badge: 1,
-            },
+      token: fcmToken,
+      notification: {
+        title,
+        body,
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            badge: 1,
           },
         },
-        data: {
-          screen: "notifications",
-        },
+      },
+      data: {
+        screen: "notifications",
       },
     };
 
-    strapi.log.info(`Sending to FCM v1 API: ${fcmUrl}`);
-
-    const response = await fetch(fcmUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(message),
-    });
-
-    const responseText = await response.text();
-    strapi.log.info(`FCM response status: ${response.status}`);
-    strapi.log.info(`FCM response body: ${responseText}`);
-
-    if (!response.ok) {
-      strapi.log.error(`FCM API error (${response.status}): ${responseText}`);
-      return false;
-    }
-
-    strapi.log.info(`FCM send success`);
+    strapi.log.info(`Sending via Firebase Admin SDK...`);
+    const messaging = getMessaging();
+    strapi.log.info(`Got messaging instance, app name: ${messaging.app.name}`);
+    const response = await messaging.send(message);
+    strapi.log.info(`FCM send success, message ID: ${response}`);
     return true;
   } catch (err: any) {
     strapi.log.error("FCM send error:", err.message);
-    strapi.log.error("FCM error stack:", err.stack);
+    strapi.log.error("FCM error code:", err.code);
+    strapi.log.error("FCM error details:", JSON.stringify(err.errorInfo || err, null, 2));
     return false;
   }
 }
