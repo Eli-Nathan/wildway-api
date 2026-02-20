@@ -34,6 +34,10 @@ const initializeFirebase = () => {
       console.log("[Firebase] Initializing from GOOGLE_CREDENTIALS env var");
       console.log("[Firebase] Project ID:", serviceAccount.project_id);
       console.log("[Firebase] Client email:", serviceAccount.client_email);
+      console.log("[Firebase] Client ID:", serviceAccount.client_id);
+      console.log("[Firebase] Token URI:", serviceAccount.token_uri);
+      console.log("[Firebase] Auth URI:", serviceAccount.auth_uri);
+      console.log("[Firebase] Private key ID:", serviceAccount.private_key_id);
       console.log("[Firebase] Private key starts with:", serviceAccount.private_key?.substring(0, 50));
       console.log("[Firebase] Private key ends with:", serviceAccount.private_key?.substring(serviceAccount.private_key.length - 50));
       console.log("[Firebase] Private key has newlines:", serviceAccount.private_key?.includes('\n'));
