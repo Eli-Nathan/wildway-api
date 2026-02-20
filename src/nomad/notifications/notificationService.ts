@@ -150,69 +150,81 @@ async function sendPushNotification(
 ): Promise<boolean> {
   try {
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
-    let messaging: Messaging;
-    try {
-      const app = getMessagingApp();
-      strapi.log.info(`Got messaging app: ${app.name}, project: ${app.options.projectId}`);
 
-      // Debug: try to get access token
-      const credential = app.options.credential;
-      if (credential && 'getAccessToken' in credential) {
-        try {
-          const tokenResult = await (credential as any).getAccessToken();
-          strapi.log.info(`Got access token: ${tokenResult?.access_token?.substring(0, 20)}...`);
-        } catch (tokenErr: any) {
-          console.error("Failed to get access token:", tokenErr.message);
-        }
-      }
+    const app = getMessagingApp();
+    const projectId = app.options.projectId;
+    strapi.log.info(`Using project: ${projectId}`);
 
-      messaging = getMessaging(app);
-    } catch (initErr: any) {
-      console.error("Failed to get messaging instance:", initErr);
+    // Get access token
+    const credential = app.options.credential;
+    if (!credential || !('getAccessToken' in credential)) {
+      console.error("No credential with getAccessToken");
       return false;
     }
-    strapi.log.info(`Sending message...`);
-    await messaging.send({
-      token: fcmToken,
-      notification: {
-        title,
-        body,
-      },
-      data: {
-        // Data payload for handling notification tap
-        click_action: "FLUTTER_NOTIFICATION_CLICK",
-        screen: "notifications",
-      },
-      apns: {
-        payload: {
-          aps: {
+
+    const tokenResult = await (credential as any).getAccessToken();
+    const accessToken = tokenResult?.access_token;
+    if (!accessToken) {
+      console.error("Failed to get access token");
+      return false;
+    }
+    strapi.log.info(`Got access token: ${accessToken.substring(0, 20)}...`);
+
+    // Make direct HTTP call to FCM API
+    const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+
+    const message = {
+      message: {
+        token: fcmToken,
+        notification: {
+          title,
+          body,
+        },
+        data: {
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+          screen: "notifications",
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "default",
+              badge: 1,
+            },
+          },
+        },
+        android: {
+          priority: "high",
+          notification: {
             sound: "default",
-            badge: 1,
+            channel_id: "notifications",
           },
         },
       },
-      android: {
-        priority: "high",
-        notification: {
-          sound: "default",
-          channelId: "notifications",
-        },
+    };
+
+    strapi.log.info(`Sending to FCM API: ${fcmUrl}`);
+
+    const response = await fetch(fcmUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify(message),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`FCM API error (${response.status}):`, errorText);
+      return false;
+    }
+
+    const result = await response.json();
+    strapi.log.info(`FCM API success:`, JSON.stringify(result));
     return true;
   } catch (err: any) {
-    // Handle invalid token - remove it from the user
-    if (
-      err.code === "messaging/invalid-registration-token" ||
-      err.code === "messaging/registration-token-not-registered"
-    ) {
-      strapi.log.warn(`Invalid FCM token, will be cleared on next login`);
-    } else {
-      console.error("FCM ERROR FULL:", err);
-      console.error("FCM ERROR STACK:", err.stack);
-      console.error("FCM ERROR NAME:", err.name);
-      console.error("FCM ERROR MESSAGE:", err.message);
-    }
+    console.error("FCM ERROR:", err.message);
+    console.error("FCM ERROR STACK:", err.stack);
     return false;
   }
 }
