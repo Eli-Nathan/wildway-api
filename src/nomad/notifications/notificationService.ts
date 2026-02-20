@@ -117,7 +117,7 @@ async function getAccessToken(): Promise<string> {
 
   const auth = new GoogleAuth({
     credentials,
-    scopes: ["https://www.googleapis.com/auth/firebase.messaging"],
+    scopes: ["https://www.googleapis.com/auth/cloud-platform"],
   });
 
   const client = await auth.getClient();
@@ -183,14 +183,16 @@ async function sendPushNotification(
       body: JSON.stringify(message),
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    strapi.log.info(`FCM response status: ${response.status}`);
+    strapi.log.info(`FCM response body: ${responseText}`);
 
     if (!response.ok) {
-      strapi.log.error(`FCM API error (${response.status}):`, JSON.stringify(result, null, 2));
+      strapi.log.error(`FCM API error (${response.status}): ${responseText}`);
       return false;
     }
 
-    strapi.log.info(`FCM send success:`, JSON.stringify(result));
+    strapi.log.info(`FCM send success`);
     return true;
   } catch (err: any) {
     strapi.log.error("FCM send error:", err.message);
