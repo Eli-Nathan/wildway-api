@@ -1,35 +1,35 @@
-import { getMessaging, Messaging } from "firebase-admin/messaging";
-import { getApp, getApps, initializeApp, cert, App } from "firebase-admin/app";
+import { GoogleAuth } from "google-auth-library";
 import type { StrapiInstance } from "../../types/strapi";
 import sendEmail from "../emails/sendEmail";
 
-// Cache the messaging app
-let messagingApp: App | null = null;
+// Cache the auth client
+let authClient: GoogleAuth | null = null;
 
-function getMessagingApp(): App {
-  if (messagingApp) return messagingApp;
+function getAuthClient(): GoogleAuth {
+  if (authClient) return authClient;
 
-  const existingApps = getApps();
-  const existing = existingApps.find(app => app.name === 'messaging');
-  if (existing) {
-    messagingApp = existing;
-    return existing;
-  }
-
-  // Initialize a dedicated app for messaging with explicit credentials
   const credentials = process.env.GOOGLE_CREDENTIALS;
   if (!credentials) {
     throw new Error('GOOGLE_CREDENTIALS not set');
   }
 
   const serviceAccount = JSON.parse(credentials);
-  messagingApp = initializeApp({
-    credential: cert(serviceAccount),
-    projectId: serviceAccount.project_id,
-  }, 'messaging');
 
-  console.log('[FCM] Created dedicated messaging app for project:', serviceAccount.project_id);
-  return messagingApp;
+  authClient = new GoogleAuth({
+    credentials: serviceAccount,
+    scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
+  });
+
+  console.log('[FCM] Created GoogleAuth client for project:', serviceAccount.project_id);
+  return authClient;
+}
+
+function getProjectId(): string {
+  const credentials = process.env.GOOGLE_CREDENTIALS;
+  if (!credentials) {
+    throw new Error('GOOGLE_CREDENTIALS not set');
+  }
+  return JSON.parse(credentials).project_id;
 }
 
 export type NotificationType =
@@ -151,24 +151,20 @@ async function sendPushNotification(
   try {
     strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
 
-    const app = getMessagingApp();
-    const projectId = app.options.projectId;
+    const auth = getAuthClient();
+    const projectId = getProjectId();
     strapi.log.info(`Using project: ${projectId}`);
 
-    // Get access token
-    const credential = app.options.credential;
-    if (!credential || !('getAccessToken' in credential)) {
-      console.error("No credential with getAccessToken");
-      return false;
-    }
+    // Get access token with proper scopes
+    const client = await auth.getClient();
+    const tokenResponse = await client.getAccessToken();
+    const accessToken = tokenResponse.token;
 
-    const tokenResult = await (credential as any).getAccessToken();
-    const accessToken = tokenResult?.access_token;
     if (!accessToken) {
       console.error("Failed to get access token");
       return false;
     }
-    strapi.log.info(`Got access token: ${accessToken.substring(0, 20)}...`);
+    strapi.log.info(`Got access token with FCM scope: ${accessToken.substring(0, 30)}... (length: ${accessToken.length})`);
 
     // Make direct HTTP call to FCM API
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
