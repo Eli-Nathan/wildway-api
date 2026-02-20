@@ -154,6 +154,18 @@ async function sendPushNotification(
     try {
       const app = getMessagingApp();
       strapi.log.info(`Got messaging app: ${app.name}, project: ${app.options.projectId}`);
+
+      // Debug: try to get access token
+      const credential = app.options.credential;
+      if (credential && 'getAccessToken' in credential) {
+        try {
+          const tokenResult = await (credential as any).getAccessToken();
+          strapi.log.info(`Got access token: ${tokenResult?.access_token?.substring(0, 20)}...`);
+        } catch (tokenErr: any) {
+          console.error("Failed to get access token:", tokenErr.message);
+        }
+      }
+
       messaging = getMessaging(app);
     } catch (initErr: any) {
       console.error("Failed to get messaging instance:", initErr);
