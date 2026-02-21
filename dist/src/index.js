@@ -17,11 +17,15 @@ const initializeFirebase = () => {
             ? credentialsPath
             : path_1.default.join(process.cwd(), credentialsPath);
         if (fs_1.default.existsSync(absolutePath)) {
+            console.log("[Firebase] Initializing from file:", absolutePath);
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const serviceAccount = require(absolutePath);
             return (0, app_1.initializeApp)({
                 credential: (0, app_1.cert)(serviceAccount),
             });
+        }
+        else {
+            console.log("[Firebase] File not found:", absolutePath);
         }
     }
     // Try to load from inline GOOGLE_CREDENTIALS env var
@@ -29,15 +33,19 @@ const initializeFirebase = () => {
     if (inlineCredentials) {
         try {
             const serviceAccount = JSON.parse(inlineCredentials);
-            return (0, app_1.initializeApp)({
+            console.log("[Firebase] Initializing from GOOGLE_CREDENTIALS env var");
+            const app = (0, app_1.initializeApp)({
                 credential: (0, app_1.cert)(serviceAccount),
+                projectId: serviceAccount.project_id,
             });
+            return app;
         }
-        catch {
-            console.error("Failed to parse GOOGLE_CREDENTIALS");
+        catch (err) {
+            console.error("[Firebase] Failed to parse GOOGLE_CREDENTIALS:", err);
         }
     }
     // Fall back to application default (works on GCP)
+    console.log("[Firebase] Falling back to applicationDefault()");
     return (0, app_1.initializeApp)({
         credential: (0, app_1.applicationDefault)(),
     });
@@ -73,7 +81,6 @@ exports.default = {
                     name: "Free",
                     level: 0,
                     maxImages: 1,
-                    maxDescriptionWords: 50,
                 },
             });
             strapi.log.info("Base user role created");

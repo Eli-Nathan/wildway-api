@@ -152,6 +152,17 @@
             "relation": "oneToMany",
             "target": "api::content-report.content-report",
             "mappedBy": "reporter"
+        },
+        "notifications": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::notification.notification",
+            "mappedBy": "recipient"
+        },
+        "fcm_token": {
+            "type": "string",
+            "private": true,
+            "required": false
         }
     }
 }

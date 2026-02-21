@@ -30,9 +30,15 @@
             "type": "integer",
             "default": 1
         },
-        "maxDescriptionWords": {
-            "type": "integer",
-            "default": 50
+        "features": {
+            "type": "json",
+            "default": {
+                "reply_to_reviews": false,
+                "unlimited_description": false,
+                "analytics_dashboard": false,
+                "custom_cta": false,
+                "social_links": false
+            }
         }
     }
 }

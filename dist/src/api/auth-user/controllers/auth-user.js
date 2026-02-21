@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
 const emails_1 = require("../../../nomad/emails");
+const notificationService_1 = require("../../../nomad/notifications/notificationService");
 /**
  * Add status alias by copying from moderation_status field
  * This allows old app versions to use status while DB uses moderation_status
@@ -22,9 +23,10 @@ const lightPopulateConfig = {
     role: true,
     profile_pic: true,
     favourites: {
-        select: ["id"],
+        select: ["id", "title", "lat", "lng", "image", "imageCaption"],
         populate: {
             type: true,
+            images: true,
         },
     },
     saved_public_routes: {
@@ -50,7 +52,13 @@ const lightPopulateConfig = {
         },
     },
     sites: {
-        select: ["id"],
+        select: ["id", "title", "lat", "lng", "image", "imageCaption"],
+        populate: {
+            type: true,
+            images: true,
+            reviews: true,
+            likes: true,
+        },
     },
 };
 /**
@@ -86,6 +94,8 @@ const fullPopulateConfig = {
         populate: {
             type: true,
             images: true,
+            reviews: true,
+            likes: true,
         },
     },
     sites_added: {
@@ -328,6 +338,36 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 Promise.all(changedSites.map((siteId) => moderatorService.updateSitePriority(siteId).catch((err) => strapi.log.error(`Failed to update priority for site ${siteId}:`, err))));
             }
         }
+        // Send notifications for newly liked sites (async, don't block response)
+        if (addedSites.length > 0) {
+            const likerName = user.name || "Someone";
+            Promise.all(addedSites.map(async (siteId) => {
+                var _a;
+                try {
+                    // Get site with added_by info
+                    const site = await strapi.db.query("api::site.site").findOne({
+                        where: { id: siteId },
+                        select: ["id", "title"],
+                        populate: { added_by: { select: ["id", "name", "email"] } },
+                    });
+                    // Notify added_by user if they exist and it's not the liker
+                    if (((_a = site === null || site === void 0 ? void 0 : site.added_by) === null || _a === void 0 ? void 0 : _a.id) && site.added_by.id !== parseInt(ctx.params.id)) {
+                        await (0, notificationService_1.createNotification)(strapi, {
+                            recipientId: site.added_by.id,
+                            type: "site_like",
+                            title: "Someone liked your place",
+                            message: `${likerName} liked "${site.title}"`,
+                            relatedEntityType: "site",
+                            relatedEntityId: siteId,
+                            metadata: { likerUserId: parseInt(ctx.params.id) },
+                        });
+                    }
+                }
+                catch (err) {
+                    strapi.log.error(`Failed to send like notification for site ${siteId}:`, err);
+                }
+            }));
+        }
         return {
             data: {
                 id: user.id,
@@ -360,11 +400,12 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             }));
             const savedRoutes = currentUser.data.attributes.saved_public_routes.data.map((r) => r.id) || [];
             let newSavedRoutes;
-            if (savedRoutes.includes(routeId)) {
-                newSavedRoutes = savedRoutes.filter((r) => r !== routeId);
+            const isAdding = !savedRoutes.includes(routeId);
+            if (isAdding) {
+                newSavedRoutes = [...savedRoutes, routeId];
             }
             else {
-                newSavedRoutes = [...savedRoutes, routeId];
+                newSavedRoutes = savedRoutes.filter((r) => r !== routeId);
             }
             // Strapi 5: Use db.query directly
             const user = await strapi.db.query("api::auth-user.auth-user").update({
@@ -372,6 +413,36 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 data: { saved_public_routes: newSavedRoutes },
                 populate: populateConfig,
             });
+            // Send notification to route owner if someone else is saving it (async, don't block response)
+            if (isAdding) {
+                const saverName = user.name || "Someone";
+                Promise.resolve().then(async () => {
+                    var _a;
+                    try {
+                        // Get route with owner info
+                        const route = await strapi.db.query("api::user-route.user-route").findOne({
+                            where: { id: routeId },
+                            select: ["id", "name"],
+                            populate: { owner: { select: ["id", "name", "email"] } },
+                        });
+                        // Notify route owner if they exist and it's not the saver
+                        if (((_a = route === null || route === void 0 ? void 0 : route.owner) === null || _a === void 0 ? void 0 : _a.id) && route.owner.id !== parseInt(ctx.params.id)) {
+                            await (0, notificationService_1.createNotification)(strapi, {
+                                recipientId: route.owner.id,
+                                type: "route_favourite",
+                                title: "Someone saved your route",
+                                message: `${saverName} saved your route "${route.name}"`,
+                                relatedEntityType: "user_route",
+                                relatedEntityId: routeId,
+                                metadata: { saverUserId: parseInt(ctx.params.id) },
+                            });
+                        }
+                    }
+                    catch (err) {
+                        strapi.log.error(`Failed to send route favourite notification for route ${routeId}:`, err);
+                    }
+                });
+            }
             return {
                 data: {
                     id: user.id,
@@ -532,5 +603,218 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 },
             },
         };
+    },
+    /**
+     * Get paginated notifications for the current user
+     */
+    async getNotifications(ctx) {
+        const userId = ctx.params.id;
+        const page = parseInt(ctx.query.page || "1", 10);
+        const pageSize = parseInt(ctx.query.pageSize || "20", 10);
+        const where = { recipient: userId };
+        const [notifications, total] = await Promise.all([
+            strapi.db.query("api::notification.notification").findMany({
+                where,
+                orderBy: { createdAt: "desc" },
+                offset: (page - 1) * pageSize,
+                limit: pageSize,
+            }),
+            strapi.db.query("api::notification.notification").count({ where }),
+        ]);
+        // Map to ensure consistent field names for frontend
+        const mappedNotifications = notifications.map((n) => ({
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            is_read: n.is_read,
+            related_entity_type: n.related_entity_type,
+            related_entity_id: n.related_entity_id,
+            metadata: n.metadata,
+            createdAt: n.createdAt || n.created_at,
+        }));
+        return {
+            data: mappedNotifications,
+            meta: {
+                pagination: {
+                    page,
+                    pageSize,
+                    pageCount: Math.ceil(total / pageSize),
+                    total,
+                },
+            },
+        };
+    },
+    /**
+     * Get unread notification count for badge
+     */
+    async getNotificationBadgeCount(ctx) {
+        const userId = ctx.params.id;
+        const count = await strapi.db
+            .query("api::notification.notification")
+            .count({
+            where: { recipient: userId, is_read: false },
+        });
+        return { count };
+    },
+    /**
+     * Mark all notifications as read
+     */
+    async markAllNotificationsRead(ctx) {
+        const userId = ctx.params.id;
+        // Get all unread notification IDs for this user
+        const unreadNotifications = await strapi.db
+            .query("api::notification.notification")
+            .findMany({
+            where: { recipient: userId, is_read: false },
+            select: ["id"],
+        });
+        // Update each notification
+        if (unreadNotifications.length > 0) {
+            await Promise.all(unreadNotifications.map((notification) => strapi.db.query("api::notification.notification").update({
+                where: { id: notification.id },
+                data: { is_read: true },
+            })));
+        }
+        return { success: true, markedCount: unreadNotifications.length };
+    },
+    /**
+     * Mark a single notification as read
+     */
+    async markNotificationRead(ctx) {
+        var _a, _b, _c;
+        const userId = ctx.params.id;
+        const notificationId = ctx.query.notificationId || ctx.params.notificationId;
+        // Parse the notification ID from the route path
+        const pathParts = ((_b = (_a = ctx.request) === null || _a === void 0 ? void 0 : _a.url) === null || _b === void 0 ? void 0 : _b.split("/")) || [];
+        const readIndex = pathParts.indexOf("read");
+        const parsedNotificationId = readIndex > 0 ? pathParts[readIndex - 1] : null;
+        const finalNotificationId = notificationId || parsedNotificationId;
+        if (!finalNotificationId) {
+            ctx.status = 400;
+            return { error: "Notification ID is required" };
+        }
+        // Verify the notification belongs to this user
+        const notification = await strapi.db
+            .query("api::notification.notification")
+            .findOne({
+            where: { id: finalNotificationId },
+            populate: { recipient: true },
+        });
+        if (!notification) {
+            ctx.status = 404;
+            return { error: "Notification not found" };
+        }
+        if (((_c = notification.recipient) === null || _c === void 0 ? void 0 : _c.id) !== parseInt(userId)) {
+            ctx.status = 403;
+            return { error: "Not authorized to update this notification" };
+        }
+        await strapi.db.query("api::notification.notification").update({
+            where: { id: finalNotificationId },
+            data: { is_read: true },
+        });
+        return { success: true };
+    },
+    /**
+     * Get notification preferences for the current user
+     */
+    async getNotificationPreferences(ctx) {
+        const userId = ctx.params.id;
+        let prefs = await strapi.db
+            .query("api::notification-preference.notification-preference")
+            .findOne({
+            where: { user: userId },
+        });
+        // Create with defaults if doesn't exist
+        if (!prefs) {
+            prefs = await strapi.db
+                .query("api::notification-preference.notification-preference")
+                .create({
+                data: { user: userId },
+            });
+        }
+        return {
+            data: {
+                id: prefs.id,
+                attributes: prefs,
+            },
+        };
+    },
+    /**
+     * Update notification preferences for the current user
+     */
+    async updateNotificationPreferences(ctx) {
+        var _a;
+        const userId = ctx.params.id;
+        const updates = ((_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) || {};
+        // Remove any fields that shouldn't be updated directly
+        delete updates.user;
+        delete updates.id;
+        let prefs = await strapi.db
+            .query("api::notification-preference.notification-preference")
+            .findOne({
+            where: { user: userId },
+        });
+        if (!prefs) {
+            prefs = await strapi.db
+                .query("api::notification-preference.notification-preference")
+                .create({
+                data: { user: userId, ...updates },
+            });
+        }
+        else {
+            prefs = await strapi.db
+                .query("api::notification-preference.notification-preference")
+                .update({
+                where: { id: prefs.id },
+                data: updates,
+            });
+        }
+        return {
+            data: {
+                id: prefs.id,
+                attributes: prefs,
+            },
+        };
+    },
+    /**
+     * Update FCM token for push notifications
+     */
+    async updateFcmToken(ctx) {
+        var _a, _b;
+        const userId = ctx.params.id;
+        const fcmToken = (_b = (_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.fcmToken;
+        if (!fcmToken) {
+            ctx.status = 400;
+            return { error: "FCM token is required" };
+        }
+        await strapi.db.query("api::auth-user.auth-user").update({
+            where: { id: userId },
+            data: { fcm_token: fcmToken },
+        });
+        return { success: true };
+    },
+    /**
+     * Test push notification - sends a test notification to yourself
+     */
+    async testPushNotification(ctx) {
+        const userId = ctx.params.id;
+        try {
+            await (0, notificationService_1.createNotification)(strapi, {
+                recipientId: parseInt(userId),
+                type: "status_change",
+                title: "Test notification",
+                message: "This is a test push notification from Wildway!",
+                relatedEntityType: undefined,
+                relatedEntityId: undefined,
+                metadata: { test: true },
+            });
+            return { success: true, message: "Test notification sent" };
+        }
+        catch (err) {
+            strapi.log.error("Test push failed:", err);
+            ctx.status = 500;
+            return { error: err.message };
+        }
     },
 }));

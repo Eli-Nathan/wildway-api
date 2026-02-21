@@ -969,5 +969,41 @@ export default factories.createCoreController(
         return { error: err.message };
       }
     },
+
+    /**
+     * Get marketing preferences for the current user
+     */
+    async getMarketingPreferences(ctx: StrapiContext) {
+      const userId = ctx.params.id;
+
+      const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: userId },
+        select: ["allowMarketing"],
+      });
+
+      return {
+        allowMarketing: user?.allowMarketing ?? false,
+      };
+    },
+
+    /**
+     * Update marketing preferences for the current user
+     */
+    async updateMarketingPreferences(ctx: StrapiContext) {
+      const userId = ctx.params.id;
+      const { allowMarketing } = ctx.request.body?.data || {};
+
+      if (typeof allowMarketing !== "boolean") {
+        ctx.status = 400;
+        return { error: "allowMarketing must be a boolean" };
+      }
+
+      await strapi.db.query("api::auth-user.auth-user").update({
+        where: { id: userId },
+        data: { allowMarketing },
+      });
+
+      return { allowMarketing };
+    },
   })
 );

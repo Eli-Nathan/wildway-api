@@ -57,6 +57,24 @@ const config = {
                 policies: ["global::firebase-authed", "global::is-owner"],
             },
         },
+        {
+            method: "PUT",
+            path: "/reviews/:id/reply",
+            handler: "review.addReply",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "api::review.is-site-owner"],
+            },
+        },
+        {
+            method: "DELETE",
+            path: "/reviews/:id/reply",
+            handler: "review.deleteReply",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "api::review.is-site-owner"],
+            },
+        },
     ],
 };
 exports.default = config;

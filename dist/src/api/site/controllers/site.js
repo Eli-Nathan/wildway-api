@@ -474,8 +474,133 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             meta: { message: "Site deleted successfully" },
         };
     },
+    async getAnalytics(ctx) {
+        var _a, _b;
+        const { id } = ctx.params;
+        const userId = (_a = ctx.state.user) === null || _a === void 0 ? void 0 : _a.id;
+        // Verify user owns this site
+        const site = await strapi.db.query("api::site.site").findOne({
+            where: { id },
+            populate: { owners: { select: ["id"] } },
+        });
+        if (!site) {
+            ctx.status = 404;
+            return { error: { status: 404, message: "Site not found" } };
+        }
+        const isOwner = (_b = site.owners) === null || _b === void 0 ? void 0 : _b.some((owner) => owner.id === userId);
+        if (!isOwner) {
+            ctx.status = 403;
+            return { error: { status: 403, message: "You do not own this site" } };
+        }
+        // Query Google Analytics
+        const { BetaAnalyticsDataClient } = require("@google-analytics/data");
+        const analyticsClient = new BetaAnalyticsDataClient();
+        const propertyId = process.env.GA4_PROPERTY_ID;
+        if (!propertyId) {
+            strapi.log.warn("GA4_PROPERTY_ID not configured");
+            return {
+                data: {
+                    views: null,
+                    ctaClicks: null,
+                    mapImpressions: null,
+                    searchImpressions: null,
+                },
+                meta: { error: "Analytics not configured" },
+            };
+        }
+        // Helper to create a report query with two date ranges and both metrics
+        const createReportQuery = (eventName, dimensionName, dimensionValue) => ({
+            property: `properties/${propertyId}`,
+            dateRanges: [
+                { startDate: "30daysAgo", endDate: "today", name: "current" },
+                { startDate: "60daysAgo", endDate: "31daysAgo", name: "previous" },
+            ],
+            dimensions: [{ name: dimensionName }],
+            metrics: [
+                { name: "eventCount" },
+                { name: "activeUsers" },
+            ],
+            dimensionFilter: {
+                andGroup: {
+                    expressions: [
+                        {
+                            filter: {
+                                fieldName: "eventName",
+                                stringFilter: { value: eventName },
+                            },
+                        },
+                        {
+                            filter: {
+                                fieldName: dimensionName,
+                                stringFilter: { value: dimensionValue },
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+        // Helper to parse response with two date ranges
+        // GA4 returns metrics for each date range in sequence within the same row:
+        // metricValues[0] = eventCount for current period
+        // metricValues[1] = activeUsers for current period
+        // metricValues[2] = eventCount for previous period
+        // metricValues[3] = activeUsers for previous period
+        const parseResponse = (response) => {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+            const row = (_a = response.rows) === null || _a === void 0 ? void 0 : _a[0];
+            const currentCount = parseInt(((_c = (_b = row === null || row === void 0 ? void 0 : row.metricValues) === null || _b === void 0 ? void 0 : _b[0]) === null || _c === void 0 ? void 0 : _c.value) || "0", 10);
+            const currentUsers = parseInt(((_e = (_d = row === null || row === void 0 ? void 0 : row.metricValues) === null || _d === void 0 ? void 0 : _d[1]) === null || _e === void 0 ? void 0 : _e.value) || "0", 10);
+            const previousCount = parseInt(((_g = (_f = row === null || row === void 0 ? void 0 : row.metricValues) === null || _f === void 0 ? void 0 : _f[2]) === null || _g === void 0 ? void 0 : _g.value) || "0", 10);
+            const previousUsers = parseInt(((_j = (_h = row === null || row === void 0 ? void 0 : row.metricValues) === null || _h === void 0 ? void 0 : _h[3]) === null || _j === void 0 ? void 0 : _j.value) || "0", 10);
+            // Calculate percentage change (avoid division by zero)
+            const countChange = previousCount > 0
+                ? Math.round(((currentCount - previousCount) / previousCount) * 100)
+                : currentCount > 0 ? 100 : 0;
+            const usersChange = previousUsers > 0
+                ? Math.round(((currentUsers - previousUsers) / previousUsers) * 100)
+                : currentUsers > 0 ? 100 : 0;
+            return {
+                total: currentCount,
+                uniqueUsers: currentUsers,
+                previousTotal: previousCount,
+                previousUniqueUsers: previousUsers,
+                totalChange: countChange,
+                uniqueUsersChange: usersChange,
+            };
+        };
+        try {
+            // Run all queries in parallel
+            const [viewsResponse, ctaResponse, mapImpressionsResponse, searchImpressionsResponse] = await Promise.all([
+                analyticsClient.runReport(createReportQuery("site_page_viewed", "customEvent:id", String(id))),
+                analyticsClient.runReport(createReportQuery("cta_clicked", "customEvent:site_id", String(id))),
+                analyticsClient.runReport(createReportQuery("site_visible_on_map", "customEvent:id", String(id))),
+                analyticsClient.runReport(createReportQuery("searched", "customEvent:id", String(id))),
+            ]);
+            return {
+                data: {
+                    views: parseResponse(viewsResponse[0]),
+                    ctaClicks: parseResponse(ctaResponse[0]),
+                    mapImpressions: parseResponse(mapImpressionsResponse[0]),
+                    searchImpressions: parseResponse(searchImpressionsResponse[0]),
+                },
+                meta: { period: "last_30_days", comparedTo: "previous_30_days" },
+            };
+        }
+        catch (error) {
+            strapi.log.error("Analytics query failed:", error);
+            return {
+                data: {
+                    views: null,
+                    ctaClicks: null,
+                    mapImpressions: null,
+                    searchImpressions: null,
+                },
+                meta: { error: "Failed to fetch analytics" },
+            };
+        }
+    },
     async parseSingleSite(ctx, site, siteWithUsers, shouldSanitizeChildren = true) {
-        var _a, _b, _c, _d, _e, _f, _g, _h;
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
         const siteOwners = siteWithUsers === null || siteWithUsers === void 0 ? void 0 : siteWithUsers.owners;
         const siteLikes = siteWithUsers === null || siteWithUsers === void 0 ? void 0 : siteWithUsers.likes;
         const siteAddedBy = siteWithUsers === null || siteWithUsers === void 0 ? void 0 : siteWithUsers.added_by;
@@ -522,7 +647,16 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             }
             : null;
         const siteHasOwners = siteOwners ? siteOwners.length > 0 : false;
-        const reviews = (_d = (_c = site === null || site === void 0 ? void 0 : site.data) === null || _c === void 0 ? void 0 : _c.attributes) === null || _d === void 0 ? void 0 : _d.reviews;
+        // Fetch owner's role features to determine what tier features are available
+        let ownerFeatures = null;
+        if (siteHasOwners && ((_c = siteOwners[0]) === null || _c === void 0 ? void 0 : _c.id)) {
+            const ownerWithRole = await strapi.db.query("api::auth-user.auth-user").findOne({
+                where: { id: siteOwners[0].id },
+                populate: { role: true },
+            });
+            ownerFeatures = ((_d = ownerWithRole === null || ownerWithRole === void 0 ? void 0 : ownerWithRole.role) === null || _d === void 0 ? void 0 : _d.features) || null;
+        }
+        const reviews = (_f = (_e = site === null || site === void 0 ? void 0 : site.data) === null || _e === void 0 ? void 0 : _e.attributes) === null || _f === void 0 ? void 0 : _f.reviews;
         const sanitizedReviews = shouldSanitizeChildren
             ? (0, sanitizeApiResponse_1.default)(reviews)
             : reviews;
@@ -554,10 +688,10 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             }
         }))).filter(Boolean);
         // Fetch guides related to this site's type, sub_types, and facilities
-        const siteAttributes = (_e = site === null || site === void 0 ? void 0 : site.data) === null || _e === void 0 ? void 0 : _e.attributes;
-        const typeId = (_f = siteAttributes === null || siteAttributes === void 0 ? void 0 : siteAttributes.type) === null || _f === void 0 ? void 0 : _f.id;
-        const subTypeIds = ((_g = siteAttributes === null || siteAttributes === void 0 ? void 0 : siteAttributes.sub_types) === null || _g === void 0 ? void 0 : _g.map((st) => st.id)) || [];
-        const facilityIds = ((_h = siteAttributes === null || siteAttributes === void 0 ? void 0 : siteAttributes.facilities) === null || _h === void 0 ? void 0 : _h.map((f) => f.id)) || [];
+        const siteAttributes = (_g = site === null || site === void 0 ? void 0 : site.data) === null || _g === void 0 ? void 0 : _g.attributes;
+        const typeId = (_h = siteAttributes === null || siteAttributes === void 0 ? void 0 : siteAttributes.type) === null || _h === void 0 ? void 0 : _h.id;
+        const subTypeIds = ((_j = siteAttributes === null || siteAttributes === void 0 ? void 0 : siteAttributes.sub_types) === null || _j === void 0 ? void 0 : _j.map((st) => st.id)) || [];
+        const facilityIds = ((_k = siteAttributes === null || siteAttributes === void 0 ? void 0 : siteAttributes.facilities) === null || _k === void 0 ? void 0 : _k.map((f) => f.id)) || [];
         const allTypeIds = [typeId, ...subTypeIds].filter(Boolean);
         let guides = [];
         if (allTypeIds.length > 0 || facilityIds.length > 0) {
@@ -589,12 +723,22 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
         }
         // @ts-expect-error - Strapi core controller method
         const output = await this.sanitizeOutput(site, ctx);
+        // Filter tier-gated features based on owner's subscription
+        const attributes = output.data.attributes;
+        const filteredAttributes = {
+            ...attributes,
+            // Only include CTA if owner has custom_cta feature
+            cta_label: (ownerFeatures === null || ownerFeatures === void 0 ? void 0 : ownerFeatures.custom_cta) ? attributes.cta_label : null,
+            cta_url: (ownerFeatures === null || ownerFeatures === void 0 ? void 0 : ownerFeatures.custom_cta) ? attributes.cta_url : null,
+            // Only include social links if owner has social_links feature
+            social_links: (ownerFeatures === null || ownerFeatures === void 0 ? void 0 : ownerFeatures.social_links) ? attributes.social_links : null,
+        };
         return {
             ...output,
             data: {
                 id: output.data.id,
                 attributes: {
-                    ...output.data.attributes,
+                    ...filteredAttributes,
                     reviews: enrichedReviews,
                     // Backwards compatibility: old apps expect comments field
                     // TODO: Remove after all users have updated to new app version
@@ -605,6 +749,8 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                     contributors: parsedSiteContributors,
                     likes: parsedSiteLikes,
                     guides,
+                    // Include owner's features so frontend can check analytics_dashboard and reply_to_reviews
+                    ownerFeatures: siteHasOwners ? ownerFeatures : null,
                 },
             },
         };

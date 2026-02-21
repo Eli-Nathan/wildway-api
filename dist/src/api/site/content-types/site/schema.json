@@ -71,7 +71,6 @@
         "priority": {
             "type": "integer",
             "default": 0,
-            "max": 5,
             "min": 0,
             "pluginOptions": {}
         },
@@ -176,6 +175,18 @@
             "relation": "manyToMany",
             "target": "api::site-list.site-list",
             "mappedBy": "sites"
+        },
+        "cta_label": {
+            "type": "string",
+            "pluginOptions": {}
+        },
+        "cta_url": {
+            "type": "string",
+            "pluginOptions": {}
+        },
+        "social_links": {
+            "type": "json",
+            "pluginOptions": {}
         }
     }
 }

@@ -116,10 +116,16 @@ async function sendPushNotification(
   fcmToken: string,
   title: string,
   body: string,
+  recipientId: number,
   strapi: StrapiInstance
 ): Promise<boolean> {
   try {
-    strapi.log.info(`Attempting push notification to token: ${fcmToken.substring(0, 20)}...`);
+    // Get actual unread notification count for badge
+    const unreadCount = await strapi.db
+      .query("api::notification.notification")
+      .count({
+        where: { recipient: recipientId, is_read: false },
+      });
 
     const message = {
       token: fcmToken,
@@ -131,8 +137,18 @@ async function sendPushNotification(
         payload: {
           aps: {
             sound: "default",
-            badge: 1,
+            badge: unreadCount,
           },
+        },
+      },
+      android: {
+        priority: "high" as const,
+        notification: {
+          channelId: "default_channel",
+          sound: "default",
+          priority: "high" as const,
+          defaultSound: true,
+          defaultVibrateTimings: true,
         },
       },
       data: {
@@ -140,30 +156,11 @@ async function sendPushNotification(
       },
     };
 
-    strapi.log.info(`Sending via Firebase Admin SDK...`);
-    strapi.log.info(`Full FCM token: ${fcmToken}`);
     const messaging = getMessaging();
-    strapi.log.info(`Got messaging instance, app name: ${messaging.app.name}`);
-    strapi.log.info(`Message payload: ${JSON.stringify(message)}`);
-    strapi.log.info(`Calling messaging.send()...`);
-    const response = await messaging.send(message);
-    strapi.log.info(`FCM send success, message ID: ${response}`);
+    await messaging.send(message);
     return true;
   } catch (err: unknown) {
-    strapi.log.error("FCM send caught error type:", typeof err);
-    strapi.log.error("FCM send caught error:", String(err));
-    if (err instanceof Error) {
-      strapi.log.error("FCM Error.message:", err.message);
-      strapi.log.error("FCM Error.name:", err.name);
-      strapi.log.error("FCM Error.stack:", err.stack?.substring(0, 500));
-    }
-    if (err && typeof err === 'object') {
-      strapi.log.error("FCM error keys:", Object.keys(err));
-      strapi.log.error("FCM error own props:", Object.getOwnPropertyNames(err));
-      for (const key of Object.keys(err)) {
-        strapi.log.error(`FCM error[${key}]:`, (err as Record<string, unknown>)[key]);
-      }
-    }
+    strapi.log.error("FCM send error:", err instanceof Error ? err.message : String(err));
     return false;
   }
 }
@@ -251,6 +248,7 @@ export async function createNotification(
           recipient.fcm_token,
           data.title,
           data.message,
+          data.recipientId,
           strapi
         );
         if (sent) {

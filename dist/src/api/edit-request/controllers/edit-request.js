@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const strapi_1 = require("@strapi/strapi");
 const slack_1 = require("../../../nomad/slack");
 const getEditableFieldsFromSite = (siteData) => {
-    const { title, description, tel, email, facilities, pricerange, url, sub_types, type, route_metadata, } = siteData;
+    const { title, description, tel, email, facilities, pricerange, url, sub_types, type, route_metadata, cta_label, cta_url, social_links, } = siteData;
     return {
         title,
         description,
@@ -16,6 +16,9 @@ const getEditableFieldsFromSite = (siteData) => {
         url,
         type,
         route_metadata,
+        cta_label,
+        cta_url,
+        social_links,
     };
 };
 // Helper to format relation in Strapi 4 format
