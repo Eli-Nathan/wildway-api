@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "weather_usage",
+  "info": {
+    "singularName": "weather-usage",
+    "pluralName": "weather-usages",
+    "displayName": "Weather Usage",
+    "description": "Tracks WeatherKit API usage per month for quota management"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "month": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "call_count": {
+      "type": "integer",
+      "default": 0,
+      "required": true
+    },
+    "is_disabled": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "disabled_at": {
+      "type": "datetime"
+    },
+    "disabled_reason": {
+      "type": "text"
+    }
+  }
+}
