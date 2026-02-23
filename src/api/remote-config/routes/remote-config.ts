@@ -15,6 +15,24 @@ interface RoutesConfig {
 const config: RoutesConfig = {
   routes: [
     {
+      method: "GET",
+      path: "/remote-config/admin",
+      handler: "remote-config.adminPage",
+      config: {
+        auth: false,
+        policies: [], // Admin key validated in controller
+      },
+    },
+    {
+      method: "GET",
+      path: "/remote-config/status",
+      handler: "remote-config.getStatus",
+      config: {
+        auth: false,
+        policies: [], // Admin key validated in controller
+      },
+    },
+    {
       method: "POST",
       path: "/remote-config/enable-review-flag",
       handler: "remote-config.enableReviewFlag",

@@ -8,7 +8,8 @@
     "start": "strapi start",
     "build": "strapi build",
     "strapi": "strapi",
-    "debug": "nodemon --inspect=127.0.0.1:9229 ./node_modules/@strapi/strapi/bin/strapi.js develop"
+    "debug": "nodemon --inspect=127.0.0.1:9229 ./node_modules/@strapi/strapi/bin/strapi.js develop",
+    "check-approval": "npx ts-node scripts/check-app-approval.ts"
   },
   "devDependencies": {
     "@types/koa": "^2.15.0",
