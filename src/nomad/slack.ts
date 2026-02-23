@@ -8,6 +8,7 @@ import type { SlackBlock, SlackMessage } from "../types/external";
 
 interface SlackEntry {
   id: number;
+  documentId: string;
   title?: string;
   data?: Record<string, unknown>;
   [key: string]: unknown;
@@ -48,8 +49,8 @@ const formSubmission: MessageHandler = async (ctx, entry) => {
         type: "mrkdwn",
         text: `*Form: ${_.startCase(
           (formSubmitted?.name || "").replace("-", " ")
-        )}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::form-submission.form-submission/${
-          entry.id
+        )}* \n <https://api.wildway.app/admin/content-manager/collection-types/api::form-submission.form-submission/${
+          entry.documentId
         }|View submission>`,
       },
     },
@@ -76,8 +77,8 @@ const additionRequest: MessageHandler = async (_ctx, entry) => {
         type: "mrkdwn",
         text: `*Title: ${_.startCase(
           entry.title || ""
-        )}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::addition-request.addition-request/${
-          entry.id
+        )}* \n <https://api.wildway.app/admin/content-manager/collection-types/api::addition-request.addition-request/${
+          entry.documentId
         }|View addition request>`,
       },
     },
@@ -98,7 +99,7 @@ const editRequest: MessageHandler = async (_ctx, entry) => {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `<https://api.wildway.app/admin/content-manager/collectionType/api::edit-request.edit-request/${entry.id}|View edit request>`,
+        text: `<https://api.wildway.app/admin/content-manager/collection-types/api::edit-request.edit-request/${entry.documentId}|View edit request>`,
       },
     },
   ];
@@ -120,8 +121,8 @@ const review: MessageHandler = async (_ctx, entry) => {
         type: "mrkdwn",
         text: `*Title: ${_.startCase(
           entry.title || ""
-        )}* \n*Rating: ${"⭐".repeat(entry.rating as number || 0)}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::review.review/${
-          entry.id
+        )}* \n*Rating: ${"⭐".repeat(entry.rating as number || 0)}* \n <https://api.wildway.app/admin/content-manager/collection-types/api::review.review/${
+          entry.documentId
         }|View review>`,
       },
     },
@@ -184,7 +185,7 @@ const contentReport: MessageHandler = async (_ctx, entry) => {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `<https://api.wildway.app/admin/content-manager/collectionType/api::content-report.content-report/${entry.id}|View Report>`,
+        text: `<https://api.wildway.app/admin/content-manager/collection-types/api::content-report.content-report/${entry.documentId}|View Report>`,
       },
     },
   ];

@@ -612,7 +612,7 @@ export default factories.createCoreController(
 
       if (user) {
         strapi.log.info("auth-user create: Sending welcome email for user:", user.id);
-        const { text, html, subject } = newUserAdded(user.name || "Name unknown", user.id);
+        const { text, html, subject } = newUserAdded(user.name || "Name unknown", user.documentId);
         await sendEmail({
           strapi,
           subject,
