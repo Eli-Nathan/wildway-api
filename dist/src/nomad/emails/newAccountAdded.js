@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const getEmailTemplate_1 = __importDefault(require("./getEmailTemplate"));
-const getMainBody = (name, id) => `
+const getMainBody = (name, documentId) => `
 <h3 style="Margin:0;line-height:34px;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;font-size:28px;font-style:normal;font-weight:bold;color:#f45b69">
   New user!
 </h3>
@@ -12,7 +12,7 @@ const getMainBody = (name, id) => `
   <br>
 </p>
 <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
-  New user: <strong><b>${name}</b></strong> has registered a new account. <a target="_blank" style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#2D3142;font-size:18px;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif" href="https://api.wildway.app/admin/content-manager/collectionType/api::auth-user.auth-user/${id}">View user</a>..
+  New user: <strong><b>${name}</b></strong> has registered a new account. <a target="_blank" style="-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;text-decoration:underline;color:#2D3142;font-size:18px;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif" href="https://api.wildway.app/admin/content-manager/collection-types/api::auth-user.auth-user/${documentId}">View user</a>..
 </p>
 <p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
   <br>
@@ -24,14 +24,14 @@ const getMainBody = (name, id) => `
   <br>
 </p>
 `;
-const getPlainText = (name, id) => `
+const getPlainText = (name, documentId) => `
 New user!
-New user: ${name} has registered a new account. ID: ${id}
+New user: ${name} has registered a new account. Document ID: ${documentId}
 Check them out and decide if they're a test user or real user.
 `;
-const newUserAdded = (name, id) => {
-    const text = getPlainText(name, id);
-    const htmlBody = getMainBody(name, id);
+const newUserAdded = (name, documentId) => {
+    const text = getPlainText(name, documentId);
+    const htmlBody = getMainBody(name, documentId);
     const html = (0, getEmailTemplate_1.default)(htmlBody);
     return {
         subject: "New wildway user",

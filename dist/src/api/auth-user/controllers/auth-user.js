@@ -501,7 +501,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         }
         if (user) {
             strapi.log.info("auth-user create: Sending welcome email for user:", user.id);
-            const { text, html, subject } = (0, emails_1.newUserAdded)(user.name || "Name unknown", user.id);
+            const { text, html, subject } = (0, emails_1.newUserAdded)(user.name || "Name unknown", user.documentId);
             await (0, emails_1.sendEmail)({
                 strapi,
                 subject,
@@ -816,5 +816,36 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             ctx.status = 500;
             return { error: err.message };
         }
+    },
+    /**
+     * Get marketing preferences for the current user
+     */
+    async getMarketingPreferences(ctx) {
+        var _a;
+        const userId = ctx.params.id;
+        const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+            where: { id: userId },
+            select: ["allowMarketing"],
+        });
+        return {
+            allowMarketing: (_a = user === null || user === void 0 ? void 0 : user.allowMarketing) !== null && _a !== void 0 ? _a : false,
+        };
+    },
+    /**
+     * Update marketing preferences for the current user
+     */
+    async updateMarketingPreferences(ctx) {
+        var _a;
+        const userId = ctx.params.id;
+        const { allowMarketing } = ((_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) || {};
+        if (typeof allowMarketing !== "boolean") {
+            ctx.status = 400;
+            return { error: "allowMarketing must be a boolean" };
+        }
+        await strapi.db.query("api::auth-user.auth-user").update({
+            where: { id: userId },
+            data: { allowMarketing },
+        });
+        return { allowMarketing };
     },
 }));

@@ -4,17 +4,17 @@ const config = {
     routes: [
         {
             method: "GET",
-            path: "/remote-config/admin",
-            handler: "remote-config.adminPage",
+            path: "/weather",
+            handler: "weather.getWeather",
             config: {
                 auth: false,
-                policies: [], // Admin key validated in controller
+                policies: [], // Public endpoint, no auth required
             },
         },
         {
             method: "GET",
-            path: "/remote-config/status",
-            handler: "remote-config.getStatus",
+            path: "/weather/status",
+            handler: "weather.getStatus",
             config: {
                 auth: false,
                 policies: [], // Admin key validated in controller
@@ -22,8 +22,8 @@ const config = {
         },
         {
             method: "POST",
-            path: "/remote-config/enable-review-flag",
-            handler: "remote-config.enableReviewFlag",
+            path: "/weather/toggle",
+            handler: "weather.toggle",
             config: {
                 auth: false,
                 policies: [], // Admin key validated in controller
@@ -31,8 +31,8 @@ const config = {
         },
         {
             method: "POST",
-            path: "/remote-config/disable-review-flag",
-            handler: "remote-config.disableReviewFlag",
+            path: "/weather/clear-cache",
+            handler: "weather.clearCache",
             config: {
                 auth: false,
                 policies: [], // Admin key validated in controller

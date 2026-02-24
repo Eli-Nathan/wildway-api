@@ -95,6 +95,16 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
+    // Offline data endpoint - returns route + all sites for offline download
+    {
+      method: "GET",
+      path: "/user-routes/:id/offline",
+      handler: "user-route.getOfflineData",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "global::is-owner"],
+      },
+    },
   ],
 };
 

@@ -77,6 +77,16 @@ async function sendPushNotification(fcmToken, title, body, recipientId, strapi) 
                     },
                 },
             },
+            android: {
+                priority: "high",
+                notification: {
+                    channelId: "default_channel",
+                    sound: "default",
+                    priority: "high",
+                    defaultSound: true,
+                    defaultVibrateTimings: true,
+                },
+            },
             data: {
                 screen: "notifications",
             },

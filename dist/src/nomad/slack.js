@@ -34,7 +34,7 @@ const formSubmission = async (ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `*Form: ${lodash_1.default.startCase(((formSubmitted === null || formSubmitted === void 0 ? void 0 : formSubmitted.name) || "").replace("-", " "))}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::form-submission.form-submission/${entry.id}|View submission>`,
+                text: `*Form: ${lodash_1.default.startCase(((formSubmitted === null || formSubmitted === void 0 ? void 0 : formSubmitted.name) || "").replace("-", " "))}* \n <https://api.wildway.app/admin/content-manager/collection-types/api::form-submission.form-submission/${entry.documentId}|View submission>`,
             },
         },
         {
@@ -57,7 +57,7 @@ const additionRequest = async (_ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::addition-request.addition-request/${entry.id}|View addition request>`,
+                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n <https://api.wildway.app/admin/content-manager/collection-types/api::addition-request.addition-request/${entry.documentId}|View addition request>`,
             },
         },
     ];
@@ -76,7 +76,7 @@ const editRequest = async (_ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `<https://api.wildway.app/admin/content-manager/collectionType/api::edit-request.edit-request/${entry.id}|View edit request>`,
+                text: `<https://api.wildway.app/admin/content-manager/collection-types/api::edit-request.edit-request/${entry.documentId}|View edit request>`,
             },
         },
     ];
@@ -95,7 +95,7 @@ const review = async (_ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n*Rating: ${"⭐".repeat(entry.rating || 0)}* \n <https://api.wildway.app/admin/content-manager/collectionType/api::review.review/${entry.id}|View review>`,
+                text: `*Title: ${lodash_1.default.startCase(entry.title || "")}* \n*Rating: ${"⭐".repeat(entry.rating || 0)}* \n <https://api.wildway.app/admin/content-manager/collection-types/api::review.review/${entry.documentId}|View review>`,
             },
         },
     ];
@@ -154,7 +154,7 @@ const contentReport = async (_ctx, entry) => {
             type: "section",
             text: {
                 type: "mrkdwn",
-                text: `<https://api.wildway.app/admin/content-manager/collectionType/api::content-report.content-report/${entry.id}|View Report>`,
+                text: `<https://api.wildway.app/admin/content-manager/collection-types/api::content-report.content-report/${entry.documentId}|View Report>`,
             },
         },
     ];

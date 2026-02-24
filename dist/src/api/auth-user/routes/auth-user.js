@@ -182,6 +182,24 @@ const config = {
                 policies: ["global::firebase-authed", "is-user"],
             },
         },
+        {
+            method: "GET",
+            path: "/auth-users/me/marketing-preferences",
+            handler: "auth-user.getMarketingPreferences",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "is-user"],
+            },
+        },
+        {
+            method: "PUT",
+            path: "/auth-users/me/marketing-preferences",
+            handler: "auth-user.updateMarketingPreferences",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "is-user"],
+            },
+        },
     ],
 };
 exports.default = config;
