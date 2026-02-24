@@ -53,6 +53,10 @@ const config: RoutesConfig = {
       method: "GET",
       path: "/nomad-routes/:id/offline",
       handler: "nomad-route.getOfflineData",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed"],
+      },
     },
   ],
 };

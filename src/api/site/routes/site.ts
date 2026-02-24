@@ -44,6 +44,15 @@ const config: RoutesConfig = {
     },
     {
       method: "GET",
+      path: "/sites/within-bounds",
+      handler: "site.findWithinBounds",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed"],
+      },
+    },
+    {
+      method: "GET",
       path: "/sites/by-user/:userId",
       handler: "site.findByUser",
       config: {
@@ -95,15 +104,6 @@ const config: RoutesConfig = {
       config: {
         auth: false,
         policies: ["global::firebase-authed"],
-      },
-    },
-    {
-      method: "GET",
-      path: "/sites/within-bounds",
-      handler: "site.findWithinBounds",
-      config: {
-        auth: false,
-        middlewares: ["api::site.populate-sites"],
       },
     },
   ],
