@@ -763,6 +763,85 @@ export default factories.createCoreController(
       }
     },
 
+    /**
+     * Find all sites within geographic bounds - used for offline region downloads
+     * Returns all matching sites with full data needed for offline storage
+     */
+    async findWithinBounds(ctx: StrapiContext) {
+      const { north, south, east, west } = ctx.request.query as {
+        north?: string;
+        south?: string;
+        east?: string;
+        west?: string;
+      };
+
+      // Validate required params
+      if (!north || !south || !east || !west) {
+        ctx.status = 400;
+        return {
+          error: {
+            status: 400,
+            message: "Missing required bounds parameters: north, south, east, west",
+          },
+        };
+      }
+
+      const bounds = {
+        north: parseFloat(north),
+        south: parseFloat(south),
+        east: parseFloat(east),
+        west: parseFloat(west),
+      };
+
+      // Validate bounds are numbers
+      if (Object.values(bounds).some(isNaN)) {
+        ctx.status = 400;
+        return {
+          error: {
+            status: 400,
+            message: "Bounds parameters must be valid numbers",
+          },
+        };
+      }
+
+      // Query sites within bounds
+      const sites = await strapi.db.query("api::site.site").findMany({
+        where: {
+          lat: { $gte: bounds.south, $lte: bounds.north },
+          lng: { $gte: bounds.west, $lte: bounds.east },
+        },
+        populate: {
+          type: {
+            populate: {
+              remote_icon: true,
+              remote_marker: true,
+            },
+          },
+          images: true,
+          facilities: true,
+          sub_types: true,
+          route_metadata: true,
+          tags: true,
+        },
+        // No limit - return all sites in bounds for offline storage
+      });
+
+      // Estimate storage size
+      const estimatedSizeMb = Math.round((sites.length * 2) / 10) / 10; // ~2KB per site
+
+      return {
+        data: (sites as Site[]).map((site) => ({
+          id: site.id,
+          attributes: { ...site, isOwned: !!site.owners?.length },
+        })),
+        meta: {
+          siteCount: sites.length,
+          bounds,
+          estimatedSizeMb,
+        },
+      };
+    },
+
     async parseSingleSite(
       ctx: StrapiContext,
       site: SiteResponse,
