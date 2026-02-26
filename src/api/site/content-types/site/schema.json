@@ -187,6 +187,19 @@
     "social_links": {
       "type": "json",
       "pluginOptions": {}
+    },
+    "ai_description": {
+      "type": "text",
+      "pluginOptions": {}
+    },
+    "enriched_at": {
+      "type": "datetime",
+      "pluginOptions": {}
+    },
+    "enrichment_version": {
+      "type": "integer",
+      "default": 0,
+      "pluginOptions": {}
     }
   }
 }
