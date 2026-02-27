@@ -49,11 +49,22 @@ export default factories.createCoreController('api::image-candidate.image-candid
   async reject(ctx) {
     const { id } = ctx.params;
 
-    // Delete the candidate
-    await strapi.documents('api::image-candidate.image-candidate').delete({
+    // First verify the candidate exists
+    const candidate = await strapi.documents('api::image-candidate.image-candidate').findOne({
       documentId: id,
     });
 
-    return { success: true, message: 'Candidate rejected' };
+    if (!candidate) {
+      return ctx.notFound('Candidate not found');
+    }
+
+    // Delete the candidate
+    const result = await strapi.documents('api::image-candidate.image-candidate').delete({
+      documentId: id,
+    });
+
+    strapi.log.info(`Rejected image candidate ${id}, delete result: ${JSON.stringify(result)}`);
+
+    return { success: true, message: 'Candidate rejected', deletedId: id };
   },
 }));
