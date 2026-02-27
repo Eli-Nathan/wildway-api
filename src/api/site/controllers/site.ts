@@ -304,6 +304,7 @@ export default factories.createCoreController(
           "lat",
           "lng",
           "slug",
+          "region",
         ],
         orderBy: ctx.query.sort || [{ priority: "DESC" }, { id: "DESC" }],
         populate: {
