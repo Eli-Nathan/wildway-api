@@ -391,7 +391,7 @@ export default factories.createCoreController(
 
     async findRecent(ctx: StrapiContext) {
       const sites = await strapi.db.query("api::site.site").findMany({
-        select: ["id", "title", "image", "lat", "lng", "slug"],
+        select: ["id", "title", "image", "lat", "lng", "slug", "region"],
         where: {
           $or: [
             {
