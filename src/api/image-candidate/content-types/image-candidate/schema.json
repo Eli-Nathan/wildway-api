@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "image_candidates",
+  "info": {
+    "singularName": "image-candidate",
+    "pluralName": "image-candidates",
+    "displayName": "Image Candidates",
+    "description": "Candidate images from enrichment awaiting moderation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "site": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::site.site"
+    },
+    "siteTitle": {
+      "type": "string",
+      "required": true
+    },
+    "candidates": {
+      "type": "json",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "approved", "rejected"],
+      "default": "pending"
+    }
+  }
+}
