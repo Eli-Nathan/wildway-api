@@ -19,6 +19,12 @@ interface RoutesConfig {
 
 const config: RoutesConfig = {
   routes: [
+    // Create a new candidate (used by enrichment script)
+    {
+      method: 'POST',
+      path: '/image-candidates',
+      handler: 'image-candidate.create',
+    },
     // List all pending candidates
     {
       method: 'GET',
