@@ -12,11 +12,12 @@ export default factories.createCoreController('api::image-candidate.image-candid
     const { id } = ctx.params;
     const { imageUrl, imageCaption } = ctx.request.body;
 
-    // Get the candidate with its site relation
-    const candidate = await strapi.documents('api::image-candidate.image-candidate').findOne({
-      documentId: id,
-      populate: ['site'],
-    });
+    // Get the candidate with its site relation using entityService (works with numeric ID)
+    const candidate = await strapi.entityService.findOne(
+      'api::image-candidate.image-candidate',
+      id,
+      { populate: ['site'] }
+    );
 
     if (!candidate) {
       return ctx.notFound('Candidate not found');
@@ -27,18 +28,19 @@ export default factories.createCoreController('api::image-candidate.image-candid
     }
 
     // Update the site with the selected image
-    await strapi.documents('api::site.site').update({
-      documentId: candidate.site.documentId,
-      data: {
-        image: imageUrl,
-        imageCaption: imageCaption || null,
-      } as any,
-    });
+    await strapi.entityService.update(
+      'api::site.site',
+      candidate.site.id,
+      {
+        data: {
+          image: imageUrl,
+          imageCaption: imageCaption || null,
+        },
+      }
+    );
 
     // Delete the candidate
-    await strapi.documents('api::image-candidate.image-candidate').delete({
-      documentId: id,
-    });
+    await strapi.entityService.delete('api::image-candidate.image-candidate', id);
 
     return { success: true, message: 'Image approved and applied to site' };
   },
@@ -50,20 +52,19 @@ export default factories.createCoreController('api::image-candidate.image-candid
     const { id } = ctx.params;
 
     // First verify the candidate exists
-    const candidate = await strapi.documents('api::image-candidate.image-candidate').findOne({
-      documentId: id,
-    });
+    const candidate = await strapi.entityService.findOne(
+      'api::image-candidate.image-candidate',
+      id
+    );
 
     if (!candidate) {
       return ctx.notFound('Candidate not found');
     }
 
     // Delete the candidate
-    const result = await strapi.documents('api::image-candidate.image-candidate').delete({
-      documentId: id,
-    });
+    await strapi.entityService.delete('api::image-candidate.image-candidate', id);
 
-    strapi.log.info(`Rejected image candidate ${id}, delete result: ${JSON.stringify(result)}`);
+    strapi.log.info(`Rejected image candidate ${id}`);
 
     return { success: true, message: 'Candidate rejected', deletedId: id };
   },
