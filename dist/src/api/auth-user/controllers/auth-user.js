@@ -912,14 +912,14 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         return { allowMarketing };
     },
     /**
-     * Get Trail Crew (favorite contacts for sharing)
+     * Get SOS Contacts (favorite contacts for sharing)
      */
-    async getTrailCrew(ctx) {
+    async getSOSContacts(ctx) {
         const userId = ctx.params.id;
         const user = await strapi.db.query("api::auth-user.auth-user").findOne({
             where: { id: userId },
             populate: {
-                trail_crew: {
+                sos_contacts: {
                     select: ["id", "name", "handle", "avatar", "businessName", "score"],
                     populate: {
                         profile_pic: true,
@@ -931,8 +931,8 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             ctx.status = 404;
             return { error: "User not found" };
         }
-        // Return Trail Crew members with safe public fields
-        const trailCrew = (user.trail_crew || []).map((member) => ({
+        // Return SOS contacts with safe public fields
+        const sosContacts = (user.sos_contacts || []).map((member) => ({
             id: member.id,
             name: member.name,
             handle: member.handle,
@@ -942,62 +942,62 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             profile_pic: member.profile_pic,
         }));
         return {
-            data: trailCrew,
-            meta: { count: trailCrew.length },
+            data: sosContacts,
+            meta: { count: sosContacts.length },
         };
     },
     /**
-     * Update Trail Crew (add/remove contacts)
+     * Update SOS Contacts (add/remove contacts)
      */
-    async updateTrailCrew(ctx) {
+    async updateSOSContacts(ctx) {
         var _a, _b;
         const userId = ctx.params.id;
-        const trailCrewIds = ((_b = (_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.trail_crew) || [];
+        const sosContactIds = ((_b = (_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.sos_contacts) || [];
         // Validate that all IDs are valid users (and not the current user)
-        if (trailCrewIds.includes(parseInt(userId))) {
+        if (sosContactIds.includes(parseInt(userId))) {
             ctx.status = 400;
-            return { error: "Cannot add yourself to your Trail Crew" };
+            return { error: "Cannot add yourself to your SOS contacts" };
         }
         // Verify all users exist
         const users = await strapi.db.query("api::auth-user.auth-user").findMany({
-            where: { id: { $in: trailCrewIds } },
+            where: { id: { $in: sosContactIds } },
             select: ["id"],
         });
-        if (users.length !== trailCrewIds.length) {
+        if (users.length !== sosContactIds.length) {
             ctx.status = 400;
             return { error: "One or more users not found" };
         }
-        // Update Trail Crew
+        // Update SOS Contacts
         await strapi.db.query("api::auth-user.auth-user").update({
             where: { id: userId },
-            data: { trail_crew: trailCrewIds },
+            data: { sos_contacts: sosContactIds },
         });
-        // Return updated Trail Crew
+        // Return updated SOS Contacts
         // @ts-expect-error - Custom method on this
-        return this.getTrailCrew(ctx);
+        return this.getSOSContacts(ctx);
     },
     /**
-     * Add a single user to Trail Crew
+     * Add a single user to SOS Contacts
      */
-    async addToTrailCrew(ctx) {
+    async addToSOSContacts(ctx) {
         const userId = ctx.params.id;
         const userToAddId = parseInt(ctx.params.userToAddId);
         if (userToAddId === parseInt(userId)) {
             ctx.status = 400;
-            return { error: "Cannot add yourself to your Trail Crew" };
+            return { error: "Cannot add yourself to your SOS contacts" };
         }
-        // Get current Trail Crew
+        // Get current SOS Contacts
         const currentUser = await strapi.db.query("api::auth-user.auth-user").findOne({
             where: { id: userId },
             populate: {
-                trail_crew: { select: ["id"] },
+                sos_contacts: { select: ["id"] },
             },
         });
-        const currentTrailCrew = ((currentUser === null || currentUser === void 0 ? void 0 : currentUser.trail_crew) || []).map((u) => u.id);
-        // Check if already in Trail Crew
-        if (currentTrailCrew.includes(userToAddId)) {
+        const currentSOSContacts = ((currentUser === null || currentUser === void 0 ? void 0 : currentUser.sos_contacts) || []).map((u) => u.id);
+        // Check if already in SOS Contacts
+        if (currentSOSContacts.includes(userToAddId)) {
             ctx.status = 400;
-            return { error: "User is already in your Trail Crew" };
+            return { error: "User is already in your SOS contacts" };
         }
         // Verify user to add exists
         const userToAdd = await strapi.db.query("api::auth-user.auth-user").findOne({
@@ -1008,38 +1008,38 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             ctx.status = 404;
             return { error: "User not found" };
         }
-        // Add to Trail Crew
-        const newTrailCrew = [...currentTrailCrew, userToAddId];
+        // Add to SOS Contacts
+        const newSOSContacts = [...currentSOSContacts, userToAddId];
         await strapi.db.query("api::auth-user.auth-user").update({
             where: { id: userId },
-            data: { trail_crew: newTrailCrew },
+            data: { sos_contacts: newSOSContacts },
         });
         return { success: true, added: userToAdd };
     },
     /**
-     * Remove a user from Trail Crew
+     * Remove a user from SOS Contacts
      */
-    async removeFromTrailCrew(ctx) {
+    async removeFromSOSContacts(ctx) {
         const userId = ctx.params.id;
         const userToRemoveId = parseInt(ctx.params.userToRemoveId);
-        // Get current Trail Crew
+        // Get current SOS Contacts
         const currentUser = await strapi.db.query("api::auth-user.auth-user").findOne({
             where: { id: userId },
             populate: {
-                trail_crew: { select: ["id"] },
+                sos_contacts: { select: ["id"] },
             },
         });
-        const currentTrailCrew = ((currentUser === null || currentUser === void 0 ? void 0 : currentUser.trail_crew) || []).map((u) => u.id);
-        // Check if user is in Trail Crew
-        if (!currentTrailCrew.includes(userToRemoveId)) {
+        const currentSOSContacts = ((currentUser === null || currentUser === void 0 ? void 0 : currentUser.sos_contacts) || []).map((u) => u.id);
+        // Check if user is in SOS Contacts
+        if (!currentSOSContacts.includes(userToRemoveId)) {
             ctx.status = 400;
-            return { error: "User is not in your Trail Crew" };
+            return { error: "User is not in your SOS contacts" };
         }
-        // Remove from Trail Crew
-        const newTrailCrew = currentTrailCrew.filter((id) => id !== userToRemoveId);
+        // Remove from SOS Contacts
+        const newSOSContacts = currentSOSContacts.filter((id) => id !== userToRemoveId);
         await strapi.db.query("api::auth-user.auth-user").update({
             where: { id: userId },
-            data: { trail_crew: newTrailCrew },
+            data: { sos_contacts: newSOSContacts },
         });
         return { success: true, removed: userToRemoveId };
     },

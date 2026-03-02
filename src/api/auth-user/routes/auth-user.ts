@@ -224,8 +224,8 @@ const config: RoutesConfig = {
     },
     {
       method: "GET",
-      path: "/auth-users/me/trail-crew",
-      handler: "auth-user.getTrailCrew",
+      path: "/auth-users/me/sos-contacts",
+      handler: "auth-user.getSOSContacts",
       config: {
         auth: false,
         policies: ["global::firebase-authed", "is-user"],
@@ -233,8 +233,8 @@ const config: RoutesConfig = {
     },
     {
       method: "PUT",
-      path: "/auth-users/me/trail-crew",
-      handler: "auth-user.updateTrailCrew",
+      path: "/auth-users/me/sos-contacts",
+      handler: "auth-user.updateSOSContacts",
       config: {
         auth: false,
         policies: ["global::firebase-authed", "is-user"],
@@ -242,8 +242,8 @@ const config: RoutesConfig = {
     },
     {
       method: "POST",
-      path: "/auth-users/me/trail-crew/:userToAddId",
-      handler: "auth-user.addToTrailCrew",
+      path: "/auth-users/me/sos-contacts/:userToAddId",
+      handler: "auth-user.addToSOSContacts",
       config: {
         auth: false,
         policies: ["global::firebase-authed", "is-user"],
@@ -251,8 +251,8 @@ const config: RoutesConfig = {
     },
     {
       method: "DELETE",
-      path: "/auth-users/me/trail-crew/:userToRemoveId",
-      handler: "auth-user.removeFromTrailCrew",
+      path: "/auth-users/me/sos-contacts/:userToRemoveId",
+      handler: "auth-user.removeFromSOSContacts",
       config: {
         auth: false,
         policies: ["global::firebase-authed", "is-user"],
