@@ -11,9 +11,12 @@
  */
 
 const { Client } = require("pg");
-const Filter = require("bad-words");
+const { RegExpMatcher, englishDataset, englishRecommendedTransformers } = require("obscenity");
 
-const filter = new Filter();
+const profanityMatcher = new RegExpMatcher({
+  ...englishDataset.build(),
+  ...englishRecommendedTransformers,
+});
 
 // Reserved handles that cannot be used
 const RESERVED_HANDLES = [
@@ -51,7 +54,7 @@ function generateHandle(name) {
   }
 
   // Check profanity
-  if (filter.isProfane(handle)) {
+  if (profanityMatcher.hasMatch(handle)) {
     handle = "user_" + Math.random().toString(36).substring(2, 8);
   }
 
