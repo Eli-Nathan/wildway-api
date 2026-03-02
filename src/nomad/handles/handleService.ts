@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Filter = require("bad-words");
+import Filter from "bad-words";
 
 // Initialize profanity filter
 const filter = new Filter();
