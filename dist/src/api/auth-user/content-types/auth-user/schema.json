@@ -170,6 +170,11 @@
             "type": "string",
             "private": true,
             "required": false
+        },
+        "trail_crew": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::auth-user.auth-user"
         }
     }
 }

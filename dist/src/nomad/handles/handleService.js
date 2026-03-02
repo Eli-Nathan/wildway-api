@@ -1,10 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureUniqueHandle = exports.checkHandleAvailable = exports.validateHandle = exports.generateHandle = void 0;
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Filter = require("bad-words");
+const bad_words_1 = __importDefault(require("bad-words"));
 // Initialize profanity filter
-const filter = new Filter();
+const filter = new bad_words_1.default();
 // Reserved handles that cannot be used
 const RESERVED_HANDLES = [
     "admin",

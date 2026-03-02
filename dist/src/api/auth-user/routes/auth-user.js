@@ -209,6 +209,42 @@ const config = {
                 policies: ["global::firebase-authed", "is-user"],
             },
         },
+        {
+            method: "GET",
+            path: "/auth-users/me/trail-crew",
+            handler: "auth-user.getTrailCrew",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "is-user"],
+            },
+        },
+        {
+            method: "PUT",
+            path: "/auth-users/me/trail-crew",
+            handler: "auth-user.updateTrailCrew",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "is-user"],
+            },
+        },
+        {
+            method: "POST",
+            path: "/auth-users/me/trail-crew/:userToAddId",
+            handler: "auth-user.addToTrailCrew",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "is-user"],
+            },
+        },
+        {
+            method: "DELETE",
+            path: "/auth-users/me/trail-crew/:userToRemoveId",
+            handler: "auth-user.removeFromTrailCrew",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed", "is-user"],
+            },
+        },
     ],
 };
 exports.default = config;

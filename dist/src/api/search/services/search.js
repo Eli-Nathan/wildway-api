@@ -275,22 +275,49 @@ const searchService = {
     },
     searchUsers: async (query, start, limit) => {
         try {
-            const users = await strapi.db.query("api::auth-user.auth-user").findMany({
-                offset: start,
+            const normalizedQuery = query.toLowerCase().replace(/^@/, ""); // Remove @ prefix if present
+            // First, find exact handle matches (prioritized)
+            const exactHandleMatches = await strapi.db
+                .query("api::auth-user.auth-user")
+                .findMany({
+                offset: 0,
                 limit,
                 where: {
                     isVerified: true,
-                    name: {
-                        $containsi: query,
-                    },
+                    handle: normalizedQuery,
                 },
                 populate: {
                     profile_pic: true,
-                    tags: true,
                 },
-                select: ["id", "name", "avatar", "businessName", "score"],
+                select: ["id", "name", "handle", "avatar", "businessName", "score"],
             });
-            return users;
+            // Then find partial matches across name, handle, and businessName
+            const partialMatches = await strapi.db
+                .query("api::auth-user.auth-user")
+                .findMany({
+                offset: start,
+                limit: limit * 2, // Get more to filter out duplicates
+                where: {
+                    isVerified: true,
+                    $or: [
+                        { name: { $containsi: normalizedQuery } },
+                        { handle: { $containsi: normalizedQuery } },
+                        { businessName: { $containsi: normalizedQuery } },
+                    ],
+                },
+                populate: {
+                    profile_pic: true,
+                },
+                select: ["id", "name", "handle", "avatar", "businessName", "score"],
+                orderBy: { score: "desc" },
+            });
+            // Combine results: exact handle matches first, then partial matches (deduplicated)
+            const exactIds = new Set(exactHandleMatches.map((u) => u.id));
+            const combinedResults = [
+                ...exactHandleMatches,
+                ...partialMatches.filter((u) => !exactIds.has(u.id)),
+            ].slice(0, limit);
+            return combinedResults;
         }
         catch (err) {
             strapi.log.error("Error searching users:", err);
