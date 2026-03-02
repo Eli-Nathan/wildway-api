@@ -36,6 +36,16 @@ const config = {
                 policies: ["global::is-admin"],
             },
         },
+        // Offline data endpoint - returns route + all sites for offline download
+        {
+            method: "GET",
+            path: "/nomad-routes/:id/offline",
+            handler: "nomad-route.getOfflineData",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed"],
+            },
+        },
     ],
 };
 exports.default = config;

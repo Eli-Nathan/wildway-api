@@ -93,6 +93,15 @@ const config = {
             },
         },
         {
+            method: "GET",
+            path: "/auth-users/check-handle/:handle",
+            handler: "auth-user.checkHandleAvailability",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed"],
+            },
+        },
+        {
             method: "PUT",
             path: "/auth-users/me/verifyEmail",
             handler: "auth-user.verifyEmail",

@@ -471,4 +471,102 @@ exports.default = strapi_1.factories.createCoreController("api::user-route.user-
         });
         return { data: { id: existingRoute.id }, meta: {} };
     },
+    /**
+     * Get route data for offline download
+     * Returns the route with all associated sites and metadata
+     */
+    async getOfflineData(ctx) {
+        // Get the route with full site data
+        const route = await strapi.db.query("api::user-route.user-route").findOne({
+            where: {
+                id: ctx.params.id,
+                $or: [
+                    { owner: ctx.state.user.id },
+                    { public: true },
+                ],
+            },
+            populate: {
+                image: true,
+                sites: {
+                    populate: {
+                        site: {
+                            populate: {
+                                type: {
+                                    populate: {
+                                        remote_icon: true,
+                                        remote_marker: true,
+                                    },
+                                },
+                                images: true,
+                                facilities: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!route) {
+            ctx.status = 404;
+            return { status: 404, message: "Route not found" };
+        }
+        // Extract sites from the route components
+        const allSites = (route.sites || [])
+            .filter((item) => item.site) // Filter out custom places
+            .map((item) => item.site);
+        // Calculate bounds from sites
+        let bounds = null;
+        if (allSites.length > 0) {
+            let north = -90, south = 90, east = -180, west = 180;
+            for (const site of allSites) {
+                if (site.lat != null && site.lng != null) {
+                    north = Math.max(north, site.lat);
+                    south = Math.min(south, site.lat);
+                    east = Math.max(east, site.lng);
+                    west = Math.min(west, site.lng);
+                }
+            }
+            // Add padding
+            const latPadding = (north - south) * 0.1;
+            const lngPadding = (east - west) * 0.1;
+            bounds = {
+                north: north + latPadding,
+                south: south - latPadding,
+                east: east + lngPadding,
+                west: west - lngPadding,
+            };
+        }
+        // Calculate origin/destination from first and last site
+        const origin = allSites[0]
+            ? { lat: allSites[0].lat, lng: allSites[0].lng }
+            : null;
+        const destination = allSites.length > 1
+            ? { lat: allSites[allSites.length - 1].lat, lng: allSites[allSites.length - 1].lng }
+            : origin;
+        // Estimate tile count
+        const estimatedTileCount = bounds
+            ? Math.ceil((bounds.north - bounds.south) * (bounds.east - bounds.west) * 1000)
+            : 0;
+        // Estimate size in MB
+        const sitesJsonSize = JSON.stringify(allSites).length / (1024 * 1024);
+        const estimatedSizeMb = Math.ceil(sitesJsonSize + (estimatedTileCount * 0.02));
+        return {
+            route: {
+                id: route.id,
+                type: "user",
+                name: route.name,
+                polyline: route.polyline,
+                mode: route.mode,
+                image: route.image,
+                origin,
+                destination,
+                bounds,
+            },
+            sites: allSites,
+            meta: {
+                siteCount: allSites.length,
+                estimatedTileCount,
+                estimatedSizeMb,
+            },
+        };
+    },
 }));

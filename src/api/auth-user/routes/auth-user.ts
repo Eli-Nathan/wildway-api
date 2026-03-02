@@ -106,6 +106,15 @@ const config: RoutesConfig = {
       },
     },
     {
+      method: "GET",
+      path: "/auth-users/check-handle/:handle",
+      handler: "auth-user.checkHandleAvailability",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed"],
+      },
+    },
+    {
       method: "PUT",
       path: "/auth-users/me/verifyEmail",
       handler: "auth-user.verifyEmail",
@@ -208,6 +217,42 @@ const config: RoutesConfig = {
       method: "PUT",
       path: "/auth-users/me/marketing-preferences",
       handler: "auth-user.updateMarketingPreferences",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "GET",
+      path: "/auth-users/me/trail-crew",
+      handler: "auth-user.getTrailCrew",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "PUT",
+      path: "/auth-users/me/trail-crew",
+      handler: "auth-user.updateTrailCrew",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "POST",
+      path: "/auth-users/me/trail-crew/:userToAddId",
+      handler: "auth-user.addToTrailCrew",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "is-user"],
+      },
+    },
+    {
+      method: "DELETE",
+      path: "/auth-users/me/trail-crew/:userToRemoveId",
+      handler: "auth-user.removeFromTrailCrew",
       config: {
         auth: false,
         policies: ["global::firebase-authed", "is-user"],

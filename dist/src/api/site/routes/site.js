@@ -31,6 +31,15 @@ const config = {
         },
         {
             method: "GET",
+            path: "/sites/within-bounds",
+            handler: "site.findWithinBounds",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed"],
+            },
+        },
+        {
+            method: "GET",
             path: "/sites/by-user/:userId",
             handler: "site.findByUser",
             config: {

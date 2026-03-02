@@ -1,9 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
 const emails_1 = require("../../../nomad/emails");
 const notificationService_1 = require("../../../nomad/notifications/notificationService");
+const handleService_1 = __importDefault(require("../../../nomad/handles/handleService"));
 /**
  * Add status alias by copying from moderation_status field
  * This allows old app versions to use status while DB uses moderation_status
@@ -280,6 +284,31 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         if (requestData.website !== undefined) {
             dataToUpdate.website = requestData.website;
         }
+        // Handle update with validation
+        if (requestData.handle !== undefined) {
+            const handle = String(requestData.handle).toLowerCase().trim();
+            // Validate format
+            const validation = handleService_1.default.validateHandle(handle);
+            if (!validation.valid) {
+                ctx.status = 400;
+                return {
+                    error: {
+                        message: validation.error,
+                    },
+                };
+            }
+            // Check availability (exclude current user)
+            const isAvailable = await handleService_1.default.checkHandleAvailable(handle, strapi, parseInt(ctx.params.id, 10));
+            if (!isAvailable) {
+                ctx.status = 400;
+                return {
+                    error: {
+                        message: "This handle is already taken",
+                    },
+                };
+            }
+            dataToUpdate.handle = handle;
+        }
         // Strapi 5: Use db.query directly
         const user = await strapi.db.query("api::auth-user.auth-user").update({
             where: { id: ctx.params.id },
@@ -292,6 +321,33 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                 attributes: user,
             },
             meta: {},
+        };
+    },
+    /**
+     * Check if a handle is available for use
+     * Returns { available: boolean, error?: string }
+     */
+    async checkHandleAvailability(ctx) {
+        var _a, _b;
+        const handle = (_a = ctx.params.handle) === null || _a === void 0 ? void 0 : _a.toLowerCase().trim();
+        if (!handle) {
+            ctx.status = 400;
+            return { available: false, error: "Handle is required" };
+        }
+        // Validate format first
+        const validation = handleService_1.default.validateHandle(handle);
+        if (!validation.valid) {
+            return {
+                available: false,
+                error: validation.error,
+            };
+        }
+        // Check if available (exclude current user if authenticated)
+        const userId = (_b = ctx.state.user) === null || _b === void 0 ? void 0 : _b.id;
+        const isAvailable = await handleService_1.default.checkHandleAvailable(handle, strapi, userId ? parseInt(userId, 10) : undefined);
+        return {
+            available: isAvailable,
+            error: isAvailable ? undefined : "This handle is already taken",
         };
     },
     async verifyEmail(ctx) {
@@ -460,6 +516,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
         }
     },
     async create(ctx) {
+        var _a;
         strapi.log.info("auth-user create: Starting user creation");
         if (!ctx.request.body) {
             ctx.request.body = {};
@@ -481,6 +538,11 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             strapi.log.error("auth-user create: No base role found with level 0");
             ctx.throw(500, "Base user role not configured");
         }
+        // Generate unique handle from name
+        const nameForHandle = requestData.name || ((_a = requestData.email) === null || _a === void 0 ? void 0 : _a.split("@")[0]) || "user";
+        const baseHandle = handleService_1.default.generateHandle(nameForHandle);
+        const uniqueHandle = await handleService_1.default.ensureUniqueHandle(baseHandle, strapi);
+        strapi.log.info("auth-user create: Generated handle:", uniqueHandle);
         // Use db.query directly for Strapi 5 compatibility
         let user;
         try {
@@ -490,6 +552,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
                     email: requestData.email,
                     name: requestData.name,
                     avatar: requestData.avatar,
+                    handle: uniqueHandle,
                     role: baseRole.id, // Direct ID works with db.query
                 },
             });

@@ -2,6 +2,7 @@
 import { factories } from "@strapi/strapi";
 import { newUserAdded, sendEmail } from "../../../nomad/emails";
 import { createNotification } from "../../../nomad/notifications/notificationService";
+import handleService from "../../../nomad/handles/handleService";
 
 interface StrapiContext {
   query: {
@@ -364,6 +365,40 @@ export default factories.createCoreController(
         dataToUpdate.website = requestData.website;
       }
 
+      // Handle update with validation
+      if (requestData.handle !== undefined) {
+        const handle = String(requestData.handle).toLowerCase().trim();
+
+        // Validate format
+        const validation = handleService.validateHandle(handle);
+        if (!validation.valid) {
+          ctx.status = 400;
+          return {
+            error: {
+              message: validation.error,
+            },
+          };
+        }
+
+        // Check availability (exclude current user)
+        const isAvailable = await handleService.checkHandleAvailable(
+          handle,
+          strapi,
+          parseInt(ctx.params.id as string, 10)
+        );
+
+        if (!isAvailable) {
+          ctx.status = 400;
+          return {
+            error: {
+              message: "This handle is already taken",
+            },
+          };
+        }
+
+        dataToUpdate.handle = handle;
+      }
+
       // Strapi 5: Use db.query directly
       const user = await strapi.db.query("api::auth-user.auth-user").update({
         where: { id: ctx.params.id },
@@ -377,6 +412,41 @@ export default factories.createCoreController(
           attributes: user,
         },
         meta: {},
+      };
+    },
+
+    /**
+     * Check if a handle is available for use
+     * Returns { available: boolean, error?: string }
+     */
+    async checkHandleAvailability(ctx: StrapiContext) {
+      const handle = (ctx.params as any).handle?.toLowerCase().trim();
+
+      if (!handle) {
+        ctx.status = 400;
+        return { available: false, error: "Handle is required" };
+      }
+
+      // Validate format first
+      const validation = handleService.validateHandle(handle);
+      if (!validation.valid) {
+        return {
+          available: false,
+          error: validation.error,
+        };
+      }
+
+      // Check if available (exclude current user if authenticated)
+      const userId = ctx.state.user?.id;
+      const isAvailable = await handleService.checkHandleAvailable(
+        handle,
+        strapi,
+        userId ? parseInt(userId, 10) : undefined
+      );
+
+      return {
+        available: isAvailable,
+        error: isAvailable ? undefined : "This handle is already taken",
       };
     },
 
@@ -592,6 +662,12 @@ export default factories.createCoreController(
         ctx.throw(500, "Base user role not configured");
       }
 
+      // Generate unique handle from name
+      const nameForHandle = (requestData.name as string) || (requestData.email as string)?.split("@")[0] || "user";
+      const baseHandle = handleService.generateHandle(nameForHandle);
+      const uniqueHandle = await handleService.ensureUniqueHandle(baseHandle, strapi);
+      strapi.log.info("auth-user create: Generated handle:", uniqueHandle);
+
       // Use db.query directly for Strapi 5 compatibility
       let user;
       try {
@@ -601,6 +677,7 @@ export default factories.createCoreController(
             email: requestData.email,
             name: requestData.name,
             avatar: requestData.avatar,
+            handle: uniqueHandle,
             role: baseRole.id, // Direct ID works with db.query
           },
         });
@@ -1004,6 +1081,163 @@ export default factories.createCoreController(
       });
 
       return { allowMarketing };
+    },
+
+    /**
+     * Get Trail Crew (favorite contacts for sharing)
+     */
+    async getTrailCrew(ctx: StrapiContext) {
+      const userId = ctx.params.id;
+
+      const user = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: userId },
+        populate: {
+          trail_crew: {
+            select: ["id", "name", "handle", "avatar", "businessName", "score"],
+            populate: {
+              profile_pic: true,
+            },
+          },
+        },
+      });
+
+      if (!user) {
+        ctx.status = 404;
+        return { error: "User not found" };
+      }
+
+      // Return Trail Crew members with safe public fields
+      const trailCrew = (user.trail_crew || []).map((member: any) => ({
+        id: member.id,
+        name: member.name,
+        handle: member.handle,
+        avatar: member.avatar,
+        businessName: member.businessName,
+        score: member.score,
+        profile_pic: member.profile_pic,
+      }));
+
+      return {
+        data: trailCrew,
+        meta: { count: trailCrew.length },
+      };
+    },
+
+    /**
+     * Update Trail Crew (add/remove contacts)
+     */
+    async updateTrailCrew(ctx: StrapiContext) {
+      const userId = ctx.params.id;
+      const trailCrewIds = ctx.request.body?.data?.trail_crew || [];
+
+      // Validate that all IDs are valid users (and not the current user)
+      if (trailCrewIds.includes(parseInt(userId))) {
+        ctx.status = 400;
+        return { error: "Cannot add yourself to your Trail Crew" };
+      }
+
+      // Verify all users exist
+      const users = await strapi.db.query("api::auth-user.auth-user").findMany({
+        where: { id: { $in: trailCrewIds } },
+        select: ["id"],
+      });
+
+      if (users.length !== trailCrewIds.length) {
+        ctx.status = 400;
+        return { error: "One or more users not found" };
+      }
+
+      // Update Trail Crew
+      await strapi.db.query("api::auth-user.auth-user").update({
+        where: { id: userId },
+        data: { trail_crew: trailCrewIds },
+      });
+
+      // Return updated Trail Crew
+      // @ts-expect-error - Custom method on this
+      return this.getTrailCrew(ctx);
+    },
+
+    /**
+     * Add a single user to Trail Crew
+     */
+    async addToTrailCrew(ctx: StrapiContext) {
+      const userId = ctx.params.id;
+      const userToAddId = parseInt((ctx.params as any).userToAddId);
+
+      if (userToAddId === parseInt(userId)) {
+        ctx.status = 400;
+        return { error: "Cannot add yourself to your Trail Crew" };
+      }
+
+      // Get current Trail Crew
+      const currentUser = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: userId },
+        populate: {
+          trail_crew: { select: ["id"] },
+        },
+      });
+
+      const currentTrailCrew = (currentUser?.trail_crew || []).map((u: any) => u.id);
+
+      // Check if already in Trail Crew
+      if (currentTrailCrew.includes(userToAddId)) {
+        ctx.status = 400;
+        return { error: "User is already in your Trail Crew" };
+      }
+
+      // Verify user to add exists
+      const userToAdd = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: userToAddId },
+        select: ["id", "name", "handle"],
+      });
+
+      if (!userToAdd) {
+        ctx.status = 404;
+        return { error: "User not found" };
+      }
+
+      // Add to Trail Crew
+      const newTrailCrew = [...currentTrailCrew, userToAddId];
+      await strapi.db.query("api::auth-user.auth-user").update({
+        where: { id: userId },
+        data: { trail_crew: newTrailCrew },
+      });
+
+      return { success: true, added: userToAdd };
+    },
+
+    /**
+     * Remove a user from Trail Crew
+     */
+    async removeFromTrailCrew(ctx: StrapiContext) {
+      const userId = ctx.params.id;
+      const userToRemoveId = parseInt((ctx.params as any).userToRemoveId);
+
+      // Get current Trail Crew
+      const currentUser = await strapi.db.query("api::auth-user.auth-user").findOne({
+        where: { id: userId },
+        populate: {
+          trail_crew: { select: ["id"] },
+        },
+      });
+
+      const currentTrailCrew = (currentUser?.trail_crew || []).map((u: any) => u.id);
+
+      // Check if user is in Trail Crew
+      if (!currentTrailCrew.includes(userToRemoveId)) {
+        ctx.status = 400;
+        return { error: "User is not in your Trail Crew" };
+      }
+
+      // Remove from Trail Crew
+      const newTrailCrew = currentTrailCrew.filter((id: number) => id !== userToRemoveId);
+      await strapi.db.query("api::auth-user.auth-user").update({
+        where: { id: userId },
+        data: { trail_crew: newTrailCrew },
+      });
+
+      return { success: true, removed: userToRemoveId };
     },
   })
 );

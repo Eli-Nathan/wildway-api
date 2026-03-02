@@ -38,6 +38,7 @@ const searchService = {
                     "lat",
                     "lng",
                     "slug",
+                    "region",
                 ],
                 where: {
                     title: {
@@ -73,6 +74,7 @@ const searchService = {
                         "lat",
                         "lng",
                         "slug",
+                        "region",
                     ],
                     orderBy: { priority: "DESC" },
                     populate: {

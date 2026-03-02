@@ -182,6 +182,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 "lat",
                 "lng",
                 "slug",
+                "region",
             ],
             orderBy: ctx.query.sort || [{ priority: "DESC" }, { id: "DESC" }],
             populate: {
@@ -259,7 +260,7 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
     async findRecent(ctx) {
         var _a;
         const sites = await strapi.db.query("api::site.site").findMany({
-            select: ["id", "title", "image", "lat", "lng", "slug"],
+            select: ["id", "title", "image", "lat", "lng", "slug", "region"],
             where: {
                 $or: [
                     {
@@ -598,6 +599,76 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
                 meta: { error: "Failed to fetch analytics" },
             };
         }
+    },
+    /**
+     * Find all sites within geographic bounds - used for offline region downloads
+     * Returns all matching sites with full data needed for offline storage
+     */
+    async findWithinBounds(ctx) {
+        const { north, south, east, west } = ctx.request.query;
+        // Validate required params
+        if (!north || !south || !east || !west) {
+            ctx.status = 400;
+            return {
+                error: {
+                    status: 400,
+                    message: "Missing required bounds parameters: north, south, east, west",
+                },
+            };
+        }
+        const bounds = {
+            north: parseFloat(north),
+            south: parseFloat(south),
+            east: parseFloat(east),
+            west: parseFloat(west),
+        };
+        // Validate bounds are numbers
+        if (Object.values(bounds).some(isNaN)) {
+            ctx.status = 400;
+            return {
+                error: {
+                    status: 400,
+                    message: "Bounds parameters must be valid numbers",
+                },
+            };
+        }
+        // Query sites within bounds
+        const sites = await strapi.db.query("api::site.site").findMany({
+            where: {
+                lat: { $gte: bounds.south, $lte: bounds.north },
+                lng: { $gte: bounds.west, $lte: bounds.east },
+            },
+            populate: {
+                type: {
+                    populate: {
+                        remote_icon: true,
+                        remote_marker: true,
+                    },
+                },
+                images: true,
+                facilities: true,
+                sub_types: true,
+                route_metadata: true,
+                tags: true,
+            },
+            // No limit - return all sites in bounds for offline storage
+        });
+        // Estimate storage size
+        const estimatedSizeMb = Math.round((sites.length * 2) / 10) / 10; // ~2KB per site
+        return {
+            data: sites.map((site) => {
+                var _a;
+                return ({
+                    id: site.id,
+                    attributes: { ...site, isOwned: !!((_a = site.owners) === null || _a === void 0 ? void 0 : _a.length) },
+                });
+            }),
+            meta: {
+                siteCount: sites.length,
+                bounds,
+                estimatedSizeMb,
+            },
+        };
     },
     async parseSingleSite(ctx, site, siteWithUsers, shouldSanitizeChildren = true) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;

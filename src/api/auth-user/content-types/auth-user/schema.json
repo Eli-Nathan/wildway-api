@@ -44,6 +44,13 @@
     "avatar": {
       "type": "text"
     },
+    "handle": {
+      "type": "string",
+      "unique": true,
+      "required": false,
+      "minLength": 3,
+      "maxLength": 20
+    },
     "profile_pic": {
       "type": "media",
       "multiple": false,
@@ -163,6 +170,11 @@
       "type": "string",
       "private": true,
       "required": false
+    },
+    "trail_crew": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::auth-user.auth-user"
     }
   }
 }
