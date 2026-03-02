@@ -1,9 +1,13 @@
 "use strict";
-// Profanity filter disabled temporarily - using reserved words list instead
-// TODO: Re-add profanity filter with ESM-compatible package
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureUniqueHandle = exports.checkHandleAvailable = exports.validateHandle = exports.generateHandle = void 0;
-// Reserved handles that cannot be used (including common profanity)
+const obscenity_1 = require("obscenity");
+// Initialize the profanity matcher with English dataset
+const profanityMatcher = new obscenity_1.RegExpMatcher({
+    ...obscenity_1.englishDataset.build(),
+    ...obscenity_1.englishRecommendedTransformers,
+});
+// Reserved handles that cannot be used
 const RESERVED_HANDLES = [
     "admin",
     "wildway",
@@ -46,6 +50,7 @@ const RESERVED_HANDLES = [
  * - Replace spaces with underscores
  * - Remove special characters except underscores
  * - Trim to 20 characters max
+ * - Falls back to generic handle if name contains profanity
  */
 function generateHandle(name) {
     if (!name || typeof name !== "string") {
@@ -60,6 +65,11 @@ function generateHandle(name) {
     // Ensure minimum length
     if (handle.length < 3) {
         handle = "user_" + handle;
+    }
+    // If the generated handle contains profanity, fall back to generic
+    if (profanityMatcher.hasMatch(handle)) {
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        handle = `user_${randomSuffix}`;
     }
     return handle;
 }
@@ -106,7 +116,10 @@ function validateHandle(handle) {
     if (RESERVED_HANDLES.includes(sanitized)) {
         return { valid: false, error: "This handle is reserved and cannot be used" };
     }
-    // TODO: Re-add profanity check with ESM-compatible package
+    // Check for profanity
+    if (profanityMatcher.hasMatch(sanitized)) {
+        return { valid: false, error: "This handle contains inappropriate language" };
+    }
     return { valid: true };
 }
 exports.validateHandle = validateHandle;

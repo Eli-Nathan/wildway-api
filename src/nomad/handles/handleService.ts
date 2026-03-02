@@ -1,7 +1,16 @@
-// Profanity filter disabled temporarily - using reserved words list instead
-// TODO: Re-add profanity filter with ESM-compatible package
+import {
+  RegExpMatcher,
+  englishDataset,
+  englishRecommendedTransformers,
+} from "obscenity";
 
-// Reserved handles that cannot be used (including common profanity)
+// Initialize the profanity matcher with English dataset
+const profanityMatcher = new RegExpMatcher({
+  ...englishDataset.build(),
+  ...englishRecommendedTransformers,
+});
+
+// Reserved handles that cannot be used
 const RESERVED_HANDLES = [
   "admin",
   "wildway",
@@ -45,6 +54,7 @@ const RESERVED_HANDLES = [
  * - Replace spaces with underscores
  * - Remove special characters except underscores
  * - Trim to 20 characters max
+ * - Falls back to generic handle if name contains profanity
  */
 export function generateHandle(name: string): string {
   if (!name || typeof name !== "string") {
@@ -61,6 +71,12 @@ export function generateHandle(name: string): string {
   // Ensure minimum length
   if (handle.length < 3) {
     handle = "user_" + handle;
+  }
+
+  // If the generated handle contains profanity, fall back to generic
+  if (profanityMatcher.hasMatch(handle)) {
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    handle = `user_${randomSuffix}`;
   }
 
   return handle;
@@ -119,7 +135,10 @@ export function validateHandle(handle: string): {
     return { valid: false, error: "This handle is reserved and cannot be used" };
   }
 
-  // TODO: Re-add profanity check with ESM-compatible package
+  // Check for profanity
+  if (profanityMatcher.hasMatch(sanitized)) {
+    return { valid: false, error: "This handle contains inappropriate language" };
+  }
 
   return { valid: true };
 }
