@@ -49,6 +49,12 @@ const config: RoutesConfig = {
       path: '/image-candidates/:id/reject',
       handler: 'image-candidate.reject',
     },
+    // Mark candidate as needs review (likely match for manual verification)
+    {
+      method: 'POST',
+      path: '/image-candidates/:id/needs-review',
+      handler: 'image-candidate.needsReview',
+    },
     // Delete a candidate
     {
       method: 'DELETE',

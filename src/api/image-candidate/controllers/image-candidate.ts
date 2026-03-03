@@ -84,4 +84,31 @@ export default factories.createCoreController('api::image-candidate.image-candid
 
     return { success: true, message: 'Candidate rejected', rejectedId: id };
   },
+
+  /**
+   * Mark candidate as needs_review - for likely matches that need manual verification
+   */
+  async needsReview(ctx) {
+    const { id } = ctx.params;
+
+    console.log(`[needsReview] Called for ID: ${id}`);
+
+    const candidate = await strapi.db.query('api::image-candidate.image-candidate').findOne({
+      where: { id: Number(id) },
+    });
+
+    if (!candidate) {
+      console.log(`[needsReview] Candidate ${id} not found`);
+      return ctx.notFound('Candidate not found');
+    }
+
+    await strapi.db.query('api::image-candidate.image-candidate').update({
+      where: { id: Number(id) },
+      data: { status: 'needs_review' },
+    });
+
+    console.log(`[needsReview] Marked candidate ${id} as needs_review`);
+
+    return { success: true, message: 'Candidate marked for review', id };
+  },
 }));
