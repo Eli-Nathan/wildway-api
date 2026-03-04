@@ -284,6 +284,7 @@ const searchService = {
                 limit,
                 where: {
                     isVerified: true,
+                    isTest: { $ne: true },
                     handle: normalizedQuery,
                 },
                 populate: {
@@ -299,6 +300,7 @@ const searchService = {
                 limit: limit * 2, // Get more to filter out duplicates
                 where: {
                     isVerified: true,
+                    isTest: { $ne: true },
                     $or: [
                         { name: { $containsi: normalizedQuery } },
                         { handle: { $containsi: normalizedQuery } },
