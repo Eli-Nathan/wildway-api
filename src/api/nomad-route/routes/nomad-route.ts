@@ -3,6 +3,7 @@ interface RouteConfig {
   path: string;
   handler: string;
   config?: {
+    auth?: boolean;
     middlewares?: string[];
     policies?: string[];
   };

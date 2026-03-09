@@ -51,6 +51,7 @@ export interface PolicyContext extends StrapiContext {
       };
       handler: string;
     };
+    review?: Record<string, unknown>;
   };
 }
 
