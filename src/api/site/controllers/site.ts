@@ -115,6 +115,57 @@ interface Review {
   };
 }
 
+/**
+ * Record map impressions for the sites returned by a map query.
+ * Upserts a daily aggregated count per site in the map_impressions table.
+ * This powers the "Map Impressions" metric on business account analytics,
+ * showing site owners how often their place appears in map results.
+ *
+ * In production (PostgreSQL), uses a single batch upsert via ON CONFLICT
+ * for performance — one query regardless of result count (~200 sites).
+ * In local dev (SQLite), uses INSERT OR REPLACE as a fallback.
+ *
+ * Fire-and-forget — failures are logged but never block the API response.
+ */
+async function recordMapImpressions(strapi: any, siteIds: number[]) {
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const now = new Date().toISOString();
+  const knex = strapi.db.connection;
+  const isPostgres = knex.client.config.client === "postgres";
+
+  if (isPostgres) {
+    // PostgreSQL: single batch upsert with ON CONFLICT
+    const values = siteIds
+      .map((id) => `(gen_random_uuid(), ${id}, '${today}', 1, '${now}', '${now}', '${now}')`)
+      .join(", ");
+
+    await knex.raw(`
+      INSERT INTO map_impressions (document_id, site_id, date, count, created_at, updated_at, published_at)
+      VALUES ${values}
+      ON CONFLICT (site_id, date)
+      DO UPDATE SET count = map_impressions.count + 1, updated_at = '${now}'
+    `);
+  } else {
+    // SQLite fallback for local dev — individual upserts via Strapi API
+    for (const siteId of siteIds) {
+      const existing = await strapi.db
+        .query("api::map-impression.map-impression")
+        .findOne({ where: { site_id: siteId, date: today } });
+
+      if (existing) {
+        await strapi.db.query("api::map-impression.map-impression").update({
+          where: { id: existing.id },
+          data: { count: existing.count + 1 },
+        });
+      } else {
+        await strapi.db.query("api::map-impression.map-impression").create({
+          data: { site_id: siteId, date: today, count: 1 },
+        });
+      }
+    }
+  }
+}
+
 export default factories.createCoreController(
   "api::site.site",
   ({ strapi }) => ({
@@ -375,6 +426,14 @@ export default factories.createCoreController(
           ...baseQueryOptions,
           where: whereClause,
           limit: requestedLimit,
+        });
+      }
+
+      // Record map impressions — fire-and-forget, never blocks the response
+      const siteIds = (sites as any[]).map((s: any) => s.id).filter(Boolean);
+      if (siteIds.length > 0) {
+        recordMapImpressions(strapi, siteIds).catch((err) => {
+          strapi.log.error("Failed to record map impressions:", err);
         });
       }
 
@@ -732,12 +791,58 @@ export default factories.createCoreController(
         };
       };
 
+      // Query map impressions from our own database (not GA4).
+      // Map impressions are recorded server-side when the sites endpoint
+      // returns results, stored as daily aggregated counts per site.
+      const getMapImpressions = async (siteId: string) => {
+        const knex = strapi.db.connection;
+        const isPostgres = knex.client.config.client === "postgres";
+
+        // Date arithmetic differs between PostgreSQL and SQLite
+        const currentDateClause = isPostgres
+          ? "date >= CURRENT_DATE - INTERVAL '30 days'"
+          : "date >= date('now', '-30 days')";
+        const previousStartClause = isPostgres
+          ? "date >= CURRENT_DATE - INTERVAL '60 days'"
+          : "date >= date('now', '-60 days')";
+        const previousEndClause = isPostgres
+          ? "date < CURRENT_DATE - INTERVAL '30 days'"
+          : "date < date('now', '-30 days')";
+
+        const currentResult = await knex("map_impressions")
+          .where("site_id", siteId)
+          .andWhereRaw(currentDateClause)
+          .sum("count as total")
+          .first();
+        const previousResult = await knex("map_impressions")
+          .where("site_id", siteId)
+          .andWhereRaw(previousStartClause)
+          .andWhereRaw(previousEndClause)
+          .sum("count as total")
+          .first();
+
+        const currentTotal = parseInt(currentResult?.total || "0", 10);
+        const previousTotal = parseInt(previousResult?.total || "0", 10);
+        const totalChange = previousTotal > 0
+          ? Math.round(((currentTotal - previousTotal) / previousTotal) * 100)
+          : currentTotal > 0 ? 100 : 0;
+
+        return {
+          total: currentTotal,
+          uniqueUsers: 0, // Not tracked per-user for map impressions
+          previousTotal,
+          previousUniqueUsers: 0,
+          totalChange,
+          uniqueUsersChange: 0,
+        };
+      };
+
       try {
-        // Run all queries in parallel
-        const [viewsResponse, ctaResponse, mapImpressionsResponse, searchImpressionsResponse] = await Promise.all([
+        // Run GA4 queries and local map impressions query in parallel
+        const [viewsResponse, ctaResponse, mapImpressions, searchImpressionsResponse] = await Promise.all([
           analyticsClient.runReport(createReportQuery("site_page_viewed", "customEvent:id", String(id))),
           analyticsClient.runReport(createReportQuery("cta_clicked", "customEvent:site_id", String(id))),
-          analyticsClient.runReport(createReportQuery("site_visible_on_map", "customEvent:id", String(id))),
+          getMapImpressions(String(id)),
           analyticsClient.runReport(createReportQuery("searched", "customEvent:id", String(id))),
         ]);
 
@@ -745,7 +850,7 @@ export default factories.createCoreController(
           data: {
             views: parseResponse(viewsResponse[0]),
             ctaClicks: parseResponse(ctaResponse[0]),
-            mapImpressions: parseResponse(mapImpressionsResponse[0]),
+            mapImpressions,
             searchImpressions: parseResponse(searchImpressionsResponse[0]),
           },
           meta: { period: "last_30_days", comparedTo: "previous_30_days" },
