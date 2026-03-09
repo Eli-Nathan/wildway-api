@@ -13,6 +13,7 @@ interface StrapiContext {
     };
     listIds?: string; // Comma-separated list IDs
     listModes?: Record<string, "completed" | "incomplete" | "all">;
+    _dev?: string; // Set to "1" by dev builds to skip impression recording
   };
   params: {
     id?: string;
@@ -429,9 +430,10 @@ export default factories.createCoreController(
         });
       }
 
-      // Record map impressions — fire-and-forget, production only.
-      // Prevents local dev and staging from polluting impression data.
-      if (process.env.NODE_ENV === "production") {
+      // Record map impressions — fire-and-forget, release builds only.
+      // Dev builds send _dev=1 to avoid polluting impression analytics.
+      const isDevBuild = ctx.query._dev === "1";
+      if (!isDevBuild) {
         const siteIds = (sites as any[]).map((s: any) => s.id).filter(Boolean);
         if (siteIds.length > 0) {
           recordMapImpressions(strapi, siteIds).catch((err) => {
