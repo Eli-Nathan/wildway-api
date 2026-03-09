@@ -429,12 +429,15 @@ export default factories.createCoreController(
         });
       }
 
-      // Record map impressions — fire-and-forget, never blocks the response
-      const siteIds = (sites as any[]).map((s: any) => s.id).filter(Boolean);
-      if (siteIds.length > 0) {
-        recordMapImpressions(strapi, siteIds).catch((err) => {
-          strapi.log.error("Failed to record map impressions:", err);
-        });
+      // Record map impressions — fire-and-forget, production only.
+      // Prevents local dev and staging from polluting impression data.
+      if (process.env.NODE_ENV === "production") {
+        const siteIds = (sites as any[]).map((s: any) => s.id).filter(Boolean);
+        if (siteIds.length > 0) {
+          recordMapImpressions(strapi, siteIds).catch((err) => {
+            strapi.log.error("Failed to record map impressions:", err);
+          });
+        }
       }
 
       return {
