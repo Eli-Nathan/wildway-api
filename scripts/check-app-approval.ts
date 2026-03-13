@@ -27,7 +27,7 @@ const PRIVATE_KEY = process.env.APPSTORE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 const BUNDLE_ID = "app.wildway";
 
 // API config
-const API_URL = process.env.NOMAD_API_URL || "https://nomadapp-api.herokuapp.com";
+const API_URL = process.env.WILDWAY_API_URL || "https://wildway-api.herokuapp.com";
 const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 // Statuses that indicate approval
