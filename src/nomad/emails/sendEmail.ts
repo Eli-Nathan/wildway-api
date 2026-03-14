@@ -1,4 +1,7 @@
+import { Resend } from "resend";
 import type { StrapiInstance } from "../../types/strapi";
+
+const resend = new Resend(process.env.RENSEND_API_KEY);
 
 interface SendEmailParams {
   strapi: StrapiInstance;
@@ -16,16 +19,21 @@ const sendEmail = async ({
   html,
 }: SendEmailParams): Promise<void> => {
   try {
-    strapi.log.info(`Sending email to ${address} with subject: ${subject}`);
-    await strapi.plugin("email").service("email").send({
+    strapi.log.info(`Sending email via Resend to ${address} with subject: ${subject}`);
+    const { data, error } = await resend.emails.send({
+      from: "Wildway <support@wildway.app>",
       to: address,
-      from: "wildway <wildway.app@gmail.com>",
-      replyTo: "wildway.app@gmail.com",
+      reply_to: "support@wildway.app",
       subject,
       text,
       html,
     });
-    strapi.log.info(`Email sent successfully to ${address}`);
+
+    if (error) {
+      throw error;
+    }
+
+    strapi.log.info(`Email sent successfully to ${address}${data ? `. ID: ${data.id}` : ""}`);
   } catch (error) {
     strapi.log.error(`Failed to send email to ${address}:`, error);
     throw error;

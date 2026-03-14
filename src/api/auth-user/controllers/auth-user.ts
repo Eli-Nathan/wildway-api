@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { factories } from "@strapi/strapi";
+import axios from "axios";
 import { newUserAdded, sendEmail } from "../../../nomad/emails";
 import { createNotification } from "../../../nomad/notifications/notificationService";
 import handleService from "../../../nomad/handles/handleService";
@@ -471,6 +472,58 @@ export default factories.createCoreController(
       };
     },
 
+    /**
+     * Verify a Firebase OOB code (email verification)
+     * This is called by the website after a user clicks the verification link
+     */
+    async verifyOobCode(ctx: StrapiContext) {
+      const { oobCode } = ctx.request.body;
+
+      if (!oobCode) {
+        ctx.status = 400;
+        return { error: "oobCode is required" };
+      }
+
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+      try {
+        // 1. Verify code with Firebase REST API (it's called 'update' with oobCode)
+        const firebaseResponse = await axios.post(
+          `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`,
+          {
+            oobCode,
+            requestEmail: true,
+          }
+        );
+
+        const { localId, emailVerified } = firebaseResponse.data;
+
+        if (emailVerified) {
+          // 2. Update user in Strapi DB
+          const user = await strapi.db.query("api::auth-user.auth-user").update({
+            where: { user_id: localId },
+            data: { isVerified: true },
+          });
+
+          strapi.log.info(`Email verified for user: ${localId}`);
+
+          return {
+            success: true,
+            email: firebaseResponse.data.email,
+          };
+        } else {
+          ctx.status = 400;
+          return { error: "Verification failed: email not marked as verified by Firebase" };
+        }
+      } catch (error) {
+        strapi.log.error("verifyOobCode error:", error.response?.data || error.message);
+        ctx.status = error.response?.status || 500;
+        return {
+          error: error.response?.data?.error?.message || "Verification failed",
+        };
+      }
+    },
+
     async updateFavourites(ctx: StrapiContext) {
       const newFavourites = ctx.request.body?.data?.favourites || [];
 
@@ -693,7 +746,7 @@ export default factories.createCoreController(
         await sendEmail({
           strapi,
           subject,
-          address: "wildway.app@gmail.com",
+          address: "team@wildway.app",
           text,
           html,
         });

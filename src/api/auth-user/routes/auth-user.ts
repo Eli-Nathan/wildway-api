@@ -124,6 +124,14 @@ const config: RoutesConfig = {
       },
     },
     {
+      method: "POST",
+      path: "/auth-users/verify-oob-code",
+      handler: "auth-user.verifyOobCode",
+      config: {
+        auth: false,
+      },
+    },
+    {
       method: "GET",
       path: "/auth-users/me/activity",
       handler: "auth-user.getActivity",
