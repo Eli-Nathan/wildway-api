@@ -23,7 +23,7 @@ const sendEmail = async ({
     const { data, error } = await resend.emails.send({
       from: "Wildway <support@wildway.app>",
       to: address,
-      reply_to: "support@wildway.app",
+      replyTo: "support@wildway.app",
       subject,
       text,
       html,
