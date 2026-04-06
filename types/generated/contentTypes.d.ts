@@ -464,6 +464,10 @@ export interface ApiAdditionRequestAdditionRequest
     > &
       Schema.Attribute.Private;
     maplink: Schema.Attribute.Text;
+    moderation_status: Schema.Attribute.Enumeration<
+      ['submitted', 'pending', 'moderating', 'complete', 'rejected']
+    > &
+      Schema.Attribute.DefaultTo<'submitted'>;
     owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
     potential_duplicates: Schema.Attribute.Relation<
       'oneToMany',
@@ -471,10 +475,6 @@ export interface ApiAdditionRequestAdditionRequest
     >;
     pricerange: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
-    status: Schema.Attribute.Enumeration<
-      ['submitted', 'pending', 'moderating', 'complete', 'rejected']
-    > &
-      Schema.Attribute.DefaultTo<'submitted'>;
     sub_types: Schema.Attribute.Relation<
       'oneToMany',
       'api::site-type.site-type'
@@ -523,6 +523,13 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
       Schema.Attribute.Required &
       Schema.Attribute.Private;
     favourites: Schema.Attribute.Relation<'manyToMany', 'api::site.site'>;
+    fcm_token: Schema.Attribute.String & Schema.Attribute.Private;
+    handle: Schema.Attribute.String &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 20;
+        minLength: 3;
+      }>;
     isTest: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     isVerified: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     level: Schema.Attribute.Enumeration<
@@ -544,6 +551,14 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
       > &
       Schema.Attribute.DefaultTo<0>;
     name: Schema.Attribute.String;
+    notifications: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification.notification'
+    >;
+    plan_shares: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::plan-share.plan-share'
+    >;
     profile_pic: Schema.Attribute.Media<'images'>;
     publishedAt: Schema.Attribute.DateTime;
     reviews: Schema.Attribute.Relation<'oneToMany', 'api::review.review'>;
@@ -566,6 +581,14 @@ export interface ApiAuthUserAuthUser extends Struct.CollectionTypeSchema {
     sites_contributed: Schema.Attribute.Relation<
       'manyToMany',
       'api::site.site'
+    >;
+    sos_contacts: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::auth-user.auth-user'
+    >;
+    trip_plans: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::trip-plan.trip-plan'
     >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -642,15 +665,15 @@ export interface ApiContentReportContentReport
       'api::content-report.content-report'
     > &
       Schema.Attribute.Private;
+    moderation_status: Schema.Attribute.Enumeration<
+      ['submitted', 'reviewing', 'resolved', 'dismissed']
+    > &
+      Schema.Attribute.DefaultTo<'submitted'>;
     publishedAt: Schema.Attribute.DateTime;
     reporter: Schema.Attribute.Relation<
       'manyToOne',
       'api::auth-user.auth-user'
     >;
-    status: Schema.Attribute.Enumeration<
-      ['submitted', 'reviewing', 'resolved', 'dismissed']
-    > &
-      Schema.Attribute.DefaultTo<'submitted'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -715,13 +738,13 @@ export interface ApiEditRequestEditRequest extends Struct.CollectionTypeSchema {
       'api::edit-request.edit-request'
     > &
       Schema.Attribute.Private;
-    owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
-    publishedAt: Schema.Attribute.DateTime;
-    site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
-    status: Schema.Attribute.Enumeration<
+    moderation_status: Schema.Attribute.Enumeration<
       ['submitted', 'pending', 'moderating', 'complete', 'rejected']
     > &
       Schema.Attribute.DefaultTo<'submitted'>;
+    owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
+    publishedAt: Schema.Attribute.DateTime;
+    site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1050,6 +1073,76 @@ export interface ApiHomeFilterlinkHomeFilterlink
   };
 }
 
+export interface ApiImageCandidateImageCandidate
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'image_candidates';
+  info: {
+    description: 'Candidate images from enrichment awaiting moderation';
+    displayName: 'Image Candidates';
+    pluralName: 'image-candidates';
+    singularName: 'image-candidate';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    candidates: Schema.Attribute.JSON & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::image-candidate.image-candidate'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    site: Schema.Attribute.Relation<'oneToOne', 'api::site.site'>;
+    siteTitle: Schema.Attribute.String & Schema.Attribute.Required;
+    status: Schema.Attribute.Enumeration<
+      ['pending', 'approved', 'rejected', 'needs_review']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiMapImpressionMapImpression
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'map_impressions';
+  info: {
+    description: 'Daily aggregated count of how many times a site appeared in map results';
+    displayName: 'Map Impression';
+    pluralName: 'map-impressions';
+    singularName: 'map-impression';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    count: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    date: Schema.Attribute.Date & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::map-impression.map-impression'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    site_id: Schema.Attribute.Integer & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiMinimumAppVersionMinimumAppVersion
   extends Struct.SingleTypeSchema {
   collectionName: 'minimum_app_versions';
@@ -1126,6 +1219,208 @@ export interface ApiNomadRouteNomadRoute extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     waypoints: Schema.Attribute.JSON;
+  };
+}
+
+export interface ApiNotificationPreferenceNotificationPreference
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notification_preferences';
+  info: {
+    description: 'User preferences for notifications';
+    displayName: 'Notification Preferences';
+    pluralName: 'notification-preferences';
+    singularName: 'notification-preference';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email_likes: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    email_new_reviews: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    email_review_replies: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    email_route_favourites: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    email_status_changes: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification-preference.notification-preference'
+    > &
+      Schema.Attribute.Private;
+    mute_all: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    publishedAt: Schema.Attribute.DateTime;
+    push_likes: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    push_new_reviews: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    push_review_replies: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    push_route_favourites: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    push_status_changes: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<true>;
+    quiet_hours_enabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    quiet_hours_end: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'08:00'>;
+    quiet_hours_start: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'22:00'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<'oneToOne', 'api::auth-user.auth-user'>;
+  };
+}
+
+export interface ApiNotificationNotification
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'notifications';
+  info: {
+    description: 'User notifications for activity on their content';
+    displayName: 'Notifications';
+    pluralName: 'notifications';
+    singularName: 'notification';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    is_read: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::notification.notification'
+    > &
+      Schema.Attribute.Private;
+    message: Schema.Attribute.Text & Schema.Attribute.Required;
+    metadata: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    recipient: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::auth-user.auth-user'
+    >;
+    related_entity_id: Schema.Attribute.Integer;
+    related_entity_type: Schema.Attribute.Enumeration<
+      [
+        'site',
+        'review',
+        'edit_request',
+        'addition_request',
+        'user_route',
+        'auth_user',
+      ]
+    >;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      [
+        'status_change',
+        'review_reply',
+        'new_review',
+        'site_like',
+        'route_favourite',
+        'follower_new',
+      ]
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPlanCheckinPlanCheckin extends Struct.CollectionTypeSchema {
+  collectionName: 'plan_checkins';
+  info: {
+    description: '';
+    displayName: 'Plan Checkin';
+    pluralName: 'plan-checkins';
+    singularName: 'plan-checkin';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    checkinTime: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    checkoutTime: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::plan-checkin.plan-checkin'
+    > &
+      Schema.Attribute.Private;
+    location: Schema.Attribute.JSON;
+    note: Schema.Attribute.Text;
+    photo: Schema.Attribute.Media<'images'>;
+    publishedAt: Schema.Attribute.DateTime;
+    stopIndex: Schema.Attribute.Integer & Schema.Attribute.Required;
+    tripPlan: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::trip-plan.trip-plan'
+    >;
+    type: Schema.Attribute.Enumeration<['manual', 'automatic']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'manual'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiPlanSharePlanShare extends Struct.CollectionTypeSchema {
+  collectionName: 'plan_shares';
+  info: {
+    description: '';
+    displayName: 'Plan Share';
+    pluralName: 'plan-shares';
+    singularName: 'plan-share';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    invitedEmail: Schema.Attribute.Email;
+    invitedVia: Schema.Attribute.Enumeration<['username', 'email', 'link']> &
+      Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::plan-share.plan-share'
+    > &
+      Schema.Attribute.Private;
+    notifyCheckins: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    notifyOverdue: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    permission: Schema.Attribute.Enumeration<['view', 'emergency_contact']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'view'>;
+    publishedAt: Schema.Attribute.DateTime;
+    sharedWith: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::auth-user.auth-user'
+    >;
+    status: Schema.Attribute.Enumeration<['pending', 'accepted']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'pending'>;
+    tripPlan: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::trip-plan.trip-plan'
+    >;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
   };
 }
 
@@ -1216,7 +1511,13 @@ export interface ApiReviewReview extends Struct.CollectionTypeSchema {
       'api::review.review'
     > &
       Schema.Attribute.Private;
+    moderation_status: Schema.Attribute.Enumeration<
+      ['submitted', 'pending', 'moderating', 'rejected', 'complete']
+    > &
+      Schema.Attribute.DefaultTo<'submitted'>;
     owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
+    owner_reply: Schema.Attribute.Text;
+    owner_reply_at: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
     rating: Schema.Attribute.Integer &
       Schema.Attribute.Required &
@@ -1229,10 +1530,6 @@ export interface ApiReviewReview extends Struct.CollectionTypeSchema {
       >;
     review: Schema.Attribute.Text;
     site: Schema.Attribute.Relation<'manyToOne', 'api::site.site'>;
-    status: Schema.Attribute.Enumeration<
-      ['submitted', 'pending', 'moderating', 'rejected', 'complete']
-    > &
-      Schema.Attribute.DefaultTo<'submitted'>;
     title: Schema.Attribute.String & Schema.Attribute.Required;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1410,6 +1707,7 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::auth-user.auth-user'
     >;
+    ai_description: Schema.Attribute.Text;
     averageRating: Schema.Attribute.Float &
       Schema.Attribute.SetMinMax<
         {
@@ -1426,12 +1724,17 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    cta_label: Schema.Attribute.String;
+    cta_url: Schema.Attribute.String;
     description: Schema.Attribute.Text;
     edit_requests: Schema.Attribute.Relation<
       'oneToMany',
       'api::edit-request.edit-request'
     >;
     email: Schema.Attribute.Email;
+    enriched_at: Schema.Attribute.DateTime;
+    enrichment_version: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
     facilities: Schema.Attribute.Relation<
       'oneToMany',
       'api::facility.facility'
@@ -1456,7 +1759,6 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
     priority: Schema.Attribute.Integer &
       Schema.Attribute.SetMinMax<
         {
-          max: 5;
           min: 0;
         },
         number
@@ -1479,6 +1781,7 @@ export interface ApiSiteSite extends Struct.CollectionTypeSchema {
       'api::site-list.site-list'
     >;
     slug: Schema.Attribute.UID<'title'> & Schema.Attribute.Required;
+    social_links: Schema.Attribute.JSON;
     sub_types: Schema.Attribute.Relation<
       'oneToMany',
       'api::site-type.site-type'
@@ -1573,6 +1876,63 @@ export interface ApiTagTag extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiTripPlanTripPlan extends Struct.CollectionTypeSchema {
+  collectionName: 'trip_plans';
+  info: {
+    description: '';
+    displayName: 'Trip Plan';
+    pluralName: 'trip-plans';
+    singularName: 'trip-plan';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    autoCheckinEnabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    checkins: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::plan-checkin.plan-checkin'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.Text;
+    endDate: Schema.Attribute.Date;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::trip-plan.trip-plan'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    overdueAlertsEnabled: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    owner: Schema.Attribute.Relation<'manyToOne', 'api::auth-user.auth-user'>;
+    publishedAt: Schema.Attribute.DateTime;
+    shareCode: Schema.Attribute.String;
+    shares: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::plan-share.plan-share'
+    >;
+    startDate: Schema.Attribute.Date;
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'active', 'completed', 'archived']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'draft'>;
+    stops: Schema.Attribute.Component<'plan.stop', true>;
+    timingMode: Schema.Attribute.Enumeration<
+      ['flexible', 'day_based', 'timed']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'flexible'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiUserRoleUserRole extends Struct.CollectionTypeSchema {
   collectionName: 'user_roles';
   info: {
@@ -1588,6 +1948,14 @@ export interface ApiUserRoleUserRole extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    features: Schema.Attribute.JSON &
+      Schema.Attribute.DefaultTo<{
+        analytics_dashboard: false;
+        custom_cta: false;
+        reply_to_reviews: false;
+        social_links: false;
+        unlimited_description: false;
+      }>;
     level: Schema.Attribute.Integer & Schema.Attribute.Unique;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -1595,8 +1963,6 @@ export interface ApiUserRoleUserRole extends Struct.CollectionTypeSchema {
       'api::user-role.user-role'
     > &
       Schema.Attribute.Private;
-    maxDescriptionWords: Schema.Attribute.Integer &
-      Schema.Attribute.DefaultTo<50>;
     maxImages: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>;
     name: Schema.Attribute.String & Schema.Attribute.Required;
     publishedAt: Schema.Attribute.DateTime;
@@ -1643,6 +2009,46 @@ export interface ApiUserRouteUserRoute extends Struct.CollectionTypeSchema {
     >;
     sites: Schema.Attribute.Component<'order.sites', true>;
     tags: Schema.Attribute.Relation<'manyToMany', 'api::tag.tag'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiWeatherUsageWeatherUsage
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'weather_usage';
+  info: {
+    description: 'Tracks WeatherKit API usage per month for quota management';
+    displayName: 'Weather Usage';
+    pluralName: 'weather-usages';
+    singularName: 'weather-usage';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    call_count: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    disabled_at: Schema.Attribute.DateTime;
+    disabled_reason: Schema.Attribute.Text;
+    is_disabled: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::weather-usage.weather-usage'
+    > &
+      Schema.Attribute.Private;
+    month: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -2175,8 +2581,14 @@ declare module '@strapi/strapi' {
       'api::form.form': ApiFormForm;
       'api::guide.guide': ApiGuideGuide;
       'api::home-filterlink.home-filterlink': ApiHomeFilterlinkHomeFilterlink;
+      'api::image-candidate.image-candidate': ApiImageCandidateImageCandidate;
+      'api::map-impression.map-impression': ApiMapImpressionMapImpression;
       'api::minimum-app-version.minimum-app-version': ApiMinimumAppVersionMinimumAppVersion;
       'api::nomad-route.nomad-route': ApiNomadRouteNomadRoute;
+      'api::notification-preference.notification-preference': ApiNotificationPreferenceNotificationPreference;
+      'api::notification.notification': ApiNotificationNotification;
+      'api::plan-checkin.plan-checkin': ApiPlanCheckinPlanCheckin;
+      'api::plan-share.plan-share': ApiPlanSharePlanShare;
       'api::post.post': ApiPostPost;
       'api::quicklink.quicklink': ApiQuicklinkQuicklink;
       'api::review.review': ApiReviewReview;
@@ -2186,8 +2598,10 @@ declare module '@strapi/strapi' {
       'api::site.site': ApiSiteSite;
       'api::subscription.subscription': ApiSubscriptionSubscription;
       'api::tag.tag': ApiTagTag;
+      'api::trip-plan.trip-plan': ApiTripPlanTripPlan;
       'api::user-role.user-role': ApiUserRoleUserRole;
       'api::user-route.user-route': ApiUserRouteUserRoute;
+      'api::weather-usage.weather-usage': ApiWeatherUsageWeatherUsage;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

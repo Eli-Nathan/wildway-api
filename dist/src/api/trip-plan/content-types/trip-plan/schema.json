@@ -1,0 +1,83 @@
+{
+    "kind": "collectionType",
+    "collectionName": "trip_plans",
+    "info": {
+        "singularName": "trip-plan",
+        "pluralName": "trip-plans",
+        "displayName": "Trip Plan",
+        "description": ""
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "attributes": {
+        "name": {
+            "type": "string",
+            "required": true
+        },
+        "description": {
+            "type": "text"
+        },
+        "owner": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "trip_plans"
+        },
+        "stops": {
+            "type": "component",
+            "repeatable": true,
+            "component": "plan.stop"
+        },
+        "timingMode": {
+            "type": "enumeration",
+            "enum": [
+                "flexible",
+                "day_based",
+                "timed"
+            ],
+            "default": "flexible",
+            "required": true
+        },
+        "startDate": {
+            "type": "date"
+        },
+        "endDate": {
+            "type": "date"
+        },
+        "status": {
+            "type": "enumeration",
+            "enum": [
+                "draft",
+                "active",
+                "completed",
+                "archived"
+            ],
+            "default": "draft",
+            "required": true
+        },
+        "shareCode": {
+            "type": "string"
+        },
+        "overdueAlertsEnabled": {
+            "type": "boolean",
+            "default": false
+        },
+        "autoCheckinEnabled": {
+            "type": "boolean",
+            "default": false
+        },
+        "checkins": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::plan-checkin.plan-checkin",
+            "mappedBy": "tripPlan"
+        },
+        "shares": {
+            "type": "relation",
+            "relation": "oneToMany",
+            "target": "api::plan-share.plan-share",
+            "mappedBy": "tripPlan"
+        }
+    }
+}

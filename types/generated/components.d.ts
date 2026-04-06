@@ -54,6 +54,23 @@ export interface OrderSites extends Struct.ComponentSchema {
   };
 }
 
+export interface PlanStop extends Struct.ComponentSchema {
+  collectionName: 'components_plan_stops';
+  info: {
+    description: '';
+    displayName: 'Stop';
+    icon: 'pin';
+  };
+  attributes: {
+    customLocation: Schema.Attribute.JSON;
+    dayNumber: Schema.Attribute.Integer;
+    notes: Schema.Attribute.Text;
+    plannedArrival: Schema.Attribute.DateTime;
+    plannedDeparture: Schema.Attribute.DateTime;
+    site: Schema.Attribute.Relation<'oneToOne', 'api::site.site'>;
+  };
+}
+
 export interface RouteMetadata extends Struct.ComponentSchema {
   collectionName: 'components_route_metadata';
   info: {
@@ -109,6 +126,7 @@ declare module '@strapi/strapi' {
       'filter.filters': FilterFilters;
       'list.sortable-field': ListSortableField;
       'order.sites': OrderSites;
+      'plan.stop': PlanStop;
       'route.metadata': RouteMetadata;
       'seo.seo-block': SeoSeoBlock;
     }

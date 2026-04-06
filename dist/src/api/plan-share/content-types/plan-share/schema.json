@@ -1,0 +1,65 @@
+{
+    "kind": "collectionType",
+    "collectionName": "plan_shares",
+    "info": {
+        "singularName": "plan-share",
+        "pluralName": "plan-shares",
+        "displayName": "Plan Share",
+        "description": ""
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "attributes": {
+        "tripPlan": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::trip-plan.trip-plan",
+            "inversedBy": "shares"
+        },
+        "sharedWith": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user",
+            "inversedBy": "plan_shares"
+        },
+        "invitedEmail": {
+            "type": "email"
+        },
+        "invitedVia": {
+            "type": "enumeration",
+            "enum": [
+                "username",
+                "email",
+                "link"
+            ],
+            "required": true
+        },
+        "status": {
+            "type": "enumeration",
+            "enum": [
+                "pending",
+                "accepted"
+            ],
+            "default": "pending",
+            "required": true
+        },
+        "permission": {
+            "type": "enumeration",
+            "enum": [
+                "view",
+                "emergency_contact"
+            ],
+            "default": "view",
+            "required": true
+        },
+        "notifyCheckins": {
+            "type": "boolean",
+            "default": true
+        },
+        "notifyOverdue": {
+            "type": "boolean",
+            "default": true
+        }
+    }
+}

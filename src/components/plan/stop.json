@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_plan_stops",
+  "info": {
+    "displayName": "Stop",
+    "icon": "pin",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "site": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::site.site"
+    },
+    "customLocation": {
+      "type": "json"
+    },
+    "dayNumber": {
+      "type": "integer"
+    },
+    "plannedArrival": {
+      "type": "datetime"
+    },
+    "plannedDeparture": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

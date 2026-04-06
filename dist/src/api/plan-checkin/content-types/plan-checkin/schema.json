@@ -1,0 +1,54 @@
+{
+    "kind": "collectionType",
+    "collectionName": "plan_checkins",
+    "info": {
+        "singularName": "plan-checkin",
+        "pluralName": "plan-checkins",
+        "displayName": "Plan Checkin",
+        "description": ""
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "attributes": {
+        "tripPlan": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::trip-plan.trip-plan",
+            "inversedBy": "checkins"
+        },
+        "stopIndex": {
+            "type": "integer",
+            "required": true
+        },
+        "checkinTime": {
+            "type": "datetime",
+            "required": true
+        },
+        "checkoutTime": {
+            "type": "datetime"
+        },
+        "type": {
+            "type": "enumeration",
+            "enum": [
+                "manual",
+                "automatic"
+            ],
+            "default": "manual",
+            "required": true
+        },
+        "location": {
+            "type": "json"
+        },
+        "note": {
+            "type": "text"
+        },
+        "photo": {
+            "type": "media",
+            "multiple": false,
+            "allowedTypes": [
+                "images"
+            ]
+        }
+    }
+}

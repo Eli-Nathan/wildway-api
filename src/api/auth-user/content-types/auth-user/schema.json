@@ -71,6 +71,18 @@
       "target": "api::user-route.user-route",
       "mappedBy": "owner"
     },
+    "trip_plans": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::trip-plan.trip-plan",
+      "mappedBy": "owner"
+    },
+    "plan_shares": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::plan-share.plan-share",
+      "mappedBy": "sharedWith"
+    },
     "addition_requests": {
       "type": "relation",
       "relation": "oneToMany",
