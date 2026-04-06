@@ -1,5 +1,5 @@
 import type { Core } from "@strapi/strapi";
-import logger from "../../../nomad/logger";
+import logger from "../../../wildway/logger";
 
 interface PolicyContext {
   state: {

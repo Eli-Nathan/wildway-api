@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
-const slack_1 = require("../../../nomad/slack");
+const slack_1 = require("../../../wildway/slack");
 /**
  * Strapi 5: Clean request data for db.query compatibility
  * - Remove fields not in schema (location)

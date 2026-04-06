@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
-const slack_1 = require("../../../nomad/slack");
+const slack_1 = require("../../../wildway/slack");
 exports.default = strapi_1.factories.createCoreController("api::review.review", ({ strapi }) => ({
     async findBySite(ctx) {
         const { siteId } = ctx.params;

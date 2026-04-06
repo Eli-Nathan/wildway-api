@@ -1,7 +1,7 @@
 // @ts-nocheck
 import qs from "qs";
 import { factories } from "@strapi/strapi";
-import sanitizeApiResponse from "../../../nomad/sanitizeApiResponse";
+import sanitizeApiResponse from "../../../wildway/sanitizeApiResponse";
 
 interface StrapiContext {
   query: {

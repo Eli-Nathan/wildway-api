@@ -14,17 +14,17 @@
 
 ```bash
 # Schedule daily backups at 2 AM
-heroku pg:backups:schedule DATABASE_URL --at '02:00 Europe/London' -a nomadapp-api
+heroku pg:backups:schedule DATABASE_URL --at '02:00 Europe/London' -a wildway-api
 
 # Verify schedule
-heroku pg:backups:schedules -a nomadapp-api
+heroku pg:backups:schedules -a wildway-api
 ```
 
 ### 2. Create Manual Backup Before Any Deployment
 
 ```bash
 # Always run before deploying schema changes
-heroku pg:backups:capture -a nomadapp-api
+heroku pg:backups:capture -a wildway-api
 ```
 
 ### 3. Fix the dist/ Situation
@@ -51,7 +51,7 @@ Only do this if you're confident the build process works:
 
 Before ANY deployment that touches schema:
 
-- [ ] Create manual backup: `heroku pg:backups:capture -a nomadapp-api`
+- [ ] Create manual backup: `heroku pg:backups:capture -a wildway-api`
 - [ ] Rebuild dist locally: `npm run build`
 - [ ] Test locally: `npm run develop`
 - [ ] Commit dist changes: `git add dist/ && git commit -m "Rebuild dist"`
@@ -72,7 +72,7 @@ Before ANY deployment that touches schema:
 
 If disaster strikes:
 
-1. **Heroku backups**: `heroku pg:backups:restore <backup-id> DATABASE_URL -a nomadapp-api`
+1. **Heroku backups**: `heroku pg:backups:restore <backup-id> DATABASE_URL -a wildway-api`
 2. **Contact Heroku support**: They may have short-term disaster recovery
 3. **Local SQLite**: Can export and import to Postgres (see export script)
 

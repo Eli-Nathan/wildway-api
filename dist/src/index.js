@@ -85,6 +85,25 @@ exports.default = {
             });
             strapi.log.info("Base user role created");
         }
+        // Ensure map_impressions has a unique index on (site_id, date) for upserts.
+        // This is required for the ON CONFLICT clause in recordMapImpressions().
+        const knex = strapi.db.connection;
+        const tableExists = await knex.schema.hasTable("map_impressions");
+        if (tableExists) {
+            try {
+                await knex.raw(`
+          CREATE UNIQUE INDEX IF NOT EXISTS map_impressions_site_date_unique
+          ON map_impressions (site_id, date)
+        `);
+                strapi.log.info("map_impressions unique index ensured");
+            }
+            catch (err) {
+                strapi.log.warn("Could not create map_impressions index:", err.message);
+            }
+        }
+        else {
+            strapi.log.info("map_impressions table not yet created — index will be added on next restart");
+        }
         // Ensure upload permissions are enabled for authenticated users
         const authenticatedRole = await strapi.db
             .query("plugin::users-permissions.role")

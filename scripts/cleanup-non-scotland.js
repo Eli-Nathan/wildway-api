@@ -11,7 +11,7 @@
  *
  * Required environment variables:
  *   ADMIN_SECRET - The admin secret for the delete endpoint
- *                  Set this in Heroku: heroku config:set ADMIN_SECRET=xxx -a nomadapp-api
+ *                  Set this in Heroku: heroku config:set ADMIN_SECRET=xxx -a wildway-api
  */
 
 const https = require("https");
@@ -173,7 +173,7 @@ async function main() {
     console.error("Error: ADMIN_SECRET environment variable is required");
     console.error("");
     console.error("Set it locally:  export ADMIN_SECRET=your_secret");
-    console.error("Set on Heroku:   heroku config:set ADMIN_SECRET=your_secret -a nomadapp-api");
+    console.error("Set on Heroku:   heroku config:set ADMIN_SECRET=your_secret -a wildway-api");
     process.exit(1);
   }
 

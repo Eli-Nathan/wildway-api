@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Type checking disabled due to complex fuzzy search generics
-import { getPlacesFromQuery } from "../../../nomad/dataEnrichment/place";
+import { getPlacesFromQuery } from "../../../wildway/dataEnrichment/place";
 import { fuzzySearch, findSimilarPlaces } from "./fuzzySearch";
 
 interface OSMAddress {

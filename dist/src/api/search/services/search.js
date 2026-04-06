@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 // Type checking disabled due to complex fuzzy search generics
-const place_1 = require("../../../nomad/dataEnrichment/place");
+const place_1 = require("../../../wildway/dataEnrichment/place");
 const fuzzySearch_1 = require("./fuzzySearch");
 const getNameWithSuffix = (name, address) => {
     if (address.city && address.city !== name) {

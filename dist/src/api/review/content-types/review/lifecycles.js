@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const emails_1 = require("../../../../nomad/emails");
-const notifications_1 = require("../../../../nomad/notifications");
+const emails_1 = require("../../../../wildway/emails");
+const notifications_1 = require("../../../../wildway/notifications");
 async function updateSiteReviewStats(siteId) {
     var _a;
     if (!siteId)

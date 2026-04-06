@@ -4,7 +4,7 @@ const {
   getRejectedMailContent,
   getApprovedMailContent,
   sendEmail,
-} = require("../../../../../dist/src/nomad/emails");
+} = require("../../../../../dist/src/wildway/emails");
 const slugify = require("slugify");
 
 // Helper to create notifications - wraps the notification service
@@ -12,7 +12,7 @@ const slugify = require("slugify");
 async function createStatusChangeNotification(strapi, data) {
   try {
     // Dynamic import to handle the compiled module
-    const notificationService = require("../../../../../dist/src/nomad/notifications");
+    const notificationService = require("../../../../../dist/src/wildway/notifications");
     if (notificationService && notificationService.createNotification) {
       await notificationService.createNotification(strapi, data);
     }

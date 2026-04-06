@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { factories } from "@strapi/strapi";
-import logger from "../../../nomad/logger";
-import generatePolyline from "../../../nomad/getPolyline";
+import logger from "../../../wildway/logger";
+import generatePolyline from "../../../wildway/getPolyline";
 
 interface StrapiContext {
   query: {

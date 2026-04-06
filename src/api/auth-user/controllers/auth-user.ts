@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { factories } from "@strapi/strapi";
 import axios from "axios";
-import { newUserAdded, sendEmail } from "../../../nomad/emails";
-import { createNotification } from "../../../nomad/notifications/notificationService";
-import handleService from "../../../nomad/handles/handleService";
+import { newUserAdded, sendEmail } from "../../../wildway/emails";
+import { createNotification } from "../../../wildway/notifications/notificationService";
+import handleService from "../../../wildway/handles/handleService";
 
 interface StrapiContext {
   query: {

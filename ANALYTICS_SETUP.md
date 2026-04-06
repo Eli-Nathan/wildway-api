@@ -101,7 +101,7 @@ Repeat for `id` parameter (used by multiple events):
 ## Step 5: Set Environment Variable on Heroku
 
 ```bash
-heroku config:set GA4_PROPERTY_ID=YOUR_PROPERTY_ID -a nomadapp-api
+heroku config:set GA4_PROPERTY_ID=YOUR_PROPERTY_ID -a wildway-api
 ```
 
 Replace `YOUR_PROPERTY_ID` with the numeric ID from Step 2.
@@ -114,7 +114,7 @@ Replace `YOUR_PROPERTY_ID` with the numeric ID from Step 2.
 ```bash
 # Get a valid auth token first, then:
 curl -H "Authorization: Bearer <token>" \
-     https://nomadapp-api.herokuapp.com/api/sites/<site_id>/analytics
+     https://wildway-api.herokuapp.com/api/sites/<site_id>/analytics
 ```
 
 Expected response:
@@ -189,12 +189,12 @@ Each metric includes:
 ## Troubleshooting
 
 ### "Analytics not configured" error
-- Check `GA4_PROPERTY_ID` is set: `heroku config -a nomadapp-api`
+- Check `GA4_PROPERTY_ID` is set: `heroku config -a wildway-api`
 
 ### "Failed to fetch analytics" error
 - Verify Google Analytics Data API is enabled in Cloud Console
 - Verify service account has Viewer access in GA4
-- Check Heroku logs: `heroku logs --tail -a nomadapp-api`
+- Check Heroku logs: `heroku logs --tail -a wildway-api`
 
 ### Data shows 0 for everything
 - Analytics data has 24-48 hour delay from Firebase
@@ -257,7 +257,7 @@ Shows for each metric:
    ```bash
    # Get a valid JWT token, then:
    curl -H "Authorization: Bearer <token>" \
-        https://nomadapp-api.herokuapp.com/api/sites/<owned_site_id>/analytics
+        https://wildway-api.herokuapp.com/api/sites/<owned_site_id>/analytics
    ```
 
    Expected: Response with non-zero values for metrics that have data
@@ -280,4 +280,4 @@ Shows for each metric:
 1. Check Firebase DebugView to confirm events are being sent
 2. Check GA4 → Reports → Realtime to see if events are arriving
 3. Check GA4 → Admin → Custom definitions to ensure dimensions are registered
-4. Check API logs: `heroku logs --tail -a nomadapp-api | grep -i analytics`
+4. Check API logs: `heroku logs --tail -a wildway-api | grep -i analytics`

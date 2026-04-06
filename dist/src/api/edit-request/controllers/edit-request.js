@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
-const slack_1 = require("../../../nomad/slack");
+const slack_1 = require("../../../wildway/slack");
 const getEditableFieldsFromSite = (siteData) => {
     const { title, description, tel, email, facilities, pricerange, url, sub_types, type, route_metadata, cta_label, cta_url, social_links, } = siteData;
     return {

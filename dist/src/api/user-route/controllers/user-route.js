@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
-const logger_1 = __importDefault(require("../../../nomad/logger"));
-const getPolyline_1 = __importDefault(require("../../../nomad/getPolyline"));
+const logger_1 = __importDefault(require("../../../wildway/logger"));
+const getPolyline_1 = __importDefault(require("../../../wildway/getPolyline"));
 const checkIfPlacesMatch = (api, req) => {
     if (api.length !== req.length) {
         return false;

@@ -1,4 +1,4 @@
-import { triggerNetlifyRebuild } from "../../../../nomad/netlifyRebuild";
+import { triggerNetlifyRebuild } from "../../../../wildway/netlifyRebuild";
 
 export default {
   async afterCreate() {

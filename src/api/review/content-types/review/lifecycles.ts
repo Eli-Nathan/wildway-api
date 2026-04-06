@@ -1,8 +1,8 @@
-import { getNewReviewMailContent, sendEmail } from "../../../../nomad/emails";
+import { getNewReviewMailContent, sendEmail } from "../../../../wildway/emails";
 import {
   createNotification,
   shouldSendNotification,
-} from "../../../../nomad/notifications";
+} from "../../../../wildway/notifications";
 
 async function updateSiteReviewStats(siteId: number) {
   if (!siteId) return;

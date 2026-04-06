@@ -5,9 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 // @ts-nocheck
 const strapi_1 = require("@strapi/strapi");
-const emails_1 = require("../../../nomad/emails");
-const notificationService_1 = require("../../../nomad/notifications/notificationService");
-const handleService_1 = __importDefault(require("../../../nomad/handles/handleService"));
+const axios_1 = __importDefault(require("axios"));
+const emails_1 = require("../../../wildway/emails");
+const notificationService_1 = require("../../../wildway/notifications/notificationService");
+const handleService_1 = __importDefault(require("../../../wildway/handles/handleService"));
 /**
  * Add status alias by copying from moderation_status field
  * This allows old app versions to use status while DB uses moderation_status
@@ -367,6 +368,50 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             meta: {},
         };
     },
+    /**
+     * Verify a Firebase OOB code (email verification)
+     * This is called by the website after a user clicks the verification link
+     */
+    async verifyOobCode(ctx) {
+        var _a, _b, _c, _d, _e;
+        const { oobCode } = ctx.request.body;
+        if (!oobCode) {
+            ctx.status = 400;
+            return { error: "oobCode is required" };
+        }
+        const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+        try {
+            // 1. Verify code with Firebase REST API (it's called 'update' with oobCode)
+            const firebaseResponse = await axios_1.default.post(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${apiKey}`, {
+                oobCode,
+                requestEmail: true,
+            });
+            const { localId, emailVerified } = firebaseResponse.data;
+            if (emailVerified) {
+                // 2. Update user in Strapi DB
+                const user = await strapi.db.query("api::auth-user.auth-user").update({
+                    where: { user_id: localId },
+                    data: { isVerified: true },
+                });
+                strapi.log.info(`Email verified for user: ${localId}`);
+                return {
+                    success: true,
+                    email: firebaseResponse.data.email,
+                };
+            }
+            else {
+                ctx.status = 400;
+                return { error: "Verification failed: email not marked as verified by Firebase" };
+            }
+        }
+        catch (error) {
+            strapi.log.error("verifyOobCode error:", ((_a = error.response) === null || _a === void 0 ? void 0 : _a.data) || error.message);
+            ctx.status = ((_b = error.response) === null || _b === void 0 ? void 0 : _b.status) || 500;
+            return {
+                error: ((_e = (_d = (_c = error.response) === null || _c === void 0 ? void 0 : _c.data) === null || _d === void 0 ? void 0 : _d.error) === null || _e === void 0 ? void 0 : _e.message) || "Verification failed",
+            };
+        }
+    },
     async updateFavourites(ctx) {
         var _a, _b, _c;
         const newFavourites = ((_b = (_a = ctx.request.body) === null || _a === void 0 ? void 0 : _a.data) === null || _b === void 0 ? void 0 : _b.favourites) || [];
@@ -568,7 +613,7 @@ exports.default = strapi_1.factories.createCoreController("api::auth-user.auth-u
             await (0, emails_1.sendEmail)({
                 strapi,
                 subject,
-                address: "wildway.app@gmail.com",
+                address: "team@wildway.app",
                 text,
                 html,
             });

@@ -7,7 +7,7 @@
  *   node scripts/migrate-add-handles.js
  *
  * Usage (production):
- *   heroku run "node scripts/migrate-add-handles.js" -a nomadapp-api
+ *   heroku run "node scripts/migrate-add-handles.js" -a wildway-api
  */
 
 const { Client } = require("pg");

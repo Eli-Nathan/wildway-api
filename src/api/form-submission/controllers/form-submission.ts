@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { factories } from "@strapi/strapi";
-import { sendEntryToSlack } from "../../../nomad/slack";
+import { sendEntryToSlack } from "../../../wildway/slack";
 
 interface StrapiContext {
   request: {

@@ -3,7 +3,7 @@ const authAdmin = require("firebase-admin/auth");
 const {
   getWelcomeMailContent,
   sendEmail,
-} = require("../../../../nomad/emails");
+} = require("../../../../wildway/emails");
 
 module.exports = ({ strapi }) => ({
   async getUnverifiedUsers() {

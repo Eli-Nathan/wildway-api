@@ -16,7 +16,7 @@ During a schema change deployment, the `dist/` folder was removed from git track
 
 1. **ALWAYS have automatic backups enabled BEFORE making any changes**
    ```bash
-   heroku pg:backups:schedule DATABASE_URL --at '02:00 Europe/London' -a nomadapp-api
+   heroku pg:backups:schedule DATABASE_URL --at '02:00 Europe/London' -a wildway-api
    ```
 
 2. **The `dist/` folder situation**
@@ -25,7 +25,7 @@ During a schema change deployment, the `dist/` folder was removed from git track
 
 3. **ALWAYS create a manual backup before deployments**
    ```bash
-   heroku pg:backups:capture -a nomadapp-api
+   heroku pg:backups:capture -a wildway-api
    ```
 
 4. **Test schema changes locally first**
@@ -133,7 +133,7 @@ Key packages to verify:
 
 1. **Backup database** (CRITICAL)
    ```bash
-   heroku pg:backups:capture -a nomadapp-api
+   heroku pg:backups:capture -a wildway-api
    ```
 
 2. **Update Strapi packages**
@@ -383,28 +383,28 @@ git push heroku main
 ### Before ANY Upgrade
 ```bash
 # 1. Enable scheduled backups (DO THIS NOW IF NOT DONE)
-heroku pg:backups:schedule DATABASE_URL --at '02:00 Europe/London' -a nomadapp-api
+heroku pg:backups:schedule DATABASE_URL --at '02:00 Europe/London' -a wildway-api
 
 # 2. Verify backups are scheduled
-heroku pg:backups:schedules -a nomadapp-api
+heroku pg:backups:schedules -a wildway-api
 
 # 3. Create manual backup
-heroku pg:backups:capture -a nomadapp-api
+heroku pg:backups:capture -a wildway-api
 
 # 4. Export current database locally
-heroku pg:pull DATABASE_URL nomad_local -a nomadapp-api
+heroku pg:pull DATABASE_URL nomad_local -a wildway-api
 ```
 
 ### Rollback Plan
 1. Keep previous version in a git tag
 2. Database backup before each phase
-3. Heroku rollback: `heroku releases:rollback -a nomadapp-api`
+3. Heroku rollback: `heroku releases:rollback -a wildway-api`
 
 ### Staging Environment
 Create a staging app on Heroku:
 ```bash
-heroku create nomadapp-api-staging
-heroku addons:create heroku-postgresql:essential-0 -a nomadapp-api-staging
+heroku create wildway-api-staging
+heroku addons:create heroku-postgresql:essential-0 -a wildway-api-staging
 # Copy production data to staging for testing
 ```
 

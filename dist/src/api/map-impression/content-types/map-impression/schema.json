@@ -1,0 +1,29 @@
+{
+    "kind": "collectionType",
+    "collectionName": "map_impressions",
+    "info": {
+        "singularName": "map-impression",
+        "pluralName": "map-impressions",
+        "displayName": "Map Impression",
+        "description": "Daily aggregated count of how many times a site appeared in map results"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "pluginOptions": {},
+    "attributes": {
+        "site_id": {
+            "type": "integer",
+            "required": true
+        },
+        "date": {
+            "type": "date",
+            "required": true
+        },
+        "count": {
+            "type": "integer",
+            "default": 0,
+            "required": true
+        }
+    }
+}

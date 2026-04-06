@@ -9,7 +9,7 @@ We use Typescript. We shouldn't use `any` types ever unless we really have to. W
 Apple Maps for iOS and Google maps for Android. We use the @gorhom/react-native-bottom-sheets library for bottom sheets.
 
 ## Backend
-Its backend (nomad-api repo) is a STRAPI backend hosted on Heroku. The Heroku app name is `nomadapp-api`. To push to Heroku, we do `git push heroku main`. To check logs we do `heroku logs -a nomadapp-api`. We often have to tail and limit the logs though otherwise they hang.
+Its backend (nomad-api repo) is a STRAPI backend hosted on Heroku. The Heroku app name is `wildway-api`. To push to Heroku, we do `git push heroku main`. To check logs we do `heroku logs -a wildway-api`. We often have to tail and limit the logs though otherwise they hang.
 The DB for the backend is Heroku PostgresQL which has daily backs scheduled. The live instance is hosted at api.wildway.app. (/admin for Strapi dashboard and /api for the rest api).
 The auth-users content-type/table is the app users. We use Firebase auth. If there are authenticated routes required they should get `auth: false` and have the policy firebase user policy applied to protect it with auth.
 Backwards compatibility is very important here. Since the apps are on the native app stores, there's no guarantee that the app will get updated by users. Any changes to wildway's API needs to be backwards compatible except in impossible circumstances and we can try to force users to update but that's a very bad user experience.

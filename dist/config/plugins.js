@@ -20,17 +20,17 @@ exports.default = ({ env }) => {
             config: {
                 provider: "nodemailer",
                 providerOptions: {
-                    host: "smtp.gmail.com",
-                    port: 587,
-                    secure: false,
+                    host: "smtp.resend.com",
+                    port: 465,
+                    secure: true,
                     auth: {
-                        user: "wildway.app@gmail.com",
-                        pass: env("WILDWAY_GMAIL_PASSWORD"),
+                        user: "resend",
+                        pass: env("RENSEND_API_KEY"),
                     },
                 },
                 settings: {
-                    defaultFrom: "wildway.app@gmail.com",
-                    defaultReplyTo: "wildway.app@gmail.com",
+                    defaultFrom: "Wildway <support@wildway.app>",
+                    defaultReplyTo: "support@wildway.app",
                 },
             },
         },

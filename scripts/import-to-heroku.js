@@ -3,10 +3,10 @@
  *
  * Usage:
  *   1. First run the export: ./scripts/export-sqlite.sh
- *   2. Then run: heroku run "node scripts/import-to-heroku.js" -a nomadapp-api
+ *   2. Then run: heroku run "node scripts/import-to-heroku.js" -a wildway-api
  *
  * Or run locally with DATABASE_URL set:
- *   DATABASE_URL=$(heroku config:get DATABASE_URL -a nomadapp-api) node scripts/import-to-heroku.js
+ *   DATABASE_URL=$(heroku config:get DATABASE_URL -a wildway-api) node scripts/import-to-heroku.js
  */
 
 const { Client } = require('pg');
