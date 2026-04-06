@@ -56,7 +56,6 @@
   },
   "engines": {
     "node": "22.x",
-    "npm": ">=10.0.0"
   },
   "license": "MIT",
   "resolutions": {
