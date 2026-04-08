@@ -7,9 +7,9 @@
   },
   "options": {},
   "attributes": {
-    "place": {
+    "site": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "oneToOne",
       "target": "api::site.site"
     },
     "customLocation": {
