@@ -22,25 +22,24 @@ export default factories.createCoreController(
     async create(ctx) {
       const requestData = ctx.request.body?.data || {};
 
-      // Debug: log what we're receiving
-      const ownerId = typeof requestData.owner === "object" ? requestData.owner?.id : requestData.owner ?? ctx.state.user?.id;
-      const mappedStops = (requestData.stops || []).map((stop: any) => {
-        const siteVal = typeof stop.site === "object" && stop.site !== null ? stop.site.id : stop.site;
-        return {
-          site: siteVal ?? null,
-          customLocation: stop.customLocation || null,
-          dayNumber: stop.dayNumber || null,
-          plannedArrival: stop.plannedArrival || null,
-          plannedDeparture: stop.plannedDeparture || null,
-          notes: stop.notes || null,
-        };
-      });
+      const ownerId =
+        typeof requestData.owner === "object"
+          ? requestData.owner?.id
+          : (requestData.owner ?? ctx.state.user?.id);
 
-      console.log("trip-plan create - owner:", ownerId, "typeof:", typeof ownerId);
-      console.log("trip-plan create - stops:", JSON.stringify(mappedStops));
-      console.log("trip-plan create - raw requestData.owner:", JSON.stringify(requestData.owner));
+      const stops = (requestData.stops || []).map((stop: any) => ({
+        site:
+          typeof stop.site === "object" && stop.site !== null
+            ? stop.site.id
+            : (stop.site ?? null),
+        customLocation: stop.customLocation || null,
+        dayNumber: stop.dayNumber || null,
+        plannedArrival: stop.plannedArrival || null,
+        plannedDeparture: stop.plannedDeparture || null,
+        notes: stop.notes || null,
+      }));
 
-      const plan = await strapi.db.query("api::trip-plan.trip-plan").create({
+      const plan = await strapi.documents("api::trip-plan.trip-plan").create({
         data: {
           name: requestData.name,
           description: requestData.description || null,
@@ -52,27 +51,15 @@ export default factories.createCoreController(
           overdueAlertsEnabled: requestData.overdueAlertsEnabled ?? false,
           autoCheckinEnabled: requestData.autoCheckinEnabled ?? false,
           owner: ownerId,
-          stops: mappedStops.map((stop: any) => ({
-            site: stop.site,
-            customLocation: stop.customLocation || null,
-            dayNumber: stop.dayNumber || null,
-            plannedArrival: stop.plannedArrival || null,
-            plannedDeparture: stop.plannedDeparture || null,
-            notes: stop.notes || null,
-          })),
+          stops,
         },
-      });
-
-      // Re-fetch with full population
-      const populated = await strapi.db.query("api::trip-plan.trip-plan").findOne({
-        where: { id: plan.id },
         populate: populateConfig,
       });
 
       return {
         data: {
-          id: populated.id,
-          attributes: populated,
+          id: plan.id,
+          attributes: plan,
         },
         meta: {},
       };
@@ -92,25 +79,26 @@ export default factories.createCoreController(
         return { status: 404, message: "Plan not found" };
       }
 
-      const updated = await strapi.db
-        .query("api::trip-plan.trip-plan")
-        .update({
-          where: { id: ctx.params.id },
-          data: {
-            ...requestData,
-            ...(requestData.stops && {
-              stops: requestData.stops.map((stop: any) => ({
-                site: stop.site?.id ?? stop.site ?? null,
-                customLocation: stop.customLocation || null,
-                dayNumber: stop.dayNumber || null,
-                plannedArrival: stop.plannedArrival || null,
-                plannedDeparture: stop.plannedDeparture || null,
-                notes: stop.notes || null,
-              })),
-            }),
-          },
-          populate: populateConfig,
-        });
+      const updated = await strapi.documents("api::trip-plan.trip-plan").update({
+        documentId: existing.documentId,
+        data: {
+          ...requestData,
+          ...(requestData.stops && {
+            stops: requestData.stops.map((stop: any) => ({
+              site:
+                typeof stop.site === "object" && stop.site !== null
+                  ? stop.site.id
+                  : (stop.site ?? null),
+              customLocation: stop.customLocation || null,
+              dayNumber: stop.dayNumber || null,
+              plannedArrival: stop.plannedArrival || null,
+              plannedDeparture: stop.plannedDeparture || null,
+              notes: stop.notes || null,
+            })),
+          }),
+        },
+        populate: populateConfig,
+      });
 
       return {
         data: {
