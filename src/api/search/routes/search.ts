@@ -19,6 +19,9 @@ const config: RoutesConfig = {
       method: "GET",
       path: "/search",
       handler: "search.globalSearch",
+      config: {
+        auth: false, // Make public, controller handles auth logic
+      },
     },
     {
       method: "GET",
