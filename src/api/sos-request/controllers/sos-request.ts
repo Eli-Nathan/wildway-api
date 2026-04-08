@@ -1,4 +1,5 @@
 import { factories } from "@strapi/strapi";
+import { createNotification } from "../../../wildway/notifications/notificationService";
 
 export default factories.createCoreController(
   "api::sos-request.sos-request",
@@ -67,6 +68,28 @@ export default factories.createCoreController(
             to: { fields: ["id", "name", "handle", "avatar"] },
           },
         });
+
+      // Notify the recipient
+      const senderName = currentUser.name || currentUser.handle || "Someone";
+      await createNotification(strapi, {
+        recipientId: Number(toId),
+        type: "sos_request",
+        title: "SOS Contact Request",
+        message: `${senderName} wants to add you as an SOS contact.`,
+        relatedEntityType: "sos_request",
+        relatedEntityId: request.id,
+        metadata: { fromUserId: currentUser.id, fromName: senderName },
+        emailContent: {
+          subject: `${senderName} wants to add you as an SOS contact on Wildway`,
+          text: `${senderName} has sent you an SOS contact request on Wildway. Open the app to accept or decline.`,
+          html: `
+            <h2>SOS Contact Request</h2>
+            <p><strong>${senderName}</strong> wants to add you as an SOS contact on Wildway.</p>
+            <p>SOS contacts can share trip plans with you and you'll be notified of their check-ins and if they become overdue.</p>
+            <p>Open the Wildway app to accept or decline this request.</p>
+          `,
+        },
+      });
 
       return {
         data: {
@@ -183,6 +206,27 @@ export default factories.createCoreController(
           data: { sos_contacts: [...toContacts, request.from.id] },
         });
       }
+
+      // Notify the original sender that their request was accepted
+      const accepterName = currentUser.name || currentUser.handle || "Someone";
+      await createNotification(strapi, {
+        recipientId: request.from.id,
+        type: "sos_accepted",
+        title: "SOS Request Accepted",
+        message: `${accepterName} accepted your SOS contact request.`,
+        relatedEntityType: "auth_user",
+        relatedEntityId: currentUser.id,
+        metadata: { acceptedByUserId: currentUser.id, acceptedByName: accepterName },
+        emailContent: {
+          subject: `${accepterName} accepted your SOS contact request on Wildway`,
+          text: `${accepterName} has accepted your SOS contact request on Wildway. You can now share trip plans with them and they'll be automatically accepted.`,
+          html: `
+            <h2>SOS Request Accepted</h2>
+            <p><strong>${accepterName}</strong> accepted your SOS contact request on Wildway.</p>
+            <p>You can now share trip plans with them and they'll be automatically accepted.</p>
+          `,
+        },
+      });
 
       return { data: { success: true } };
     },
