@@ -1,10 +1,10 @@
 import type { PolicyContext, StrapiInstance } from "../types/strapi";
 
 /**
- * Global policy to check if the user is the owner of the entity.
- * In Strapi 5, we prefer injecting filters to handle both list and detail views securely.
+ * Policy to check if the user is the OWNER of the trip plan related to the resource.
+ * Used for plan-share (only owner can share) and plan-checkin management.
  */
-const isOwner = async (
+const isPlanOwner = async (
   policyContext: PolicyContext,
   _config: Record<string, unknown>,
   { strapi }: { strapi: StrapiInstance }
@@ -22,10 +22,12 @@ const isOwner = async (
     policyContext.query.filters = {};
   }
 
-  // Force owner filter
-  policyContext.query.filters.owner = { id: { $eq: user.id } };
+  // Force owner filter on the related tripPlan
+  policyContext.query.filters.tripPlan = {
+    owner: { id: { $eq: user.id } }
+  };
 
   return true;
 };
 
-export default isOwner;
+export default isPlanOwner;

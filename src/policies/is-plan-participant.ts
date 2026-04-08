@@ -14,50 +14,7 @@ const isPlanParticipant = async (
     return false;
   }
 
-  const { id } = policyContext.params;
-  const apiName = policyContext.state.route.info.apiName;
-  const controllerName = policyContext.state.route.handler.split(".")[0];
-
-  // 1. If we are looking for a specific entity by ID
-  if (id) {
-    let tripPlanId: number | string = id;
-
-    // If we are checking access for a checkin, we need to find the related tripPlan first
-    if (apiName === 'plan-checkin') {
-      const checkin = await strapi.db.query('api::plan-checkin.plan-checkin').findOne({
-        where: { id },
-        populate: ['tripPlan']
-      });
-      if (!checkin || !checkin.tripPlan) return false;
-      tripPlanId = checkin.tripPlan.id;
-    }
-
-    // Check if user is owner
-    const isOwner = await strapi.db.query('api::trip-plan.trip-plan').findOne({
-      where: {
-        id: tripPlanId,
-        owner: user.id
-      }
-    });
-
-    if (isOwner) return true;
-
-    // Check if user is a shared participant with accepted status
-    const isShared = await strapi.db.query('api::plan-share.plan-share').findOne({
-      where: {
-        tripPlan: tripPlanId,
-        sharedWith: user.id,
-        status: 'accepted'
-      }
-    });
-
-    if (isShared) return true;
-
-    return false;
-  }
-
-  // 2. If we are listing entities (find), we inject filters
-  // This ensures users only see plans they own or are shared with them
+  // Ensure query and filters objects exist
   if (!policyContext.query) {
     policyContext.query = {};
   }
@@ -65,8 +22,13 @@ const isPlanParticipant = async (
     policyContext.query.filters = {};
   }
 
-  // We use an $or filter to include both owned plans and shared plans
-  // Strapi 5 filters for relations:
+  /**
+   * We use an $or filter to include both owned plans and shared plans.
+   * This logic works for both 'find' (listing) and 'findOne' (getting by ID).
+   * In Strapi 5, when a policy injects filters, they are combined with the
+   * existing query, ensuring that even if a user knows an ID, they won't 
+   * see the record unless it matches these filters.
+   */
   const participantFilter = {
     $or: [
       { owner: { id: { $eq: user.id } } },

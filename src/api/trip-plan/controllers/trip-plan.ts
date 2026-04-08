@@ -59,7 +59,43 @@ export default factories.createCoreController(
       return {
         data: {
           id: plan.id,
+          documentId: plan.documentId,
           attributes: plan,
+        },
+        meta: {},
+      };
+    },
+
+    async findOne(ctx) {
+      const { id } = ctx.params;
+
+      // Check if ID is numeric
+      const isNumeric = /^\d+$/.test(id);
+
+      let entity;
+      if (isNumeric) {
+        // If numeric, look up using db.query to get the record and its documentId
+        entity = await strapi.db.query("api::trip-plan.trip-plan").findOne({
+          where: { id },
+          populate: populateConfig,
+        });
+      } else {
+        // If not numeric, use standard document service (expects documentId)
+        entity = await strapi.documents("api::trip-plan.trip-plan").findOne({
+          documentId: id,
+          populate: populateConfig,
+        });
+      }
+
+      if (!entity) {
+        return ctx.notFound();
+      }
+
+      return {
+        data: {
+          id: entity.id,
+          documentId: entity.documentId,
+          attributes: entity,
         },
         meta: {},
       };
@@ -68,6 +104,8 @@ export default factories.createCoreController(
     async update(ctx) {
       const requestData = ctx.request.body?.data || {};
 
+      // In Strapi 5, we can update by documentId OR id using the documents service
+      // But we first need to find the entity to get its documentId if an ID was passed
       const existing = await strapi.db
         .query("api::trip-plan.trip-plan")
         .findOne({
@@ -103,6 +141,7 @@ export default factories.createCoreController(
       return {
         data: {
           id: updated.id,
+          documentId: updated.documentId,
           attributes: updated,
         },
         meta: {},
