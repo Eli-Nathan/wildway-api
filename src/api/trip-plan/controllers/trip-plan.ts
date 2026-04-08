@@ -35,7 +35,7 @@ export default factories.createCoreController(
           autoCheckinEnabled: requestData.autoCheckinEnabled ?? false,
           owner: ctx.state.user?.id,
           stops: (requestData.stops || []).map((stop: any) => ({
-            site: stop.site || null,
+            site: stop.site?.id ?? stop.site ?? null,
             customLocation: stop.customLocation || null,
             dayNumber: stop.dayNumber || null,
             plannedArrival: stop.plannedArrival || null,
@@ -77,7 +77,7 @@ export default factories.createCoreController(
             ...requestData,
             ...(requestData.stops && {
               stops: requestData.stops.map((stop: any) => ({
-                site: stop.site || null,
+                site: stop.site?.id ?? stop.site ?? null,
                 customLocation: stop.customLocation || null,
                 dayNumber: stop.dayNumber || null,
                 plannedArrival: stop.plannedArrival || null,
