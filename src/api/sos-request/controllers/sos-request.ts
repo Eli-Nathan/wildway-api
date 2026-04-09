@@ -27,8 +27,16 @@ export default factories.createCoreController(
         .findOne({
           where: {
             $or: [
-              { from: currentUser.id, to: toId, status: "pending" },
-              { from: toId, to: currentUser.id, status: "pending" },
+              {
+                from: { id: currentUser.id },
+                to: { id: toId },
+                status: "pending",
+              },
+              {
+                from: { id: toId },
+                to: { id: currentUser.id },
+                status: "pending",
+              },
             ],
           },
         });
@@ -69,8 +77,10 @@ export default factories.createCoreController(
           },
         });
 
-      // Notify the recipient
-      const senderName = currentUser.name || currentUser.handle || "Someone";
+      // Get sender's full name for notifications
+      const senderName =
+        owner?.name || owner?.handle || currentUser.name || "Someone";
+
       await createNotification(strapi, {
         recipientId: Number(toId),
         type: "sos_request",
@@ -107,7 +117,7 @@ export default factories.createCoreController(
       const requests = await strapi.db
         .query("api::sos-request.sos-request")
         .findMany({
-          where: { to: currentUser.id, status: "pending" },
+          where: { to: { id: currentUser.id }, status: "pending" },
           populate: {
             from: {
               select: ["id", "name", "handle", "avatar", "profile_pic"],
@@ -126,7 +136,7 @@ export default factories.createCoreController(
       const requests = await strapi.db
         .query("api::sos-request.sos-request")
         .findMany({
-          where: { from: currentUser.id, status: "pending" },
+          where: { from: { id: currentUser.id }, status: "pending" },
           populate: {
             to: {
               select: ["id", "name", "handle", "avatar", "profile_pic"],
@@ -208,7 +218,8 @@ export default factories.createCoreController(
       }
 
       // Notify the original sender that their request was accepted
-      const accepterName = currentUser.name || currentUser.handle || "Someone";
+      const accepterName =
+        toUser?.name || toUser?.handle || currentUser.name || "Someone";
       await createNotification(strapi, {
         recipientId: request.from.id,
         type: "sos_accepted",
@@ -216,7 +227,10 @@ export default factories.createCoreController(
         message: `${accepterName} accepted your SOS contact request.`,
         relatedEntityType: "auth_user",
         relatedEntityId: currentUser.id,
-        metadata: { acceptedByUserId: currentUser.id, acceptedByName: accepterName },
+        metadata: {
+          acceptedByUserId: currentUser.id,
+          acceptedByName: accepterName,
+        },
         emailContent: {
           subject: `${accepterName} accepted your SOS contact request on Wildway`,
           text: `${accepterName} has accepted your SOS contact request on Wildway. You can now share trip plans with them and they'll be automatically accepted.`,
