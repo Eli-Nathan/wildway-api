@@ -24,6 +24,28 @@ const getCheckinEmailBody = (
 </p>
 `;
 
+const getCheckoutEmailBody = (
+  userName: string,
+  planName: string,
+  stopName: string
+): string => `
+<h3 style="Margin:0;line-height:34px;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;font-size:28px;font-style:normal;font-weight:bold;color:#f45b69">
+  Check-out Update
+</h3>
+<p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
+  <br>
+</p>
+<p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
+  <strong><b>${userName}</b></strong> has checked out from <strong><b>${stopName}</b></strong> on their trip plan "<strong><b>${planName}</b></strong>".
+</p>
+<p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
+  <br>
+</p>
+<p style="Margin:0;-webkit-text-size-adjust:none;-ms-text-size-adjust:none;mso-line-height-rule:exactly;font-family:'merriweather sans', 'helvetica neue', helvetica, arial, sans-serif;line-height:27px;color:#2D3142;font-size:18px">
+  They have left this stop safely.
+</p>
+`;
+
 export default factories.createCoreController(
   "api::plan-checkin.plan-checkin",
   ({ strapi }) => ({
@@ -115,6 +137,87 @@ export default factories.createCoreController(
         },
         meta: {},
       };
+    },
+
+    // PUT /plan-checkins/:id — checkout (set checkoutTime)
+    async update(ctx) {
+      const { id } = ctx.params;
+      const requestData = ctx.request.body?.data || {};
+      const currentUser = ctx.state.user;
+
+      const existing = await strapi.db
+        .query("api::plan-checkin.plan-checkin")
+        .findOne({
+          where: { id },
+          populate: ["tripPlan"],
+        });
+
+      if (!existing) {
+        ctx.status = 404;
+        return { error: "Check-in not found" };
+      }
+
+      await strapi.db.query("api::plan-checkin.plan-checkin").update({
+        where: { id },
+        data: { checkoutTime: requestData.checkoutTime },
+      });
+
+      // Notify shared users of checkout
+      try {
+        const plan = await strapi.db
+          .query("api::trip-plan.trip-plan")
+          .findOne({
+            where: { id: existing.tripPlan?.id },
+            populate: {
+              stops: { populate: { site: true } },
+              shares: { populate: { sharedWith: true } },
+              owner: true,
+            },
+          });
+
+        if (plan?.shares?.length) {
+          const ownerName =
+            plan.owner?.name || plan.owner?.handle || currentUser.name || "Someone";
+          const stopName =
+            plan.stops?.[existing.stopIndex]?.site?.title ||
+            `Stop ${(existing.stopIndex ?? 0) + 1}`;
+
+          const emailBody = getCheckoutEmailBody(ownerName, plan.name, stopName);
+
+          for (const share of plan.shares) {
+            if (
+              share.status === "accepted" &&
+              share.notifyCheckins !== false &&
+              share.sharedWith?.id
+            ) {
+              await createNotification(strapi, {
+                recipientId: share.sharedWith.id,
+                type: "plan_shared",
+                title: "Check-out Update",
+                message: `${ownerName} checked out from ${stopName} on "${plan.name}".`,
+                relatedEntityType: "plan_share",
+                relatedEntityId: share.id,
+                metadata: {
+                  tripPlanId: plan.id,
+                  planName: plan.name,
+                  stopName,
+                  checkinId: id,
+                  isCheckout: true,
+                },
+                emailContent: {
+                  subject: `${ownerName} checked out from ${stopName} on Wildway`,
+                  text: `${ownerName} checked out from ${stopName} on their trip plan "${plan.name}". They have left this stop safely.`,
+                  html: getEmailTemplate(emailBody),
+                },
+              });
+            }
+          }
+        }
+      } catch (err) {
+        strapi.log.error("Failed to send check-out notifications:", err);
+      }
+
+      return { data: { success: true } };
     },
   })
 );
