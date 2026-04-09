@@ -122,7 +122,7 @@ export default factories.createCoreController(
           where: { to: { id: currentUser.id }, status: "pending" },
           populate: {
             from: {
-              select: ["id", "name", "handle", "avatar", "profile_pic"],
+              select: ["id", "name", "handle", "avatar"],
             },
           },
           orderBy: { createdAt: "desc" },
@@ -141,7 +141,7 @@ export default factories.createCoreController(
           where: { from: { id: currentUser.id }, status: "pending" },
           populate: {
             to: {
-              select: ["id", "name", "handle", "avatar", "profile_pic"],
+              select: ["id", "name", "handle", "avatar"],
             },
           },
           orderBy: { createdAt: "desc" },
