@@ -23,6 +23,26 @@ const populateConfig = {
 export default factories.createCoreController(
   "api::trip-plan.trip-plan",
   ({ strapi }) => ({
+    async find(ctx) {
+      const currentUser = ctx.state.user;
+
+      const plans = await strapi.db
+        .query("api::trip-plan.trip-plan")
+        .findMany({
+          where: { owner: { id: currentUser.id } },
+          populate: populateConfig,
+          orderBy: { createdAt: "desc" },
+        });
+
+      return {
+        data: plans.map((plan: any) => ({
+          id: plan.id,
+          attributes: plan,
+        })),
+        meta: {},
+      };
+    },
+
     async sharedWithMe(ctx) {
       const currentUser = ctx.state.user;
 
