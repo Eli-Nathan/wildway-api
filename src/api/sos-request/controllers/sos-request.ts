@@ -121,9 +121,7 @@ export default factories.createCoreController(
         .findMany({
           where: { to: { id: currentUser.id }, status: "pending" },
           populate: {
-            from: {
-              select: ["id", "name", "handle", "avatar"],
-            },
+            from: true,
           },
           orderBy: { createdAt: "desc" },
         });
@@ -140,9 +138,7 @@ export default factories.createCoreController(
         .findMany({
           where: { from: { id: currentUser.id }, status: "pending" },
           populate: {
-            to: {
-              select: ["id", "name", "handle", "avatar"],
-            },
+            to: true,
           },
           orderBy: { createdAt: "desc" },
         });
