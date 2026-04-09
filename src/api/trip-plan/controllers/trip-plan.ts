@@ -12,7 +12,11 @@ const populateConfig = {
     },
   },
   owner: true,
-  shares: true,
+  shares: {
+    populate: {
+      sharedWith: true,
+    },
+  },
   checkins: true,
 };
 

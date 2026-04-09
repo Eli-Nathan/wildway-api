@@ -10,7 +10,8 @@ export type NotificationType =
   | "route_favourite"
   | "follower_new"
   | "sos_request"
-  | "sos_accepted";
+  | "sos_accepted"
+  | "plan_shared";
 
 export type RelatedEntityType =
   | "site"
@@ -19,7 +20,8 @@ export type RelatedEntityType =
   | "addition_request"
   | "user_route"
   | "auth_user"
-  | "sos_request";
+  | "sos_request"
+  | "plan_share";
 
 interface NotificationData {
   recipientId: number;
@@ -63,6 +65,7 @@ const typeToPreferenceKey: Record<NotificationType, string> = {
   follower_new: "status_changes", // Default to status_changes for now
   sos_request: "status_changes",
   sos_accepted: "status_changes",
+  plan_shared: "status_changes",
 };
 
 export async function getNotificationPreferences(

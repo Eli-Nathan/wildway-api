@@ -28,7 +28,8 @@
         "route_favourite",
         "follower_new",
         "sos_request",
-        "sos_accepted"
+        "sos_accepted",
+        "plan_shared"
       ],
       "required": true
     },
@@ -53,7 +54,8 @@
         "addition_request",
         "user_route",
         "auth_user",
-        "sos_request"
+        "sos_request",
+        "plan_share"
       ],
       "required": false
     },
