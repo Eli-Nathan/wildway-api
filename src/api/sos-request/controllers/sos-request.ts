@@ -116,15 +116,15 @@ export default factories.createCoreController(
     async pending(ctx) {
       const currentUser = ctx.state.user;
 
-      const requests = await strapi.db
-        .query("api::sos-request.sos-request")
-        .findMany({
-          where: { to: { id: currentUser.id }, status: "pending" },
-          populate: {
-            from: true,
+      const requests = await strapi.documents("api::sos-request.sos-request").findMany({
+        filters: { to: { id: currentUser.id }, status: "pending" },
+        populate: {
+          from: {
+            populate: { profile_pic: true },
           },
-          orderBy: { createdAt: "desc" },
-        });
+        },
+        sort: "createdAt:desc",
+      });
 
       return { data: requests };
     },
@@ -133,15 +133,15 @@ export default factories.createCoreController(
     async sent(ctx) {
       const currentUser = ctx.state.user;
 
-      const requests = await strapi.db
-        .query("api::sos-request.sos-request")
-        .findMany({
-          where: { from: { id: currentUser.id }, status: "pending" },
-          populate: {
-            to: true,
+      const requests = await strapi.documents("api::sos-request.sos-request").findMany({
+        filters: { from: { id: currentUser.id }, status: "pending" },
+        populate: {
+          to: {
+            populate: { profile_pic: true },
           },
-          orderBy: { createdAt: "desc" },
-        });
+        },
+        sort: "createdAt:desc",
+      });
 
       return { data: requests };
     },
