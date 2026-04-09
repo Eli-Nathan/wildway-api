@@ -43,7 +43,7 @@ const isPlanOwner = async (
     const plan = await strapi.db.query('api::trip-plan.trip-plan').findOne({
       where: {
         id: tripPlanId,
-        owner: user.id
+        owner: { id: user.id }
       }
     });
 
@@ -60,7 +60,7 @@ const isPlanOwner = async (
     const plan = await strapi.db.query('api::trip-plan.trip-plan').findOne({
       where: {
         id: tripPlanId,
-        owner: user.id
+        owner: { id: user.id }
       }
     });
 
