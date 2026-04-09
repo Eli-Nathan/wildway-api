@@ -21,16 +21,7 @@ const config: RoutesConfig = {
       handler: "trip-plan.find",
       config: {
         auth: false,
-        policies: ["global::firebase-authed", "global::is-plan-participant"],
-      },
-    },
-    {
-      method: "GET",
-      path: "/trip-plans/:id",
-      handler: "trip-plan.findOne",
-      config: {
-        auth: false,
-        policies: ["global::firebase-authed", "global::is-plan-participant"],
+        policies: ["global::firebase-authed", "global::is-owner"],
       },
     },
     {
@@ -40,6 +31,15 @@ const config: RoutesConfig = {
       config: {
         auth: false,
         policies: ["global::firebase-authed"],
+      },
+    },
+    {
+      method: "GET",
+      path: "/trip-plans/:id",
+      handler: "trip-plan.findOne",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed", "global::is-plan-participant"],
       },
     },
     {
