@@ -34,6 +34,15 @@ const config: RoutesConfig = {
       },
     },
     {
+      method: "GET",
+      path: "/trip-plans/shared-with-me",
+      handler: "trip-plan.sharedWithMe",
+      config: {
+        auth: false,
+        policies: ["global::firebase-authed"],
+      },
+    },
+    {
       method: "POST",
       path: "/trip-plans",
       handler: "trip-plan.create",

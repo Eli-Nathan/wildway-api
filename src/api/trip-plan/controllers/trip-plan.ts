@@ -23,6 +23,40 @@ const populateConfig = {
 export default factories.createCoreController(
   "api::trip-plan.trip-plan",
   ({ strapi }) => ({
+    async sharedWithMe(ctx) {
+      const currentUser = ctx.state.user;
+
+      // Find all accepted shares for the current user
+      const shares = await strapi.db
+        .query("api::plan-share.plan-share")
+        .findMany({
+          where: {
+            sharedWith: { id: currentUser.id },
+            status: "accepted",
+          },
+          populate: {
+            tripPlan: {
+              populate: {
+                stops: { populate: { site: true } },
+                owner: true,
+              },
+            },
+          },
+        });
+
+      const plans = shares
+        .map((share: any) => share.tripPlan)
+        .filter(Boolean);
+
+      return {
+        data: plans.map((plan: any) => ({
+          id: plan.id,
+          attributes: plan,
+        })),
+        meta: {},
+      };
+    },
+
     async create(ctx) {
       const requestData = ctx.request.body?.data || {};
 
