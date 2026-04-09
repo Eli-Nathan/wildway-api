@@ -147,5 +147,34 @@ export default factories.createCoreController(
         meta: {},
       };
     },
+
+    async delete(ctx) {
+      const { id } = ctx.params;
+
+      // Look up by numeric ID to get documentId
+      const existing = await strapi.db
+        .query("api::trip-plan.trip-plan")
+        .findOne({
+          where: { id },
+          populate: ["owner"],
+        });
+
+      if (!existing) {
+        ctx.status = 404;
+        return { error: "Plan not found" };
+      }
+
+      // Check ownership
+      if (existing.owner?.id !== ctx.state.user?.id) {
+        ctx.status = 403;
+        return { error: "Not your plan" };
+      }
+
+      await strapi.documents("api::trip-plan.trip-plan").delete({
+        documentId: existing.documentId,
+      });
+
+      return { data: { id: existing.id } };
+    },
   })
 );
