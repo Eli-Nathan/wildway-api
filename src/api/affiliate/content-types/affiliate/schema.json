@@ -64,7 +64,8 @@
     "site_types": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::site-type.site-type"
+      "target": "api::site-type.site-type",
+      "inversedBy": "affiliates"
     },
     "priority": {
       "type": "integer",
