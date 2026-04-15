@@ -106,6 +106,14 @@ const config: RoutesConfig = {
         policies: ["global::firebase-authed"],
       },
     },
+    {
+      method: "GET",
+      path: "/sites/:id/affiliates",
+      handler: "site.getAffiliates",
+      config: {
+        auth: false,
+      },
+    },
   ],
 };
 

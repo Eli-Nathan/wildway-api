@@ -1,0 +1,39 @@
+{
+    "kind": "collectionType",
+    "collectionName": "place_affiliates",
+    "info": {
+        "singularName": "place-affiliate",
+        "pluralName": "place-affiliates",
+        "displayName": "Place Affiliate",
+        "description": "Specific affiliate deep links for a particular site"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "attributes": {
+        "site": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::site.site",
+            "inversedBy": "place_affiliates"
+        },
+        "affiliate": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::affiliate.affiliate",
+            "inversedBy": "place_affiliates"
+        },
+        "deep_link_url": {
+            "type": "string"
+        },
+        "fallback_url": {
+            "type": "string"
+        },
+        "match_confidence": {
+            "type": "float"
+        },
+        "last_verified": {
+            "type": "datetime"
+        }
+    }
+}

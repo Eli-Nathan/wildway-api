@@ -93,6 +93,14 @@ const config = {
                 policies: ["global::firebase-authed"],
             },
         },
+        {
+            method: "GET",
+            path: "/sites/:id/affiliates",
+            handler: "site.getAffiliates",
+            config: {
+                auth: false,
+            },
+        },
     ],
 };
 exports.default = config;

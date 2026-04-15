@@ -14,6 +14,9 @@ const typeToPreferenceKey = {
     site_like: "likes",
     route_favourite: "route_favourites",
     follower_new: "status_changes", // Default to status_changes for now
+    sos_request: "status_changes",
+    sos_accepted: "status_changes",
+    plan_shared: "status_changes",
 };
 async function getNotificationPreferences(strapi, userId) {
     const prefs = await strapi.db

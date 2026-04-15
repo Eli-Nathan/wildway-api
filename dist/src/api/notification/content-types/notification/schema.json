@@ -26,7 +26,10 @@
                 "new_review",
                 "site_like",
                 "route_favourite",
-                "follower_new"
+                "follower_new",
+                "sos_request",
+                "sos_accepted",
+                "plan_shared"
             ],
             "required": true
         },
@@ -50,7 +53,9 @@
                 "edit_request",
                 "addition_request",
                 "user_route",
-                "auth_user"
+                "auth_user",
+                "sos_request",
+                "plan_share"
             ],
             "required": false
         },

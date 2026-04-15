@@ -1,33 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * Global policy to check if the user is the owner of the entity.
+ * In Strapi 5, we prefer injecting filters to handle both list and detail views securely.
+ */
 const isOwner = async (policyContext, _config, { strapi }) => {
-    if (policyContext.state.user) {
-        if (policyContext.state.route) {
-            const apiName = policyContext.state.route.info.apiName;
-            const controllerName = policyContext.state.route.handler.split(".")[0];
-            const { id } = policyContext.params;
-            const idQuery = id ? { id: { $eq: id } } : {};
-            const entity = await strapi.db
-                .query(`api::${apiName}.${controllerName}`)
-                .findMany({
-                where: {
-                    ...idQuery,
-                    owner: policyContext.state.user.id,
-                },
-            });
-            if (!policyContext.query) {
-                policyContext.query = {};
-            }
-            if (!policyContext.query.filters) {
-                policyContext.query.filters = {};
-            }
-            policyContext.query.filters.owner = policyContext.state.user.id;
-            if (entity && entity.length > 0) {
-                return true;
-            }
-        }
-        return true;
+    const user = policyContext.state.user;
+    if (!user || !user.id) {
+        return false;
     }
-    return false;
+    // Ensure query and filters objects exist
+    if (!policyContext.query) {
+        policyContext.query = {};
+    }
+    if (!policyContext.query.filters) {
+        policyContext.query.filters = {};
+    }
+    // Force owner filter
+    policyContext.query.filters.owner = { id: { $eq: user.id } };
+    return true;
 };
 exports.default = isOwner;

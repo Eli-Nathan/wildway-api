@@ -3,30 +3,41 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = {
     globalSearch: async (ctx) => {
         try {
-            const { query, sitesStart = 0, sitesLimit = 25, popularRoutesStart = 0, popularRoutesLimit = 25, communityRoutesStart = 0, communityRoutesLimit = 25, usersStart = 0, usersLimit = 25, useFuzzy = true, } = ctx.request.query;
+            const { query, scope = "all", sitesStart = 0, sitesLimit = 25, popularRoutesStart = 0, popularRoutesLimit = 25, communityRoutesStart = 0, communityRoutesLimit = 25, usersStart = 0, usersLimit = 25, useFuzzy = true, } = ctx.request.query;
             // Convert string "true"/"false" to boolean
             const fuzzyEnabled = useFuzzy === true || useFuzzy === "true";
+            const scopes = scope === "all"
+                ? ["sites", "popularRoutes", "communityRoutes", "people"]
+                : scope.split(",");
             let sites;
             let popularRoutes;
             let communityRoutes;
             let people;
-            sites = await strapi
-                .service("api::search.search")
-                // @ts-expect-error - Service method
-                .searchSites(query, sitesStart, sitesLimit, fuzzyEnabled);
-            popularRoutes = await strapi
-                .service("api::search.search")
-                // @ts-expect-error - Service method
-                .searchPopularRoutes(query, popularRoutesStart, popularRoutesLimit);
+            if (scopes.includes("sites")) {
+                sites = await strapi
+                    .service("api::search.search")
+                    // @ts-expect-error - Service method
+                    .searchSites(query, sitesStart, sitesLimit, fuzzyEnabled);
+            }
+            if (scopes.includes("popularRoutes")) {
+                popularRoutes = await strapi
+                    .service("api::search.search")
+                    // @ts-expect-error - Service method
+                    .searchPopularRoutes(query, popularRoutesStart, popularRoutesLimit);
+            }
             if (ctx.state.user) {
-                communityRoutes = await strapi
-                    .service("api::search.search")
-                    // @ts-expect-error - Service method
-                    .searchCommunityRoutes(query, communityRoutesStart, communityRoutesLimit);
-                people = await strapi
-                    .service("api::search.search")
-                    // @ts-expect-error - Service method
-                    .searchUsers(query, usersStart, usersLimit);
+                if (scopes.includes("communityRoutes")) {
+                    communityRoutes = await strapi
+                        .service("api::search.search")
+                        // @ts-expect-error - Service method
+                        .searchCommunityRoutes(query, communityRoutesStart, communityRoutesLimit);
+                }
+                if (scopes.includes("people")) {
+                    people = await strapi
+                        .service("api::search.search")
+                        // @ts-expect-error - Service method
+                        .searchUsers(query, usersStart, usersLimit);
+                }
             }
             ctx.body = {
                 sites,
@@ -36,7 +47,7 @@ exports.default = {
             };
         }
         catch (err) {
-            ctx.badRequest("Post report controller error", { moreDetails: err });
+            ctx.badRequest("Search controller error", { moreDetails: err });
         }
     },
     globalSearchWithOSM: async (ctx) => {

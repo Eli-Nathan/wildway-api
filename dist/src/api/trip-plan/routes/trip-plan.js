@@ -8,7 +8,16 @@ const config = {
             handler: "trip-plan.find",
             config: {
                 auth: false,
-                policies: ["global::firebase-authed", "global::is-plan-participant"],
+                policies: ["global::firebase-authed", "global::is-owner"],
+            },
+        },
+        {
+            method: "GET",
+            path: "/trip-plans/shared-with-me",
+            handler: "trip-plan.sharedWithMe",
+            config: {
+                auth: false,
+                policies: ["global::firebase-authed"],
             },
         },
         {

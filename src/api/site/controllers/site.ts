@@ -874,6 +874,158 @@ export default factories.createCoreController(
       }
     },
 
+    async getAffiliates(ctx: StrapiContext) {
+      const { id } = ctx.params;
+      const { routeId } = ctx.query as { routeId?: string };
+
+      const site = await strapi.db.query("api::site.site").findOne({
+        where: { id },
+        populate: {
+          type: {
+            populate: { affiliates: { populate: { logo: true } } },
+          },
+          sub_types: {
+            populate: { affiliates: { populate: { logo: true } } },
+          },
+          tags: {
+            populate: { affiliates: { populate: { logo: true } } },
+          },
+          place_affiliates: {
+            populate: {
+              affiliate: {
+                populate: {
+                  logo: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!site) {
+        return ctx.notFound("Site not found");
+      }
+
+      // 1. Explicit Place Affiliates (highest priority)
+      const explicitAffiliates = (site.place_affiliates || []).map((pa: any) => ({
+        ...pa,
+        source: "place",
+      }));
+
+      // 2. Route Affiliates (if routeId provided)
+      let routeAffiliates: any[] = [];
+      if (routeId) {
+        const route = await strapi.db.query("api::nomad-route.nomad-route").findOne({
+          where: { id: routeId },
+          populate: { affiliates: { populate: { logo: true } } },
+        });
+        if (route && route.affiliates) {
+          routeAffiliates = route.affiliates.map((a: any) => ({
+            affiliate: a,
+            source: "route",
+            match_confidence: 0.8,
+            is_search_fallback: !a.base_url && !!a.search_url_template,
+          }));
+        }
+      }
+
+      // 3. Site Type & Sub-type Affiliates
+      const typeAffiliates: any[] = [];
+      const allTypes = [site.type, ...(site.sub_types || [])].filter(Boolean);
+      allTypes.forEach((t: any) => {
+        if (t.affiliates) {
+          t.affiliates.forEach((a: any) => {
+            typeAffiliates.push({
+              affiliate: a,
+              source: "type",
+              match_confidence: 0.6,
+              is_search_fallback: !a.base_url && !!a.search_url_template,
+            });
+          });
+        }
+      });
+
+      // 4. Tag Affiliates
+      const tagAffiliates: any[] = [];
+      if (site.tags) {
+        site.tags.forEach((t: any) => {
+          if (t.affiliates) {
+            t.affiliates.forEach((a: any) => {
+              tagAffiliates.push({
+                affiliate: a,
+                source: "tag",
+                match_confidence: 0.5,
+                is_search_fallback: !a.base_url && !!a.search_url_template,
+              });
+            });
+          }
+        });
+      }
+
+      // Combine and deduplicate by affiliate ID
+      const allMatches = [
+        ...explicitAffiliates,
+        ...routeAffiliates,
+        ...typeAffiliates,
+        ...tagAffiliates,
+      ];
+
+      const uniqueAffiliatesMap = new Map();
+      allMatches.forEach((match) => {
+        const affId = match.affiliate?.id;
+        if (!affId) return;
+
+        // Keep the one with higher source priority or higher confidence
+        if (!uniqueAffiliatesMap.has(affId)) {
+          uniqueAffiliatesMap.set(affId, match);
+        } else {
+          const existing = uniqueAffiliatesMap.get(affId);
+          if (match.match_confidence > existing.match_confidence) {
+            uniqueAffiliatesMap.set(affId, match);
+          }
+        }
+      });
+
+      const deduplicated = Array.from(uniqueAffiliatesMap.values());
+
+      // Advanced Ranking Strategy (Cascading Priority):
+      // 1. Link-level priority (e.g., this specific site-affiliate link is marked as #1)
+      // 2. Global Affiliate EPC/Priority (e.g., Affiliate A is more lucrative than B)
+      // 3. Match Confidence (Explicit match > Heuristic match)
+      const sorted = deduplicated.sort((a, b) => {
+        // First check explicit link priority
+        const linkPriorityA = a.priority || 0;
+        const linkPriorityB = b.priority || 0;
+        if (linkPriorityB !== linkPriorityA) return linkPriorityB - linkPriorityA;
+
+        // Then check global lucrativeness (EPC Score or global priority)
+        const globalA = (a.affiliate?.epc_score || 0) * (a.affiliate?.priority || 1);
+        const globalB = (b.affiliate?.epc_score || 0) * (b.affiliate?.priority || 1);
+        if (globalB !== globalA) return globalB - globalA;
+
+        // Finally, use match confidence as tiebreaker
+        return (b.match_confidence || 0) - (a.match_confidence || 0);
+      });
+
+      const primary = sorted[0] || null;
+      const alternatives = sorted.slice(1);
+
+      const signals = {
+        hasExactMatch: explicitAffiliates.length > 0,
+        recommendedIntent: primary?.affiliate?.intent_type || "low",
+        source: primary?.source || "none",
+      };
+
+      return {
+        data: {
+          placeId: id,
+          primary,
+          alternatives,
+          signals,
+        },
+      };
+    },
+
     /**
      * Find all sites within geographic bounds - used for offline region downloads
      * Returns all matching sites with full data needed for offline storage

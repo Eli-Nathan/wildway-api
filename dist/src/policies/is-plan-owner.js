@@ -38,7 +38,7 @@ const isPlanOwner = async (policyContext, _config, { strapi }) => {
         const plan = await strapi.db.query('api::trip-plan.trip-plan').findOne({
             where: {
                 id: tripPlanId,
-                owner: user.id
+                owner: { id: user.id }
             }
         });
         return !!plan;
@@ -52,7 +52,7 @@ const isPlanOwner = async (policyContext, _config, { strapi }) => {
         const plan = await strapi.db.query('api::trip-plan.trip-plan').findOne({
             where: {
                 id: tripPlanId,
-                owner: user.id
+                owner: { id: user.id }
             }
         });
         return !!plan;

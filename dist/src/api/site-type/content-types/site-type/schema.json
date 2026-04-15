@@ -63,6 +63,12 @@
             "relation": "manyToMany",
             "target": "api::guide.guide",
             "mappedBy": "site_types"
+        },
+        "affiliates": {
+            "type": "relation",
+            "relation": "manyToMany",
+            "target": "api::affiliate.affiliate",
+            "mappedBy": "site_types"
         }
     }
 }

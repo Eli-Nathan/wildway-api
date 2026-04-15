@@ -1,0 +1,103 @@
+{
+  "kind": "collectionType",
+  "collectionName": "affiliates",
+  "info": {
+    "singularName": "affiliate",
+    "pluralName": "affiliates",
+    "displayName": "Affiliate",
+    "description": "Affiliate platforms (e.g., Booking.com, Campsites.co.uk)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "brand_name": {
+      "type": "string"
+    },
+    "base_url": {
+      "type": "string"
+    },
+    "default_params": {
+      "type": "json"
+    },
+    "intent_type": {
+      "type": "enumeration",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "tracking_type": {
+      "type": "enumeration",
+      "enum": [
+        "webview_safe",
+        "browser_only"
+      ]
+    },
+    "cta_text": {
+      "type": "string"
+    },
+    "transfer_screen_header": {
+      "type": "string"
+    },
+    "transfer_screen_body": {
+      "type": "text"
+    },
+    "transfer_screen_cta_text": {
+      "type": "string"
+    },
+    "brand_colour": {
+      "type": "string"
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "site_types": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::site-type.site-type"
+    },
+    "priority": {
+      "type": "integer",
+      "default": 0
+    },
+    "epc_score": {
+      "type": "float",
+      "default": 1.0
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "search_url_template": {
+      "type": "string"
+    },
+    "place_affiliates": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::place-affiliate.place-affiliate",
+      "mappedBy": "affiliate"
+    },
+    "tags": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::tag.tag",
+      "inversedBy": "affiliates"
+    },
+    "nomad_routes": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::nomad-route.nomad-route",
+      "inversedBy": "affiliates"
+    }
+  }
+}

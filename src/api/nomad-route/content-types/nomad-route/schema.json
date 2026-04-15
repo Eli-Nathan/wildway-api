@@ -81,6 +81,12 @@
       "type": "uid",
       "targetField": "name",
       "required": false
+    },
+    "affiliates": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::affiliate.affiliate",
+      "mappedBy": "nomad_routes"
     }
   }
 }

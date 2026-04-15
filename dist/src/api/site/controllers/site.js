@@ -701,6 +701,51 @@ exports.default = strapi_1.factories.createCoreController("api::site.site", ({ s
             };
         }
     },
+    async getAffiliates(ctx) {
+        var _a;
+        const { id } = ctx.params;
+        const site = await strapi.db.query("api::site.site").findOne({
+            where: { id },
+            populate: {
+                type: true,
+                place_affiliates: {
+                    populate: {
+                        affiliate: {
+                            populate: {
+                                logo: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!site) {
+            return ctx.notFound("Site not found");
+        }
+        const placeAffiliates = site.place_affiliates || [];
+        // Sort by priority (if we added it to place-affiliate, but it's on affiliate)
+        const sorted = [...placeAffiliates].sort((a, b) => {
+            var _a, _b;
+            const priorityA = ((_a = a.affiliate) === null || _a === void 0 ? void 0 : _a.priority) || 0;
+            const priorityB = ((_b = b.affiliate) === null || _b === void 0 ? void 0 : _b.priority) || 0;
+            return priorityB - priorityA;
+        });
+        const primary = sorted[0] || null;
+        const alternatives = sorted.slice(1);
+        // Simple intent signals for now
+        const signals = {
+            hasExactMatch: placeAffiliates.some((pa) => pa.match_confidence > 0.9),
+            recommendedIntent: ((_a = primary === null || primary === void 0 ? void 0 : primary.affiliate) === null || _a === void 0 ? void 0 : _a.intent_type) || "low",
+        };
+        return {
+            data: {
+                placeId: id,
+                primary,
+                alternatives,
+                signals,
+            },
+        };
+    },
     /**
      * Find all sites within geographic bounds - used for offline region downloads
      * Returns all matching sites with full data needed for offline storage

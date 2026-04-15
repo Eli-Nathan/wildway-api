@@ -200,6 +200,12 @@
       "type": "integer",
       "default": 0,
       "pluginOptions": {}
+    },
+    "place_affiliates": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::place-affiliate.place-affiliate",
+      "mappedBy": "site"
     }
   }
 }

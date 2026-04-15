@@ -37,6 +37,12 @@
       "relation": "manyToMany",
       "target": "api::post.post",
       "mappedBy": "tags"
+    },
+    "affiliates": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::affiliate.affiliate",
+      "mappedBy": "tags"
     }
   }
 }

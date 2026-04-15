@@ -1,0 +1,35 @@
+{
+    "kind": "collectionType",
+    "collectionName": "sos_requests",
+    "info": {
+        "singularName": "sos-request",
+        "pluralName": "sos-requests",
+        "displayName": "SOS Request",
+        "description": "Invite/accept flow for SOS contacts"
+    },
+    "options": {
+        "draftAndPublish": false
+    },
+    "attributes": {
+        "from": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user"
+        },
+        "to": {
+            "type": "relation",
+            "relation": "manyToOne",
+            "target": "api::auth-user.auth-user"
+        },
+        "status": {
+            "type": "enumeration",
+            "enum": [
+                "pending",
+                "accepted",
+                "declined"
+            ],
+            "default": "pending",
+            "required": true
+        }
+    }
+}

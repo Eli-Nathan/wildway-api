@@ -120,12 +120,17 @@ export function isInQuietHours(prefs: NotificationPreferences): boolean {
   return currentTime >= start && currentTime < end;
 }
 
+interface PushData {
+  notificationId?: number;
+}
+
 async function sendPushNotification(
   fcmToken: string,
   title: string,
   body: string,
   recipientId: number,
-  strapi: StrapiInstance
+  strapi: StrapiInstance,
+  pushData?: PushData
 ): Promise<boolean> {
   try {
     // Get actual unread notification count for badge
@@ -161,6 +166,9 @@ async function sendPushNotification(
       },
       data: {
         screen: "notifications",
+        ...(pushData?.notificationId && {
+          notificationId: String(pushData.notificationId),
+        }),
       },
     };
 
@@ -179,7 +187,7 @@ export async function createNotification(
 ): Promise<void> {
   try {
     // Always create in-app notification
-    await strapi.db.query("api::notification.notification").create({
+    const notification = await strapi.db.query("api::notification.notification").create({
       data: {
         recipient: data.recipientId,
         type: data.type,
@@ -257,7 +265,8 @@ export async function createNotification(
           data.title,
           data.message,
           data.recipientId,
-          strapi
+          strapi,
+          { notificationId: notification.id }
         );
         if (sent) {
           strapi.log.info(`Sent push notification to user ${data.recipientId}`);
