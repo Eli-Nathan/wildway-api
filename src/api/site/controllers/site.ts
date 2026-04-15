@@ -3,6 +3,34 @@ import qs from "qs";
 import { factories } from "@strapi/strapi";
 import sanitizeApiResponse from "../../../wildway/sanitizeApiResponse";
 
+/**
+ * Recursively flatten Strapi v4 `{ id, attributes }` and `{ data: { id, attributes } }` wrappers
+ * into flat objects so the API returns consistent, unwrapped JSON.
+ */
+const flattenStrapi = (obj: any): any => {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(flattenStrapi);
+  if (typeof obj !== "object") return obj;
+
+  // { data: { id, attributes } } or { data: [{ id, attributes }] }
+  if ("data" in obj && !("id" in obj) && !("attributes" in obj)) {
+    if (obj.data === null) return null;
+    return flattenStrapi(obj.data);
+  }
+
+  // { id, attributes: { ... } }
+  if ("attributes" in obj && "id" in obj) {
+    return flattenStrapi({ id: obj.id, ...obj.attributes });
+  }
+
+  // Plain object — recurse all keys
+  const result: any = {};
+  for (const key of Object.keys(obj)) {
+    result[key] = flattenStrapi(obj[key]);
+  }
+  return result;
+};
+
 interface StrapiContext {
   query: {
     filters?: Record<string, unknown>;
@@ -1017,12 +1045,12 @@ export default factories.createCoreController(
       };
 
       return {
-        data: {
+        data: flattenStrapi({
           placeId: id,
           primary,
           alternatives,
           signals,
-        },
+        }),
       };
     },
 
