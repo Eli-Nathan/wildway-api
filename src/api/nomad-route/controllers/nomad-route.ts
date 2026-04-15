@@ -100,6 +100,7 @@ export default factories.createCoreController(
         populate: {
           image: true,
           tags: true,
+          affiliates: { populate: { logo: true } },
           pois: {
             populate: {
               type: {
@@ -148,6 +149,7 @@ export default factories.createCoreController(
           populate: {
             image: true,
             tags: true,
+            affiliates: { populate: { logo: true } },
             pois: {
               populate: {
                 type: {
